@@ -9,5 +9,5 @@ find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIR})
 include_directories(include)
 
-add_executable(Evolution Main.cpp)
+add_executable(Evolution Main.cpp Renderer.cpp Renderer.h)
 target_link_libraries(${CMAKE_PROJECT_NAME} ${SDL2_LIBRARY})
