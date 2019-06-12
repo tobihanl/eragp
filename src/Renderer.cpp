@@ -1,4 +1,5 @@
 #include <iostream>
+#include <utility>
 #include <string>
 #include <SDL.h>
 #include <SDL_image.h>
@@ -20,30 +21,27 @@ int Renderer::windowHeight = 0;
  * @return  0 if successful, 1 if not successful, -1 if the
  *          renderer is already setup
  */
-int Renderer::setup(int width, int height)
-{
+int Renderer::setup(int width, int height) {
     // Renderer already set up?
     if (isSetup)
         return -1;
 
     // Init SDL
-    if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
-    {
+    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
         logSDLError(std::cerr, "SDL_Init");
         return 1;
     }
 
     // Init Font Library
-    if (TTF_Init() != 0)
-    {
+    if (TTF_Init() != 0) {
         logSDLError(std::cerr, "TTF_Init");
         return 1;
     }
 
     // Create Window
-    win = SDL_CreateWindow("Evolution", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_SHOWN);
-    if (win == nullptr)
-    {
+    win = SDL_CreateWindow("Evolution", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
+                           SDL_WINDOW_SHOWN);
+    if (win == nullptr) {
         logSDLError(std::cerr, "SDL_CreateWindow");
         SDL_Quit();
         return 1;
@@ -54,9 +52,8 @@ int Renderer::setup(int width, int height)
 
     // Create Renderer
     ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (ren == nullptr)
-    {
-        cleanup(win);
+    if (ren == nullptr) {
+        Include::cleanup(win);
         logSDLError(std::cerr, "SDL_CreateRenderer");
         SDL_Quit();
         return 1;
@@ -71,9 +68,8 @@ int Renderer::setup(int width, int height)
  * Destroys the renderer by cleaning up all the SDL components and
  * quitting SDL
  */
-void Renderer::destroy()
-{
-    cleanup(ren, win);
+void Renderer::destroy() {
+    Include::cleanup(ren, win);
     SDL_Quit();
 
     isSetup = false;
@@ -96,20 +92,33 @@ void Renderer::present() {
 }
 
 /**
+ * Renders all the RenderTextures by copying them into the SDL renderer.
+ */
+void Renderer::copy(const RenderTexture &texture) {
+    SDL_RenderCopy(ren, texture.tex, nullptr, &texture.dst);
+}
+
+/**
+ * Cleans-up all the RenderTextures by destroying the textures.
+ */
+void Renderer::cleanup(RenderTexture &texture) {
+    Include::cleanup(texture.tex);
+    texture.tex = nullptr; // No texture available anymore
+}
+
+/**
  * Renders an image on the window on the given position
  *
  * @param x Coordinates according to the top-left corner of the window
  * @param y Coordinates according to the top-left corner of the window
  * @param imagePath Path to the image relative to the resource folder
  */
-bool Renderer::renderImage(const std::string &imagePath, const int x, const int y)
-{
-    std::string file = getResourcePath() + imagePath;
+RenderTexture Renderer::renderImage(const std::string &imagePath, int x, int y) {
+    std::string file = Include::getResourcePath() + imagePath;
     SDL_Texture *tex = IMG_LoadTexture(ren, file.c_str());
-    if (tex == nullptr)
-    {
+    if (tex == nullptr) {
         logSDLError(std::cerr, "IMG_LoadTexture");
-        return false;
+        return {};
     }
 
     // Draw Image to the specified location
@@ -117,10 +126,8 @@ bool Renderer::renderImage(const std::string &imagePath, const int x, const int 
     dst.x = (x >= 0) ? x : windowWidth + x;
     dst.y = (y >= 0) ? y : windowHeight + y;
     SDL_QueryTexture(tex, nullptr, nullptr, &dst.w, &dst.h);
-    SDL_RenderCopy(ren, tex, nullptr, &dst);
 
-    cleanup(tex);
-    return true;
+    return {tex, dst};
 }
 
 /**
@@ -131,20 +138,17 @@ bool Renderer::renderImage(const std::string &imagePath, const int x, const int 
  * @param radius The radius of the circle
  * @param color The color of the circle
  */
-bool Renderer::renderDot(const int centerX, const int centerY, const int radius, const SDL_Color color)
-{
+bool Renderer::renderDot(int centerX, int centerY, int radius, const SDL_Color &color) {
     SDL_SetRenderDrawColor(ren, color.r, color.g, color.b, color.a);
 
     // Draw filled Circle/Dot
     int dx, dy;
-    for (int w = 0; w <= (radius+radius); w++)
-    {
-        for (int h = 0; h <= (radius+radius); h++)
-        {
+    for (int w = 0; w <= (radius + radius); w++) {
+        for (int h = 0; h <= (radius + radius); h++) {
             dx = radius - w;
             dy = radius - h;
 
-            if ((dx*dx + dy*dy) < (radius*radius))
+            if ((dx * dx + dy * dy) < (radius * radius))
                 SDL_RenderDrawPoint(ren, centerX + dx, centerY + dy);
         }
     }
@@ -163,42 +167,36 @@ bool Renderer::renderDot(const int centerX, const int centerY, const int radius,
  * @param color Text's color
  * @param fontFile Path to the file where the font is stored, relative to resource folder (TTF-File)
  */
-bool Renderer::renderFont(const std::string &text, const int x, const int y, const int size, const SDL_Color color,
-                            const std::string &fontFile)
-{
-    std::string file = getResourcePath() + fontFile;
+RenderTexture Renderer::renderFont(const std::string &text, int x, int y, int size, const SDL_Color &color,
+                                   const std::string &fontFile) {
+    std::string file = Include::getResourcePath() + fontFile;
     TTF_Font *font = TTF_OpenFont(file.c_str(), size);
-    if (font == nullptr)
-    {
+    if (font == nullptr) {
         logSDLError(std::cerr, "TTF_OpenFont");
-        return false;
+        return {};
     }
 
     SDL_Surface *surface = TTF_RenderText_Blended(font, text.c_str(), color);
-    if (surface == nullptr)
-    {
-        cleanup(font);
+    if (surface == nullptr) {
+        Include::cleanup(font);
         logSDLError(std::cerr, "TTF_RenderText_Blended");
-        return false;
+        return {};
     }
 
     SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surface);
-    cleanup(surface);
-    if (tex == nullptr)
-    {
-        cleanup(font);
+    if (tex == nullptr) {
+        Include::cleanup(surface, font);
         logSDLError(std::cerr, "SDL_CreateTextureFromSurface");
-        return false;
+        return {};
     }
 
     SDL_Rect dst;
-    dst.x = x;
-    dst.y = y;
+    dst.x = (x >= 0) ? x : windowWidth + x;
+    dst.y = (y >= 0) ? y : windowHeight + y;
     SDL_QueryTexture(tex, nullptr, nullptr, &dst.w, &dst.h);
-    SDL_RenderCopy(ren, tex, nullptr, &dst);
 
-    cleanup(tex, font);
-    return false;
+    Include::cleanup(surface, font);
+    return {tex, dst};
 }
 
 /**

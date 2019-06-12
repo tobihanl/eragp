@@ -10,72 +10,68 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 
-/*
- * Recurse through the list of arguments to clean up, cleaning up
- * the first one in the list each iteration.
- */
-template<typename T, typename... Args>
-void cleanup(T *t, Args&&... args)
-{
-    //Cleanup the first item in the list
-    cleanup(t);
+namespace Include {
+    /*
+     * Recurse through the list of arguments to clean up, cleaning up
+     * the first one in the list each iteration.
+     */
+    template<typename T, typename... Args>
+    void cleanup(T *t, Args &&... args) {
+        //Cleanup the first item in the list
+        cleanup(t);
 
-    //Recurse to clean up the remaining arguments
-    cleanup(std::forward<Args>(args)...);
-}
+        //Recurse to clean up the remaining arguments
+        cleanup(std::forward<Args>(args)...);
+    }
 
-/*
- * These specializations serve to free the passed argument and also provide the
- * base cases for the recursive call above, eg. when args is only a single item
- * one of the specializations below will be called by
- * cleanup(std::forward<Args>(args)...), ending the recursion
- * We also make it safe to pass nullptrs to handle situations where we
- * don't want to bother finding out which values failed to load (and thus are null)
- * but rather just want to clean everything up and let cleanup sort it out
- */
-template<>
-inline void cleanup<SDL_Window>(SDL_Window *win)
-{
-    if (win == nullptr)
-        return;
+    /*
+     * These specializations serve to free the passed argument and also provide the
+     * base cases for the recursive call above, eg. when args is only a single item
+     * one of the specializations below will be called by
+     * cleanup(std::forward<Args>(args)...), ending the recursion
+     * We also make it safe to pass nullptrs to handle situations where we
+     * don't want to bother finding out which values failed to load (and thus are null)
+     * but rather just want to clean everything up and let cleanup sort it out
+     */
+    template<>
+    inline void cleanup<SDL_Window>(SDL_Window *win) {
+        if (win == nullptr)
+            return;
 
-    SDL_DestroyWindow(win);
-}
+        SDL_DestroyWindow(win);
+    }
 
-template<>
-inline void cleanup<SDL_Renderer>(SDL_Renderer *ren)
-{
-    if (ren == nullptr)
-        return;
+    template<>
+    inline void cleanup<SDL_Renderer>(SDL_Renderer *ren) {
+        if (ren == nullptr)
+            return;
 
-    SDL_DestroyRenderer(ren);
-}
+        SDL_DestroyRenderer(ren);
+    }
 
-template<>
-inline void cleanup<SDL_Texture>(SDL_Texture *tex)
-{
-    if (tex == nullptr)
-        return;
+    template<>
+    inline void cleanup<SDL_Texture>(SDL_Texture *tex) {
+        if (tex == nullptr)
+            return;
 
-    SDL_DestroyTexture(tex);
-}
+        SDL_DestroyTexture(tex);
+    }
 
-template<>
-inline void cleanup<SDL_Surface>(SDL_Surface *surf)
-{
-    if (surf == nullptr)
-        return;
+    template<>
+    inline void cleanup<SDL_Surface>(SDL_Surface *surf) {
+        if (surf == nullptr)
+            return;
 
-    SDL_FreeSurface(surf);
-}
+        SDL_FreeSurface(surf);
+    }
 
-template<>
-inline void cleanup<TTF_Font>(TTF_Font *font)
-{
-    if (font == nullptr)
-        return;
+    template<>
+    inline void cleanup<TTF_Font>(TTF_Font *font) {
+        if (font == nullptr)
+            return;
 
-    TTF_CloseFont(font);
+        TTF_CloseFont(font);
+    }
 }
 
 #endif //CLEANUP_H
