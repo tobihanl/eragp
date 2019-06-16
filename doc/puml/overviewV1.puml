@@ -1,0 +1,134 @@
+@startuml
+
+
+
+
+
+/' Objects '/
+
+abstract class Entity {
+	+Entity(int x, int y)
+	+x : int
+	+y : int
+	+{abstract} render() : void
+	+{abstract} tick() : void
+}
+
+
+class FoodEntity {
+	+FoodEntity(int x, int y)
+	+render() : void
+	+tick() : void
+}
+
+
+class LivingEntity {
+	+LivingEntity(int x, int y, SDL_Color color)
+	-color : SDL_Color
+	+render() : void
+	+tick() : void
+}
+
+
+class Matrix {
+	-Matrix()
+	+Matrix(std::size_t height, std::size_t width, float initValue)
+	+Matrix(std::size_t height, std::size_t width, float from, float to)
+	+Matrix(std::size_t height, std::size_t width, std::vector<float> data)
+	+~Matrix()
+	+copy() : Matrix
+	+dotProduct(const Matrix& other) : Matrix
+	-operator*(Matrix lhs, const Matrix& rhs) : Matrix
+	-operator*(Matrix lhs, float rhs) : Matrix
+	-operator+(Matrix lhs, const Matrix& rhs) : Matrix
+	-operator+(Matrix lhs, float rhs) : Matrix
+	-operator-(Matrix lhs, const Matrix& rhs) : Matrix
+	-operator-(Matrix lhs, float rhs) : Matrix
+	-operator/(Matrix lhs, const Matrix& rhs) : Matrix
+	-operator/(Matrix lhs, float rhs) : Matrix
+	+apply(MatrixFunction fun) : Matrix&
+	+operator*=(const Matrix& rhs) : Matrix&
+	+operator*=(float rhs) : Matrix&
+	+operator+=(const Matrix& rhs) : Matrix&
+	+operator+=(float rhs) : Matrix&
+	+operator-=(const Matrix& rhs) : Matrix&
+	+operator-=(float rhs) : Matrix&
+	+operator/=(const Matrix& rhs) : Matrix&
+	+operator/=(float rhs) : Matrix&
+	+transpose() : Matrix&
+	-operator==(const Matrix& lhs, const Matrix& rhs) : bool
+	+getMax() : float
+	+getMin() : float
+	+operator()(size_t y, size_t x) : float {query}
+	+toFloat() : float
+	+operator()(size_t y, size_t x) : float&
+	+getHeight() : size_t
+	+getWidth() : size_t
+	-operator<<(std::ostream& strm, const Matrix& m) : std : : ostream&
+	-height : std::size_t
+	-width : std::size_t
+	-data : std::vector<float>
+}
+
+
+class RenderTexture {
+	+dst : SDL_Rect
+	+tex : SDL_Texture*
+}
+
+
+class Renderer {
+	-Renderer()
+	-~Renderer()
+	+{static} renderFont(const std::string& text, int x, int y, int size, const SDL_Color& color, const std::string& fontFile) : RenderTexture
+	+{static} renderImage(const std::string& imagePath, int x, int y) : RenderTexture
+	+{static} renderDot(int centerX, int centerY, int radius, const SDL_Color& color) : bool
+	+{static} setup(int width, int height) : int
+	-{static} ren : static SDL_Renderer*
+	-{static} win : static SDL_Window*
+	-{static} isSetup : static bool
+	-{static} windowHeight : static int
+	-{static} windowWidth : static int
+	+{static} cleanup(RenderTexture& texture) : void
+	+{static} clear() : void
+	+{static} copy(const RenderTexture& texture) : void
+	+{static} destroy() : void
+	-{static} logSDLError(std::ostream &, const std::string &) : void
+	+{static} present() : void
+}
+
+
+class World {
+	+World()
+	-food : std::vector<FoodEntity>
+	-living : std::vector<LivingEntity>
+	+render() : void
+	+tick() : void
+}
+
+
+
+
+
+/' Inheritance relationships '/
+
+Entity <|-- FoodEntity
+
+
+Entity <|-- LivingEntity
+
+
+
+
+
+/' Aggregation relationships '/
+
+World o-- FoodEntity
+
+
+World o-- LivingEntity
+
+
+
+
+@enduml
