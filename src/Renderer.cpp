@@ -11,8 +11,6 @@
 SDL_Window *Renderer::win = nullptr;
 SDL_Renderer *Renderer::ren = nullptr;
 bool Renderer::isSetup = false;
-int Renderer::windowWidth = 0;
-int Renderer::windowHeight = 0;
 
 /**
  * Set up the renderer by creating a window with the given width
@@ -41,14 +39,12 @@ int Renderer::setup(int width, int height) {
     // Create Window
     win = SDL_CreateWindow("Evolution", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
                            SDL_WINDOW_SHOWN);
+
     if (win == nullptr) {
         logSDLError(std::cerr, "SDL_CreateWindow");
         SDL_Quit();
         return 1;
     }
-
-    windowHeight = height;
-    windowWidth = width;
 
     // Create Renderer
     ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
@@ -73,8 +69,6 @@ void Renderer::destroy() {
     SDL_Quit();
 
     isSetup = false;
-    windowWidth = 0;
-    windowHeight = 0;
 }
 
 /**
@@ -92,18 +86,23 @@ void Renderer::present() {
 }
 
 /**
- * Renders all the RenderTextures by copying them into the SDL renderer.
+ * Renders all the textures by copying them into the SDL renderer at
+ * the specified location.
+ *
+ * @param texture The texture to be copied
+ * @param dst Destination rectangle, where the texture has to be drawn
  */
-void Renderer::copy(const RenderTexture &texture) {
-    SDL_RenderCopy(ren, texture.tex, nullptr, &texture.dst);
+void Renderer::copy(SDL_Texture *texture, const SDL_Rect *dst) {
+    SDL_RenderCopy(ren, texture, nullptr, dst);
 }
 
 /**
- * Cleans-up all the RenderTextures by destroying the textures.
+ * Cleans-up all the textures by destroying them.
+ *
+ * @param texture The texture to be destroyed
  */
-void Renderer::cleanup(RenderTexture &texture) {
-    Include::cleanup(texture.tex);
-    texture.tex = nullptr; // No texture available anymore
+void Renderer::cleanup(SDL_Texture *texture) {
+    Include::cleanup(texture);
 }
 
 /**
@@ -113,7 +112,7 @@ void Renderer::cleanup(RenderTexture &texture) {
  * @param y Coordinates according to the top-left corner of the window
  * @param imagePath Path to the image relative to the resource folder
  */
-RenderTexture Renderer::renderImage(const std::string &imagePath, int x, int y) {
+SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
     std::string file = Include::getResourcePath() + imagePath;
     SDL_Texture *tex = IMG_LoadTexture(ren, file.c_str());
     if (tex == nullptr) {
@@ -121,13 +120,7 @@ RenderTexture Renderer::renderImage(const std::string &imagePath, int x, int y) 
         return {};
     }
 
-    // Draw Image to the specified location
-    SDL_Rect dst;
-    dst.x = (x >= 0) ? x : windowWidth + x;
-    dst.y = (y >= 0) ? y : windowHeight + y;
-    SDL_QueryTexture(tex, nullptr, nullptr, &dst.w, &dst.h);
-
-    return {tex, dst};
+    return tex;
 }
 
 /**
@@ -161,14 +154,12 @@ bool Renderer::renderDot(int centerX, int centerY, int radius, const SDL_Color &
  * Renders a text on the window
  *
  * @param text The text to be displayed
- * @param x The position of the text on the window
- * @param y The position of the text on the window
  * @param size The font size
  * @param color Text's color
  * @param fontFile Path to the file where the font is stored, relative to resource folder (TTF-File)
  */
-RenderTexture Renderer::renderFont(const std::string &text, int x, int y, int size, const SDL_Color &color,
-                                   const std::string &fontFile) {
+SDL_Texture *Renderer::renderFont(const std::string &text, int size, const SDL_Color &color,
+                                  const std::string &fontFile) {
     std::string file = Include::getResourcePath() + fontFile;
     TTF_Font *font = TTF_OpenFont(file.c_str(), size);
     if (font == nullptr) {
@@ -190,13 +181,8 @@ RenderTexture Renderer::renderFont(const std::string &text, int x, int y, int si
         return {};
     }
 
-    SDL_Rect dst;
-    dst.x = (x >= 0) ? x : windowWidth + x;
-    dst.y = (y >= 0) ? y : windowHeight + y;
-    SDL_QueryTexture(tex, nullptr, nullptr, &dst.w, &dst.h);
-
     Include::cleanup(surface, font);
-    return {tex, dst};
+    return tex;
 }
 
 /**

@@ -9,10 +9,18 @@ int main() {
     Renderer::setup(640, 480);
 
     // Render all needed textures
-    RenderTexture img = Renderer::renderImage("background.bmp", 250, 100);
-    RenderTexture hello = Renderer::renderFont("Hello World!", 10, 10, 20, {255, 255, 255, 0}, "font.ttf");
-    RenderTexture text = Renderer::renderFont("I am an evolution simulating program", 10, 30, 20, {255, 255, 255, 0},
-                                              "font.ttf");
+    SDL_Texture *img = Renderer::renderImage("background.bmp");
+    SDL_Texture *hello = Renderer::renderFont("Hello World!", 20, {255, 255, 255, 0}, "font.ttf");
+    SDL_Texture *text = Renderer::renderFont("I am an evolution simulating program", 20, {255, 255, 255, 0},
+                                             "font.ttf");
+
+    // Position all the textures
+    SDL_Rect dstImg = {250, 100, 0, 0};
+    SDL_Rect dstHello = {10, 10, 0, 0};
+    SDL_Rect dstText = {10, 30, 0, 0};
+    SDL_QueryTexture(img, nullptr, nullptr, &dstImg.w, &dstImg.h);
+    SDL_QueryTexture(hello, nullptr, nullptr, &dstHello.w, &dstHello.h);
+    SDL_QueryTexture(text, nullptr, nullptr, &dstText.w, &dstText.h);
 
     // Example Event Loop for letting SDL show up a window with some content
     SDL_Event e;
@@ -30,9 +38,9 @@ int main() {
         Renderer::renderDot(100, 200, 5, {0, 0, 255, 0});
         Renderer::renderDot(200, 200, 5, {255, 255, 255, 0});
 
-        Renderer::copy(img);
-        Renderer::copy(hello);
-        Renderer::copy(text);
+        Renderer::copy(img, &dstImg);
+        Renderer::copy(hello, &dstHello);
+        Renderer::copy(text, &dstText);
 
         Renderer::present();
 
