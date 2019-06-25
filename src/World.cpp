@@ -1,4 +1,4 @@
-
+#include <cfloat>
 #include "World.h"
 
 World::World() = default;
@@ -27,10 +27,7 @@ void World::tick() {
  */
 LivingEntity World::getNearestEntity(LivingEntity entity) {
     LivingEntity nearestEntity = living.front();
-    if (nearestEntity == entity && living.size() >= 2) {
-        nearestEntity = living[1];
-    }
-    double minDistance = entity.distanceToPoint(nearestEntity.x, nearestEntity.y);
+    double minDistance = DBL_MAX;
 
     for (auto &e : living) {
         double distance = entity.distanceToPoint(e.x, e.y);
