@@ -16,6 +16,9 @@ bool Renderer::isSetup = false;
  * Set up the renderer by creating a window with the given width
  * and height
  *
+ * @param width Width of the new window
+ * @param height Height of the new window
+ *
  * @return  0 if successful, 1 if not successful, -1 if the
  *          renderer is already setup
  */
@@ -108,9 +111,9 @@ void Renderer::cleanup(SDL_Texture *texture) {
 /**
  * Renders an image on the window on the given position
  *
- * @param x Coordinates according to the top-left corner of the window
- * @param y Coordinates according to the top-left corner of the window
  * @param imagePath Path to the image relative to the resource folder
+ *
+ * @return Pointer to the created SDL_Texture
  */
 SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
     std::string file = Include::getResourcePath() + imagePath;
@@ -129,25 +132,32 @@ SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
  * @param centerX The position of the circle-center
  * @param centerY The position of the circle-center
  * @param radius The radius of the circle
- * @param color The color of the circle
+ * @param color The color of the circle (SDL_Color structure)
  */
-bool Renderer::renderDot(int centerX, int centerY, int radius, const SDL_Color &color) {
-    SDL_SetRenderDrawColor(ren, color.r, color.g, color.b, color.a);
+void Renderer::renderDot(int centerX, int centerY, int radius, const SDL_Color &color) {
+    int squaredRadius = radius * radius, doubledRadius = radius + radius;
+    SDL_Point points[4 * squaredRadius];
 
-    // Draw filled Circle/Dot
+    // Calculate positions of all points needed to draw a filled circle/dot
+    int i = 0;
     int dx, dy;
-    for (int w = 0; w <= (radius + radius); w++) {
-        for (int h = 0; h <= (radius + radius); h++) {
+    for (int w = 0; w <= doubledRadius; w++) {
+        for (int h = 0; h <= doubledRadius; h++) {
             dx = radius - w;
             dy = radius - h;
 
-            if ((dx * dx + dy * dy) < (radius * radius))
-                SDL_RenderDrawPoint(ren, centerX + dx, centerY + dy);
+            if ((dx * dx + dy * dy) < squaredRadius) {
+                points[i].x = centerX + dx;
+                points[i].y = centerY + dy;
+                i++;
+            }
         }
     }
 
+    // Draw filled circle/Dot
+    SDL_SetRenderDrawColor(ren, color.r, color.g, color.b, color.a);
+    SDL_RenderDrawPoints(ren, points, i);
     SDL_SetRenderDrawColor(ren, 0, 0, 0, 0);
-    return true;
 }
 
 /**
@@ -157,6 +167,8 @@ bool Renderer::renderDot(int centerX, int centerY, int radius, const SDL_Color &
  * @param size The font size
  * @param color Text's color
  * @param fontFile Path to the file where the font is stored, relative to resource folder (TTF-File)
+ *
+ * @return Pointer to the created SDL_Texture
  */
 SDL_Texture *Renderer::renderFont(const std::string &text, int size, const SDL_Color &color,
                                   const std::string &fontFile) {
