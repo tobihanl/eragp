@@ -85,22 +85,19 @@ void renderLoop(World &world) {
  * =============================================================================
  */
 int main(int argc, char **argv) {
-    int height = 0;
-    int width = 0;
-    int c = 0;
-
     // START MPI
     MPI_Init(&argc, &argv);
 
     // Scan program arguments
+    int c;
     while ((c = getopt(argc, argv, "h:w:")) != -1) {
         switch (c) {
             case 'h':
-                height = strtol(optarg, nullptr, 10);
+                World::overallHeight = strtol(optarg, nullptr, 10);
                 break;
 
             case 'w':
-                width = strtol(optarg, nullptr, 10);
+                World::overallWidth = strtol(optarg, nullptr, 10);
                 break;
 
             case '?':
@@ -112,8 +109,8 @@ int main(int argc, char **argv) {
                 return EXIT_FAILURE;
 
             default:
-                std::cout << "default" << std::endl;
-                break;
+                std::cerr << "Some error occurred!" << std::endl;
+                return EXIT_FAILURE;
         }
     }
 
