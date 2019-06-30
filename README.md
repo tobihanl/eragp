@@ -12,7 +12,8 @@ Link to Trello task as first line in commit message.
 
 ## Local Dev Env
 A docker container exists for easy local development.
-The docker container exposes a VNC server under the address `vnc://localhost:5901`.
+The docker container exposes a VNC server at the address `vnc://localhost:5901` with password ``vncpassword``.
+It also exposes a HTML client directly accessible in a browser at ``http://localhost:6901/?password=vncpassword``
 
 All commands assume they are executed inside this project folder.
 
