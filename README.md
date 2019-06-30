@@ -14,7 +14,7 @@ Link to Trello task as first line in commit message.
 A docker container exists for easy local development.
 The docker container exposes a VNC server under the address `vnc://localhost:5901`.
 
-All commands assume they are executed inside this project folder
+All commands assume they are executed inside this project folder.
 
 Start the container:
 ```
@@ -25,12 +25,12 @@ Initially and after changes to cmake, cmake has to be loaded:
 ```
 docker exec -it eragp sh -c 'cmake -DCMAKE_C_COMPILER=/usr/bin/mpicc .'
 ```
-Build the project and execute it.
+Build the project and execute it:
 ```
 docker exec -it --user 0 eragp sh -c 'cmake --build . --target Evolution -- -j && ./Evolution'
 ```
 
-To build the container yourself, execute these commands
+Optionally, you can also build the container yourself
 ```
 docker build --tag=eragp .
 ```
