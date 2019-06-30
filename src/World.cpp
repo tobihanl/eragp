@@ -21,3 +21,14 @@ void World::tick() {
         e.tick();
     }
 }
+/*FoodEntity& World::findNearestFood(int x, int y) {
+    if(living.size() == 0) return NULL;
+    FoodEntity f = living[0];
+    int dist = f.getSquaredDistance(x, y);
+    for(auto &e : living) {
+        int tempDist = e.getSquaredDistance(x, y);
+        if(tempDist < dist) {
+            f = e;
+        }
+    }
+}*/

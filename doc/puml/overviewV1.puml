@@ -71,11 +71,6 @@ class Matrix {
 }
 
 
-class RenderTexture {
-	+dst : SDL_Rect
-	+tex : SDL_Texture*
-}
-
 
 class Renderer {
 	-Renderer()
