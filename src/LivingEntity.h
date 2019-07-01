@@ -9,9 +9,13 @@ class LivingEntity : public Entity {
 private:
     SDL_Color color;
     float speed;
+    float size;
+
+    int energy;
+    int cooldown;
     //Matrix& brain;
 public:
-    LivingEntity(int x, int y, SDL_Color color, float speed);
+    LivingEntity(int x, int y, SDL_Color color, float speed, float size);
     void render() override;
     void tick() override;
 };

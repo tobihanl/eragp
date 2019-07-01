@@ -7,21 +7,16 @@
 
 #define WINDOW_WIDTH 960
 #define WINDOW_HEIGHT 720
-#define WORLD_WIDTH 120 // 960/8 TODO remove fixed value
-#define WORLD_HEIGH 90 // 720/8
 #define MS_PER_TICK 100
 
 int main() {
     Renderer::setup(WINDOW_WIDTH, WINDOW_HEIGHT);
-
-    // Instantiate a World object
-    auto *world = new World();
-
     //============================= ADD TEST ENTITIES =============================
     for(int i = 0; i < 20; i++) {
-        LivingEntity* entity = new LivingEntity(std::rand() % WINDOW_WIDTH, std::rand() % WINDOW_HEIGHT, {std::rand() % 256, std::rand() % 256, std::rand() % 256, 0}, (rand() % 10000) / 10000.0f);
-        world->addLivingEntity(entity);
+        LivingEntity* entity = new LivingEntity(std::rand() % WINDOW_WIDTH, std::rand() % WINDOW_HEIGHT, {std::rand() % 256, std::rand() % 256, std::rand() % 256, 0}, (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f);
+        World::addLivingEntity(entity);
     }
+    std::cout << "finished init" << std::endl;//TODO remove
     //=========================== END ADD TEST ENTITIES ===========================
     bool render;
     int lag = 0, currentTime, elapsedTime;
@@ -56,14 +51,14 @@ int main() {
             lag -= MS_PER_TICK;
 
             render = true;
-            world->tick();
+            World::tick();
         }
 
         // Render if needed
         if (render) {
             // Render everything
             Renderer::clear();
-            world->render();
+            World::render();
             Renderer::present();
         }
 
@@ -82,6 +77,5 @@ int main() {
 
     // Destroy renderer (close window) and exit
     Renderer::destroy();
-    delete world;
     return 0;
 }

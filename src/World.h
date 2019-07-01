@@ -6,20 +6,21 @@
 #include "FoodEntity.h"
 #include "LivingEntity.h"
 
+#define TILE_SIZE 8
+
 class World {
 private:
     //TODO change list implementation and handle shared data
-    std::vector<FoodEntity*> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
-    std::vector<LivingEntity*> living;
+    static std::vector<FoodEntity*> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
+    static std::vector<LivingEntity*> living;
 public:
-    World();
+    static void render();
+    static void tick();
 
-    void render();
-    void tick();
-
-    FoodEntity &findNearestFood(int x, int y);
-    void addLivingEntity(LivingEntity *e);
-    void addFoodEntity(FoodEntity *e);
+    static FoodEntity *findNearestFood(int x, int y);
+    static LivingEntity *findNearestLiving(int x, int y);
+    static void addLivingEntity(LivingEntity *e);
+    static void addFoodEntity(FoodEntity *e);
 };
 
 
