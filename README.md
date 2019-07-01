@@ -22,6 +22,11 @@ Start the container:
 docker run --rm -p 5901:5901 -p 6901:6901 -v $(pwd):/app --name eragp tobiashanl/eragp-evolution 
 ```
 
+For Windows Powershell:
+```
+docker run --rm -p 5901:5901 -p 6901:6901 -v ${PWD}:/app --name eragp tobiashanl/eragp-evolution 
+```
+
 Initially and after changes to cmake, cmake has to be loaded:
 ```
 docker exec -it eragp sh -c 'cmake -DCMAKE_C_COMPILER=/usr/bin/mpicc .'
