@@ -6,21 +6,22 @@ World::World() {}
 void World::render() {
     //TODO render terrain
     for(auto &f : food) {
-        f.render();
+        f->render();
     }
     for(auto &e : living) {
-        e.render();
+        e->render();
     }
 }
 
 void World::tick() {
     for(auto &f : food) {
-        f.tick();
+        f->tick();
     }
     for(auto &e : living) {
-        e.tick();
+        e->tick();
     }
 }
+
 /*FoodEntity& World::findNearestFood(int x, int y) {
     if(living.size() == 0) return NULL;
     FoodEntity f = living[0];
@@ -32,3 +33,11 @@ void World::tick() {
         }
     }
 }*/
+
+void World::addLivingEntity(LivingEntity *e) {
+    living.push_back(e);
+}
+
+void World::addFoodEntity(FoodEntity *e) {
+    food.push_back(e);
+}

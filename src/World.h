@@ -9,8 +9,8 @@
 class World {
 private:
     //TODO change list implementation and handle shared data
-    std::vector<FoodEntity> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
-    std::vector<LivingEntity> living;
+    std::vector<FoodEntity*> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
+    std::vector<LivingEntity*> living;
 public:
     World();
 
@@ -18,7 +18,8 @@ public:
     void tick();
 
     FoodEntity &findNearestFood(int x, int y);
-
+    void addLivingEntity(LivingEntity *e);
+    void addFoodEntity(FoodEntity *e);
 };
 
 
