@@ -4,6 +4,7 @@
 #include <SDL.h>
 #include "Renderer.h"
 #include "World.h"
+#include "Brain.h"
 
 #define WINDOW_WIDTH 960
 #define WINDOW_HEIGHT 720
@@ -13,7 +14,9 @@ int main() {
     Renderer::setup(WINDOW_WIDTH, WINDOW_HEIGHT);
     //============================= ADD TEST ENTITIES =============================
     for(int i = 0; i < 20; i++) {
-        LivingEntity* entity = new LivingEntity(std::rand() % WINDOW_WIDTH, std::rand() % WINDOW_HEIGHT, {std::rand() % 256, std::rand() % 256, std::rand() % 256, 0}, (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f);
+        int layers[3] = {3, 4, 10};
+        Brain *brain = new Brain(3, layers);
+        LivingEntity* entity = new LivingEntity(std::rand() % WINDOW_WIDTH, std::rand() % WINDOW_HEIGHT, {std::rand() % 256, std::rand() % 256, std::rand() % 256, 0}, (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f, brain);
         World::addLivingEntity(entity);
     }
     std::cout << "finished init" << std::endl;//TODO remove

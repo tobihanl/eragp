@@ -4,7 +4,7 @@
 #include "World.h"
 #include "FoodEntity.h"
 
-LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float si) : Entity(startX, startY), color(c), speed(sp), size(si) {
+LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float si, Brain* b) : Entity(startX, startY), color(c), speed(sp), size(si), brain(b) {
 
 }
 
@@ -13,5 +13,9 @@ void LivingEntity::render() {
 }
 
 void LivingEntity::tick() {
-    //FoodEntity* nearestFood = World::findNearestFood(x, y);
+    FoodEntity* nearestFood = World::findNearestFood(x, y);
+}
+
+LivingEntity::~LivingEntity() {
+    delete brain;
 }

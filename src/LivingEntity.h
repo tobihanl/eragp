@@ -4,20 +4,22 @@
 
 #include "Entity.h"
 #include <SDL.h>
+#include "Brain.h"
 
 class LivingEntity : public Entity {
 private:
     SDL_Color color;
     float speed;
     float size;
+    Brain* brain;
 
     int energy;
     int cooldown;
-    //Matrix& brain;
 public:
-    LivingEntity(int x, int y, SDL_Color color, float speed, float size);
+    LivingEntity(int x, int y, SDL_Color color, float speed, float size, Brain* brain);
     void render() override;
     void tick() override;
+    virtual ~LivingEntity();
 };
 
 

@@ -23,8 +23,8 @@ void World::tick() {
 }
 
 FoodEntity* World::findNearestFood(int x, int y) {
-    if(living.size() == 0) return nullptr;
-    FoodEntity* f = food[0];
+    if(food.size() == 0) return nullptr;
+    FoodEntity *f = food[0];
     int dist = f->getSquaredDistance(x, y);
     for(const auto &e : food) {
         int tempDist = e->getSquaredDistance(x, y);
