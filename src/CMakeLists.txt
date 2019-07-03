@@ -13,6 +13,8 @@ target_sources(${PROJECT_NAME}
         Renderer.h
         World.cpp
         World.h
+        Brain.cpp
+        Brain.h
         )
 
 find_package(SDL2 REQUIRED)
