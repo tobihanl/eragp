@@ -1,4 +1,6 @@
 #include "World.h"
+#include <algorithm>
+#include <stdlib.h>
 
 std::vector<LivingEntity*> World::living = std::vector<LivingEntity*>();
 std::vector<FoodEntity*> World::food = std::vector<FoodEntity*>();
@@ -14,9 +16,7 @@ void World::render() {
 }
 
 void World::tick() {
-    for(const auto &f : food) {
-        f->tick();
-    }
+    addFoodEntity(new FoodEntity(rand() % WORLD_WIDTH, rand() % WORLD_HEIGHT, 4 * 60));
     for(const auto &e : living) {
         e->tick();
     }
@@ -58,4 +58,11 @@ void World::addFoodEntity(FoodEntity *e) {
     food.push_back(e);
 }
 
+void World::removeLivingEntity(LivingEntity *e) {
+    living.erase(std::remove(living.begin(), living.end(), e), living.end());
+}
+
+void World::removeFoodEntity(FoodEntity *e) {
+    food.erase(std::remove(food.begin(), food.end(), e), food.end());
+}
 //TODO cleanup for destroyed entities

@@ -14,13 +14,15 @@
 int main() {
     Renderer::setup(WINDOW_WIDTH, WINDOW_HEIGHT);
     //============================= ADD TEST ENTITIES =============================
-    for(int i = 0; i < 20; i++) {
+    for(int i = 0; i < 1000; i++) {
         int layers[3] = {3, 4, 10};
         Brain *brain = new Brain(3, layers);
-        LivingEntity* entity = new LivingEntity(std::rand() % WINDOW_WIDTH, std::rand() % WINDOW_HEIGHT, {std::rand() % 256, std::rand() % 256, std::rand() % 256, 0}, (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f, brain);
+        LivingEntity* entity = new LivingEntity(std::rand() % WORLD_WIDTH, std::rand() % WORLD_HEIGHT, {std::rand() % 256, std::rand() % 256, std::rand() % 256, 0}, (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f, brain);
         World::addLivingEntity(entity);
     }
-    std::cout << "finished init" << std::endl;//TODO remove
+    for(int i = 0; i < 250; i++) {
+        World::addFoodEntity(new FoodEntity(std::rand() % WORLD_WIDTH, std::rand() % WORLD_HEIGHT, 8 * 60));
+    }
     //=========================== END ADD TEST ENTITIES ===========================
     bool render;
     int lag = 0, currentTime, elapsedTime;

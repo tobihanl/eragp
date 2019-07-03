@@ -8,7 +8,8 @@ class FoodEntity : public Entity {
 private:
 
 public:
-    FoodEntity(int x, int y);
+    int energy;
+    FoodEntity(int x, int y, int energy);
     void render() override;
     void tick() override;
 };

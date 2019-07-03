@@ -6,7 +6,10 @@
 #include "FoodEntity.h"
 #include "LivingEntity.h"
 
+#define WORLD_WIDTH 960
+#define WORLD_HEIGHT 720
 #define TILE_SIZE 8
+
 
 class World {
 private:
@@ -21,6 +24,8 @@ public:
     static LivingEntity *findNearestLiving(int x, int y);
     static void addLivingEntity(LivingEntity *e);
     static void addFoodEntity(FoodEntity *e);
+    static void removeLivingEntity(LivingEntity *e);
+    static void removeFoodEntity(FoodEntity *e);
 };
 
 
