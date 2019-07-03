@@ -1,3 +1,4 @@
+//TODO to disable asserts in release: #define NDEBUG
 #include <iostream>
 #include <chrono>
 #include <stdlib.h>

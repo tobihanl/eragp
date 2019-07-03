@@ -5,12 +5,25 @@
 
 class Brain {
 private:
-    Matrix weights[];
-    Matrix biases[];
+    int numLayers;
+    Matrix *weights;
+    Matrix *biases;
+
+    /**
+     * Copy constructor
+     */
+    Brain(Brain *b);
+
 public:
     Brain(int layerAmount, int layerSizes[]);
+    virtual ~Brain();
 
-    //public const Matrix& think();
+    Matrix think(Matrix input);
+    /**
+     * Creates a mutated copy. Remember to delete it after usage-
+     * @return pointer to the mutated copy
+     */
+    Brain* createMutatedCopy();
     
 };
 

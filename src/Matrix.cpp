@@ -6,6 +6,10 @@
 #include <iterator>
 #include <functional>
 
+Matrix::Matrix(Matrix *m) : height(m->height), width(m->width), data(m->data) {
+
+}
+
 Matrix::Matrix(std::size_t h, std::size_t w, float initValue) : height(h), width(w), data(w * h, initValue) {
 
 }
