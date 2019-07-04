@@ -5,6 +5,7 @@
 #include "FoodEntity.h"
 #include <cmath>
 #include <math.h>
+#include <assert.h>
 
 static std::mt19937 createGenerator() {
     std::random_device rd;
@@ -15,17 +16,7 @@ static std::mt19937 createGenerator() {
 std::mt19937 LivingEntity::randomGenerator = createGenerator();
 std::normal_distribution<float> LivingEntity::normalDistribution(0, 0.1);
 
-SDL_Texture* LivingEntity::digits[10] = {
-        Renderer::renderFont("0", 10, {255, 255, 255, 0}, "font.ttf"),
-        Renderer::renderFont("1", 10, {255, 255, 255, 0}, "font.ttf"),
-        Renderer::renderFont("2", 10, {255, 255, 255, 0}, "font.ttf"),
-        Renderer::renderFont("3", 10, {255, 255, 255, 0}, "font.ttf"),
-        Renderer::renderFont("4", 10, {255, 255, 255, 0}, "font.ttf"),
-        Renderer::renderFont("5", 10, {255, 255, 255, 0}, "font.ttf"),
-        Renderer::renderFont("6", 10, {255, 255, 255, 0}, "font.ttf"),
-        Renderer::renderFont("7", 10, {255, 255, 255, 0}, "font.ttf"),
-        Renderer::renderFont("8", 10, {255, 255, 255, 0}, "font.ttf"),
-        Renderer::renderFont("9", 10, {255, 255, 255, 0}, "font.ttf")};
+SDL_Texture* LivingEntity::digits[10];
 
 //################################Begin object##############################################
 
@@ -33,17 +24,30 @@ LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float 
 
 }
 
+static int getNumDigits(int x) {
+    if(x < 10) return 1;
+    else if(x < 100) return 2;
+    else if(x < 1000) return 3;
+    else if(x < 10000) return 4;
+    else if(x < 100000) return 5;
+    assert(false && "Too much energy");
+}
+
 void LivingEntity::render() {
+    float radius = (1.0f + size) * TILE_SIZE / 2.0f;
+    int radiusI = round(radius);
+    Renderer::copy(texture, x - radiusI, y - radiusI);
     if(energy <= 0) {
-        Renderer::copy(digits[0], x, y);
-    } else {
+        Renderer::copy(digits[0], x - (ENERGY_FONT_SIZE / 2), y - 4 - ENERGY_FONT_SIZE);
+    } else {//max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
+        int numDigits = getNumDigits(energy);
         int energyToDisplay = energy;
+        int baseX = x + numDigits * 4 - 4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
         for(int i = 0; energyToDisplay > 0; i++) {
-            Renderer::copy(digits[energyToDisplay % 10], x + (i << 3), (int) (y + ((1.0f + size) * TILE_SIZE * 3 / 4)));
+            Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, y - 4 - ENERGY_FONT_SIZE);
             energyToDisplay /= 10;
         }
     }
-    Renderer::copy(texture, x + (int)((1.0f + size) * TILE_SIZE / 2), y + (int)((1.0f + size) * TILE_SIZE / 2));
     //Renderer::renderDot(x, y, (1 + size) * TILE_SIZE / 2, color);
 }
 

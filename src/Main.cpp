@@ -13,6 +13,17 @@
 
 int main() {
     Renderer::setup(WINDOW_WIDTH, WINDOW_HEIGHT);
+
+    LivingEntity::digits[0] = Renderer::renderFont("0", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
+    LivingEntity::digits[1] = Renderer::renderFont("1", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
+    LivingEntity::digits[2] = Renderer::renderFont("2", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
+    LivingEntity::digits[3] = Renderer::renderFont("3", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
+    LivingEntity::digits[4] = Renderer::renderFont("4", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
+    LivingEntity::digits[5] = Renderer::renderFont("5", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
+    LivingEntity::digits[6] = Renderer::renderFont("6", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
+    LivingEntity::digits[7] = Renderer::renderFont("7", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
+    LivingEntity::digits[8] = Renderer::renderFont("8", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
+    LivingEntity::digits[9] = Renderer::renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
     //============================= ADD TEST ENTITIES =============================
     for(int i = 0; i < 1000; i++) {
         int layers[3] = {3, 4, 10};
