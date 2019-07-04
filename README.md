@@ -26,6 +26,10 @@ For Windows Powershell:
 ```
 docker run --rm -p 5901:5901 -p 6901:6901 -v ${PWD}:/app --name eragp tobiashanl/eragp-evolution 
 ```
+For my notebook: (sorry for missuising this)
+```
+docker run --rm -p 5901:5901 -p 6901:6901 -v "//c/users/jonas/OneDrive - tum.de/Dokumente/Studium/02 - SS 2019/ERA GP/CLion/eragp-maimuc-evo-2019:/app" --name eragp tobiashanl/eragp-evolution
+```
 
 Initially and after changes to cmake, cmake has to be loaded:
 ```
