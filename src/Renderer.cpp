@@ -89,14 +89,37 @@ void Renderer::present() {
 }
 
 /**
- * Renders all the textures by copying them into the SDL renderer at
- * the specified location.
+ * Renders a textures by copying it into the SDL renderer at the
+ * specified location.
  *
- * @param texture The texture to be copied
- * @param dst Destination rectangle, where the texture has to be drawn
+ * @param   texture Pointer to the texture being copied into the
+ *                  renderer
+ *
+ * @param   dst     Destination rectangle, where the texture has
+ *                  to be drawn
  */
 void Renderer::copy(SDL_Texture *texture, const SDL_Rect *dst) {
     SDL_RenderCopy(ren, texture, nullptr, dst);
+}
+
+/**
+ * Renders a texture by copying it into the SDL renderer at the
+ * specified x and y position. The width and height of the
+ * texture will be automatically evaluated.
+ *
+ * @param   texture Pointer to the texture being copied into the
+ *                  renderer
+ *
+ * @param   x       The x position of the texture on the renderer
+ * @param   y       The y position of the texture on the renderer
+ */
+void Renderer::copy(SDL_Texture *texture, int x, int y) {
+    SDL_Rect dst;
+    dst.x = x;
+    dst.y = y;
+
+    SDL_QueryTexture(texture, nullptr, nullptr, &dst.w, &dst.h);
+    SDL_RenderCopy(ren, texture, nullptr, &dst);
 }
 
 /**

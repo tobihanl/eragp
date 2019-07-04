@@ -26,6 +26,8 @@ public:
 
     static void copy(SDL_Texture *texture, const SDL_Rect *dst);
 
+    static void copy(SDL_Texture *texture, int x, int y);
+
     static void cleanup(SDL_Texture *texture);
 
     static SDL_Texture *renderImage(const std::string &imagePath);
