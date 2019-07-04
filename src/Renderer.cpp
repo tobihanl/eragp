@@ -161,7 +161,7 @@ SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
     int squaredRadius = radius * radius, doubledRadius = radius + radius;
 
     // Create Texture and Pixel array
-    SDL_Texture *texture = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB32, SDL_TEXTUREACCESS_STATIC,
+    SDL_Texture *texture = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC,
                                              doubledRadius, doubledRadius);
     auto *pixels = new Uint32[doubledRadius * doubledRadius];
 
@@ -172,17 +172,10 @@ SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
             dx = radius - w;
             dy = radius - h;
 
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
             if ((dx * dx + dy * dy) < squaredRadius)
-                pixels[w * doubledRadius + h] = (color.a << 24) + (color.r << 16) + (color.g << 8) + color.b;
+                pixels[h * doubledRadius + w] = (color.a << 24) + (color.r << 16) + (color.g << 8) + color.b;
             else
-                pixels[w * doubledRadius + h] = 0xff000000; // Transparent
-#else
-            if ((dx * dx + dy * dy) < squaredRadius)
-                pixels[h * doubledRadius + w] = (color.b << 24) + (color.g << 16) + (color.r << 8) + color.a;
-            else
-                pixels[h * doubledRadius + w] = 0x000000ff; // Transparent
-#endif
+                pixels[h * doubledRadius + w] = 0xff000000; // Transparent
         }
     }
 
