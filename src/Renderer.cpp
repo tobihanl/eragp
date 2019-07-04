@@ -58,6 +58,8 @@ int Renderer::setup(int width, int height) {
         return 1;
     }
 
+    SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+
     // Renderer successfully set up
     isSetup = true;
     return 0;
@@ -175,11 +177,12 @@ SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
             if ((dx * dx + dy * dy) < squaredRadius)
                 pixels[h * doubledRadius + w] = (color.a << 24) + (color.r << 16) + (color.g << 8) + color.b;
             else
-                pixels[h * doubledRadius + w] = 0xff000000; // Transparent
+                pixels[h * doubledRadius + w] = 0; // Transparent
         }
     }
 
     // Draw filled circle/Dot on texture and return it
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
     SDL_UpdateTexture(texture, nullptr, pixels, doubledRadius * sizeof(Uint32));
     return texture;
 }
