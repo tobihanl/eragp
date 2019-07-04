@@ -32,7 +32,7 @@ public:
 
     static SDL_Texture *renderImage(const std::string &imagePath);
 
-    static void renderDot(int centerX, int centerY, int radius, const SDL_Color &color);
+    static SDL_Texture *renderDot(int radius, const SDL_Color &color);
 
     static SDL_Texture *
     renderFont(const std::string &text, int size, const SDL_Color &color, const std::string &fontFile);

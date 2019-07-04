@@ -157,30 +157,35 @@ SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
  * @param radius The radius of the circle
  * @param color The color of the circle (SDL_Color structure)
  */
-void Renderer::renderDot(int centerX, int centerY, int radius, const SDL_Color &color) {
+SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
     int squaredRadius = radius * radius, doubledRadius = radius + radius;
-    SDL_Point points[4 * squaredRadius];
+
+    // Create Texture and Pixel array
+    SDL_Texture *texture = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB32, SDL_TEXTUREACCESS_STATIC,
+                                             doubledRadius, doubledRadius);
+    auto *pixels = new Uint32[doubledRadius * doubledRadius];
 
     // Calculate positions of all points needed to draw a filled circle/dot
-    int i = 0;
     int dx, dy;
     for (int w = 0; w <= doubledRadius; w++) {
         for (int h = 0; h <= doubledRadius; h++) {
             dx = radius - w;
             dy = radius - h;
 
-            if ((dx * dx + dy * dy) < squaredRadius) {
-                points[i].x = centerX + dx;
-                points[i].y = centerY + dy;
-                i++;
-            }
+            if ((dx * dx + dy * dy) < squaredRadius)
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+                pixels[w * doubledRadius + h] = (color.a << 24) + (color.r << 16) + (color.g << 8) + color.b;
+#else
+                pixels[w * doubledRadius + h] = (color.b << 24) + (color.g << 16) + (color.r << 8) + color.a;
+#endif
+            else
+                pixels[w * doubledRadius + h] = 0x000000ff; // Transparent
         }
     }
 
-    // Draw filled circle/Dot
-    SDL_SetRenderDrawColor(ren, color.r, color.g, color.b, color.a);
-    SDL_RenderDrawPoints(ren, points, i);
-    SDL_SetRenderDrawColor(ren, 0, 0, 0, 0);
+    // Draw filled circle/Dot on texture and return it
+    SDL_UpdateTexture(texture, nullptr, pixels, doubledRadius * sizeof(Uint32));
+    return texture;
 }
 
 /**
