@@ -6,11 +6,14 @@
 #include <SDL.h>
 #include "Brain.h"
 #include <random>
+#include <SDL.h>
 
 class LivingEntity : public Entity {
 private:
     static std::mt19937 randomGenerator;
     static std::normal_distribution<float> normalDistribution;
+
+    static SDL_Texture* digits[];
 
     SDL_Color color;
     float speed;
