@@ -143,7 +143,7 @@ SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
     SDL_Texture *tex = IMG_LoadTexture(ren, file.c_str());
     if (tex == nullptr) {
         logSDLError(std::cerr, "IMG_LoadTexture");
-        return {};
+        return nullptr;
     }
 
     return tex;
@@ -199,21 +199,21 @@ SDL_Texture *Renderer::renderFont(const std::string &text, int size, const SDL_C
     TTF_Font *font = TTF_OpenFont(file.c_str(), size);
     if (font == nullptr) {
         logSDLError(std::cerr, "TTF_OpenFont");
-        return {};
+        return nullptr;
     }
 
     SDL_Surface *surface = TTF_RenderText_Blended(font, text.c_str(), color);
     if (surface == nullptr) {
         Include::cleanup(font);
         logSDLError(std::cerr, "TTF_RenderText_Blended");
-        return {};
+        return nullptr;
     }
 
     SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surface);
     if (tex == nullptr) {
         Include::cleanup(surface, font);
         logSDLError(std::cerr, "SDL_CreateTextureFromSurface");
-        return {};
+        return nullptr;
     }
 
     Include::cleanup(surface, font);
