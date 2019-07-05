@@ -17,6 +17,7 @@ public:
     void render();
     void tick();
 
+    LivingEntity getNearestEntity(LivingEntity entity);
 };
 
 

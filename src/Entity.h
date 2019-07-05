@@ -5,6 +5,8 @@
 
 class Entity {
 private:
+    static int currentId;
+    int id;
 
 public:
     int x, y;
@@ -12,6 +14,10 @@ public:
 
     virtual void render() = 0;
     virtual void tick() = 0;
+
+    bool operator==(const Entity &other) const;
+
+    bool operator!=(const Entity &other) const;
 };
 
 

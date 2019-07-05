@@ -1,23 +1,40 @@
-
+#include <cfloat>
 #include "World.h"
 
-World::World() {}
+World::World() = default;
 
 void World::render() {
     //TODO render terrain
-    for(auto &f : food) {
+    for (auto &f : food) {
         f.render();
     }
-    for(auto &e : living) {
+    for (auto &e : living) {
         e.render();
     }
 }
 
 void World::tick() {
-    for(auto &f : food) {
+    for (auto &f : food) {
         f.tick();
     }
-    for(auto &e : living) {
+    for (auto &e : living) {
         e.tick();
     }
+}
+
+/*
+ * Returns itself if no other entities exist
+ */
+LivingEntity World::getNearestEntity(LivingEntity entity) {
+    LivingEntity nearestEntity = living.front();
+    double minDistance = DBL_MAX;
+
+    for (auto &e : living) {
+        double distance = entity.distanceToPoint(e.x, e.y);
+        if (distance < minDistance && e != entity) {
+            nearestEntity = e;
+            minDistance = distance;
+        }
+    }
+    return nearestEntity;
 }
