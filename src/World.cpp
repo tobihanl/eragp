@@ -2,33 +2,33 @@
 #include <algorithm>
 #include <stdlib.h>
 
-std::vector<LivingEntity*> World::living = std::vector<LivingEntity*>();
-std::vector<FoodEntity*> World::food = std::vector<FoodEntity*>();
+std::vector<LivingEntity *> World::living = std::vector<LivingEntity *>();
+std::vector<FoodEntity *> World::food = std::vector<FoodEntity *>();
 
 void World::render() {
     //TODO render terrain
-    for(const auto &f : food) {
+    for (const auto &f : food) {
         f->render();
     }
-    for(const auto &e : living) {
+    for (const auto &e : living) {
         e->render();
     }
 }
 
 void World::tick() {
     addFoodEntity(new FoodEntity(rand() % WORLD_WIDTH, rand() % WORLD_HEIGHT, 4 * 60));
-    for(const auto &e : living) {
+    for (const auto &e : living) {
         e->tick();
     }
 }
 
 FoodEntity* World::findNearestFood(int x, int y) {
-    if(food.size() == 0) return nullptr;
+    if (food.size() == 0) return nullptr;
     FoodEntity *f = food[0];
     int dist = f->getSquaredDistance(x, y);
-    for(const auto &e : food) {
+    for (const auto &e : food) {
         int tempDist = e->getSquaredDistance(x, y);
-        if(tempDist < dist) {
+        if (tempDist < dist) {
             f = e;
             dist = tempDist;
         }
@@ -36,13 +36,13 @@ FoodEntity* World::findNearestFood(int x, int y) {
     return f;
 }
 
-LivingEntity* World::findNearestLiving(int x, int y) {
-    if(living.size() == 0) return nullptr;
-    LivingEntity* n = living[0];
+LivingEntity *World::findNearestLiving(int x, int y) {
+    if (living.size() == 0) return nullptr;
+    LivingEntity *n = living[0];
     int dist = n->getSquaredDistance(x, y);
-    for(const auto &e : living) {
+    for (const auto &e : living) {
         int tempDist = e->getSquaredDistance(x, y);
-        if(tempDist < dist) {
+        if (tempDist < dist) {
             n = e;
             dist = tempDist;
         }
@@ -60,9 +60,12 @@ void World::addFoodEntity(FoodEntity *e) {
 
 void World::removeLivingEntity(LivingEntity *e) {
     living.erase(std::remove(living.begin(), living.end(), e), living.end());
+    delete e;
 }
 
 void World::removeFoodEntity(FoodEntity *e) {
     food.erase(std::remove(food.begin(), food.end(), e), food.end());
+    delete e;
 }
+
 //TODO cleanup for destroyed entities

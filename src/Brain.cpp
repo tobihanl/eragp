@@ -3,8 +3,8 @@
 
 Brain::Brain(Brain *b) : numLayers(b->numLayers), weights(new Matrix[b->numLayers - 1]), biases(new Matrix[b->numLayers - 1]) {
     for(int i = 0; i < numLayers - 1; i++) {
-        weights[i] = new Matrix(b->weights[i]);
-        biases[i] = new Matrix(b->biases[i]);
+        weights[i] = b->weights[i];
+        biases[i] = b->biases[i];
     }
 
 }
@@ -21,7 +21,7 @@ Brain::~Brain() {
     delete[] biases;
 }
 
-//TODO optimize dotProduct() and usage of Matrix (not that bad, becasuse it only stores pointers to the data), implement normalization
+//TODO optimize dotProduct() and usage of Matrix (not that bad, because it only stores pointers to the data), implement normalization
 Matrix Brain::think(Matrix input) {
     assert(input.getWidth() == 1 && input.getHeight() == weights[0].getWidth() && "Wrong size of input Matrix in Brain::think()");
 

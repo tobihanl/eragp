@@ -13,7 +13,6 @@
 
 int main() {
     Renderer::setup(WINDOW_WIDTH, WINDOW_HEIGHT);
-
     LivingEntity::digits[0] = Renderer::renderFont("0", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
     LivingEntity::digits[1] = Renderer::renderFont("1", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
     LivingEntity::digits[2] = Renderer::renderFont("2", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
@@ -24,11 +23,14 @@ int main() {
     LivingEntity::digits[7] = Renderer::renderFont("7", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
     LivingEntity::digits[8] = Renderer::renderFont("8", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
     LivingEntity::digits[9] = Renderer::renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 0}, "font.ttf");
+
     //============================= ADD TEST ENTITIES =============================
-    for(int i = 0; i < 1000; i++) {
+    for(int i = 0; i < 100; i++) {
         int layers[3] = {3, 4, 10};
         Brain *brain = new Brain(3, layers);
-        LivingEntity* entity = new LivingEntity(std::rand() % WORLD_WIDTH, std::rand() % WORLD_HEIGHT, {std::rand() % 256, std::rand() % 256, std::rand() % 256, 0}, (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f, brain);
+        LivingEntity *entity = new LivingEntity(std::rand() % WORLD_WIDTH, std::rand() % WORLD_HEIGHT,
+                                                {std::rand() % 256, std::rand() % 256, std::rand() % 256, 0},
+                                                (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f, brain);
         World::addLivingEntity(entity);
     }
     for(int i = 0; i < 250; i++) {
