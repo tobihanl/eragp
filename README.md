@@ -26,7 +26,7 @@ For Windows Powershell:
 ```
 docker run --rm -p 5901:5901 -p 6901:6901 -v ${PWD}:/app --name eragp tobiashanl/eragp-evolution 
 ```
-For my notebook: (sorry for missuising this)
+For my notebook: (sorry for misusing this)
 ```
 docker run --rm -p 5901:5901 -p 6901:6901 -v "//c/users/jonas/OneDrive - tum.de/Dokumente/Studium/02 - SS 2019/ERA GP/CLion/eragp-maimuc-evo-2019:/app" --name eragp tobiashanl/eragp-evolution
 ```
@@ -37,8 +37,9 @@ docker exec -it eragp sh -c 'cmake -DCMAKE_C_COMPILER=/usr/bin/mpicc .'
 ```
 Build the project and execute it:
 ```
-docker exec -it --user 0 eragp sh -c 'cmake --build . --target Evolution -- -j && ./Evolution'
+docker exec -it --user 0 eragp sh -c 'cmake --build . --target Evolution -- -j && mpirun ./Evolution'
 ```
+(Parameters can be specified after mpirun, i.e. mpirun -np 4 ./Evolution)
 
 Optionally, you can also build the container yourself
 ```
