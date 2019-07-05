@@ -30,6 +30,7 @@ public:
 
     void tick();
 
+    LivingEntity getNearestEntity(LivingEntity entity);
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H

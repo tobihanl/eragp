@@ -1,4 +1,5 @@
 #include <mpi.h>
+#include <cfloat>
 #include "World.h"
 
 int *splitRect(int num, int width, int height);
@@ -109,4 +110,22 @@ int *splitRect(int num, int width, int height) {
     dim[0] = width;
     dim[1] = height;
     return dim;
+}
+
+
+/*
+ * Returns itself if no other entities exist
+ */
+LivingEntity World::getNearestEntity(LivingEntity entity) {
+    LivingEntity nearestEntity = living.front();
+    double minDistance = DBL_MAX;
+
+    for (auto &e : living) {
+        double distance = entity.distanceToPoint(e.x, e.y);
+        if (distance < minDistance && e != entity) {
+            nearestEntity = e;
+            minDistance = distance;
+        }
+    }
+    return nearestEntity;
 }

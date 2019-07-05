@@ -58,6 +58,8 @@ int Renderer::setup(int width, int height) {
         return 1;
     }
 
+    SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+
     // Renderer successfully set up
     isSetup = true;
     return 0;
@@ -89,14 +91,37 @@ void Renderer::present() {
 }
 
 /**
- * Renders all the textures by copying them into the SDL renderer at
- * the specified location.
+ * Renders a textures by copying it into the SDL renderer at the
+ * specified location.
  *
- * @param texture The texture to be copied
- * @param dst Destination rectangle, where the texture has to be drawn
+ * @param   texture Pointer to the texture being copied into the
+ *                  renderer
+ *
+ * @param   dst     Destination rectangle, where the texture has
+ *                  to be drawn
  */
 void Renderer::copy(SDL_Texture *texture, const SDL_Rect *dst) {
     SDL_RenderCopy(ren, texture, nullptr, dst);
+}
+
+/**
+ * Renders a texture by copying it into the SDL renderer at the
+ * specified x and y position. The width and height of the
+ * texture will be automatically evaluated.
+ *
+ * @param   texture Pointer to the texture being copied into the
+ *                  renderer
+ *
+ * @param   x       The x position of the texture on the renderer
+ * @param   y       The y position of the texture on the renderer
+ */
+void Renderer::copy(SDL_Texture *texture, int x, int y) {
+    SDL_Rect dst;
+    dst.x = x;
+    dst.y = y;
+
+    SDL_QueryTexture(texture, nullptr, nullptr, &dst.w, &dst.h);
+    SDL_RenderCopy(ren, texture, nullptr, &dst);
 }
 
 /**
@@ -120,7 +145,7 @@ SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
     SDL_Texture *tex = IMG_LoadTexture(ren, file.c_str());
     if (tex == nullptr) {
         logSDLError(std::cerr, "IMG_LoadTexture");
-        return {};
+        return nullptr;
     }
 
     return tex;
@@ -129,35 +154,37 @@ SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
 /**
  * Renders a dot/filled circle on the window on the given (centered!) position
  *
- * @param centerX The position of the circle-center
- * @param centerY The position of the circle-center
  * @param radius The radius of the circle
  * @param color The color of the circle (SDL_Color structure)
+ *
+ * @return A pointer to the texture with the specified dot/filled circle
  */
-void Renderer::renderDot(int centerX, int centerY, int radius, const SDL_Color &color) {
+SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
     int squaredRadius = radius * radius, doubledRadius = radius + radius;
-    SDL_Point points[4 * squaredRadius];
+
+    // Create Texture and Pixel array
+    SDL_Texture *texture = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC,
+                                             doubledRadius, doubledRadius);
+    auto *pixels = new Uint32[doubledRadius * doubledRadius];
 
     // Calculate positions of all points needed to draw a filled circle/dot
-    int i = 0;
     int dx, dy;
-    for (int w = 0; w <= doubledRadius; w++) {
-        for (int h = 0; h <= doubledRadius; h++) {
+    for (int w = 0; w < doubledRadius; w++) {
+        for (int h = 0; h < doubledRadius; h++) {
             dx = radius - w;
             dy = radius - h;
 
-            if ((dx * dx + dy * dy) < squaredRadius) {
-                points[i].x = centerX + dx;
-                points[i].y = centerY + dy;
-                i++;
-            }
+            if ((dx * dx + dy * dy) < squaredRadius)
+                pixels[h * doubledRadius + w] = (color.a << 24) + (color.r << 16) + (color.g << 8) + color.b;
+            else
+                pixels[h * doubledRadius + w] = 0; // Transparent
         }
     }
 
-    // Draw filled circle/Dot
-    SDL_SetRenderDrawColor(ren, color.r, color.g, color.b, color.a);
-    SDL_RenderDrawPoints(ren, points, i);
-    SDL_SetRenderDrawColor(ren, 0, 0, 0, 0);
+    // Draw filled circle/Dot on texture and return it
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+    SDL_UpdateTexture(texture, nullptr, pixels, doubledRadius * sizeof(Uint32));
+    return texture;
 }
 
 /**
@@ -176,21 +203,21 @@ SDL_Texture *Renderer::renderFont(const std::string &text, int size, const SDL_C
     TTF_Font *font = TTF_OpenFont(file.c_str(), size);
     if (font == nullptr) {
         logSDLError(std::cerr, "TTF_OpenFont");
-        return {};
+        return nullptr;
     }
 
     SDL_Surface *surface = TTF_RenderText_Blended(font, text.c_str(), color);
     if (surface == nullptr) {
         Include::cleanup(font);
         logSDLError(std::cerr, "TTF_RenderText_Blended");
-        return {};
+        return nullptr;
     }
 
     SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surface);
     if (tex == nullptr) {
         Include::cleanup(surface, font);
         logSDLError(std::cerr, "SDL_CreateTextureFromSurface");
-        return {};
+        return nullptr;
     }
 
     Include::cleanup(surface, font);

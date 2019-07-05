@@ -11,6 +11,8 @@ public:
     LivingEntity(int x, int y);
     void render() override;
     void tick() override;
+
+    double distanceToPoint(int x, int y);
 };
 
 
