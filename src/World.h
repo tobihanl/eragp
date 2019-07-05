@@ -1,4 +1,3 @@
-
 #ifndef ERAGP_MAIMUC_EVO_2019_WORLD_H
 #define ERAGP_MAIMUC_EVO_2019_WORLD_H
 
@@ -6,31 +5,46 @@
 #include "FoodEntity.h"
 #include "LivingEntity.h"
 
+struct WorldDim {
+    int x = 0;
+    int y = 0;
+    int w = 0;
+    int h = 0;
+};
+
 class World {
-public:
+private:
     static int overallWidth;
     static int overallHeight;
 
-private:
-    int MPI_Rank;
-    int MPI_Nodes;
+    static int MPI_Rank;
+    static int MPI_Nodes;
 
-    int x;
-    int y;
-    int width;
-    int height;
+    static int x;
+    static int y;
+    static int width;
+    static int height;
+
+    static bool isSetup;
 
     //TODO change list implementation and handle shared data
-    std::vector<FoodEntity> food;
-    std::vector<LivingEntity> living;
+    static std::vector<FoodEntity> food;
+    static std::vector<LivingEntity> living;
+
+    World() = default;
+
+    ~World() = default;
+
 public:
-    World();
+    static void setup(int overallWidth, int overallHeight);
 
-    void render();
+    static void render();
 
-    void tick();
+    static void tick();
 
-    LivingEntity getNearestEntity(LivingEntity entity);
+    static WorldDim calcWorldDimensions(int rank, int num);
+
+    static LivingEntity getNearestEntity(LivingEntity entity);
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H

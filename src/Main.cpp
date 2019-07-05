@@ -15,7 +15,7 @@
  *
  * @param world The world, which should be updated and rendered
  */
-void renderLoop(World &world) {
+void renderLoop() {
     Renderer::setup(WINDOW_WIDTH, WINDOW_HEIGHT);
 
     bool render;
@@ -51,14 +51,14 @@ void renderLoop(World &world) {
             lag -= MS_PER_TICK;
 
             render = true;
-            world.tick();
+            World::tick();
         }
 
         // Render if needed
         if (render) {
             // Render everything
             Renderer::clear();
-            world.render();
+            World::render();
             Renderer::present();
         }
 
@@ -88,16 +88,18 @@ int main(int argc, char **argv) {
     // START MPI
     MPI_Init(&argc, &argv);
 
+    int width = 0, height = 0;
+
     // Scan program arguments
     int c;
     while ((c = getopt(argc, argv, "h:w:")) != -1) {
         switch (c) {
             case 'h':
-                World::overallHeight = strtol(optarg, nullptr, 10);
+                height = strtol(optarg, nullptr, 10);
                 break;
 
             case 'w':
-                World::overallWidth = strtol(optarg, nullptr, 10);
+                width = strtol(optarg, nullptr, 10);
                 break;
 
             case '?':
@@ -114,11 +116,11 @@ int main(int argc, char **argv) {
         }
     }
 
-    // Instantiate a World object
-    World world;
+    // Init and set-up world
+    World::setup(width, height);
 
     // Render-Event Loop
-    renderLoop(world);
+    renderLoop();
 
     // END MPI
     MPI_Finalize();
