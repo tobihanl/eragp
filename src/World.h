@@ -16,6 +16,11 @@ private:
     //TODO change list implementation and handle shared data
     static std::vector<FoodEntity*> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
     static std::vector<LivingEntity*> living;
+
+    static std::vector<FoodEntity*> removeFood;
+    static std::vector<LivingEntity*> removeLiving;
+    static std::vector<FoodEntity*> addFood;
+    static std::vector<LivingEntity*> addLiving;
 public:
     static void render();
     static void tick();
@@ -26,6 +31,9 @@ public:
     static void addFoodEntity(FoodEntity *e);
     static void removeLivingEntity(LivingEntity *e);
     static void removeFoodEntity(FoodEntity *e);
+
+    static bool toRemoveLiving(LivingEntity *e);
+    static bool toRemoveFood(FoodEntity *e);
 };
 
 

@@ -6,8 +6,8 @@
 class Brain {
 private:
     int numLayers;
-    Matrix *weights;
-    Matrix *biases;
+    Matrix **weights;
+    Matrix **biases;
 
     /**
      * Copy constructor
