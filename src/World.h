@@ -32,8 +32,13 @@ public:
     static void removeLivingEntity(LivingEntity *e);
     static void removeFoodEntity(FoodEntity *e);
 
+private:
     static bool toRemoveLiving(LivingEntity *e);
+
+    static bool toAddLiving(LivingEntity *e);
     static bool toRemoveFood(FoodEntity *e);
+
+    static bool toAddFood(FoodEntity *e);
 };
 
 

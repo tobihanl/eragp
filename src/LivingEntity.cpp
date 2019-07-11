@@ -4,8 +4,7 @@
 #include "World.h"
 #include "FoodEntity.h"
 #include <cmath>
-#include <math.h>
-#include <assert.h>
+#include <cassert>
 
 static std::mt19937 createGenerator() {
     std::random_device rd;
@@ -71,7 +70,7 @@ void LivingEntity::tick() {
     }
     //################################## Eat ##################################
     if(nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-        energy += nearestFood->energy;
+        energy += nearestFood->energy; // TODO: [BUG] Multiple LivingEntities can eat the same food!
         World::removeFoodEntity(nearestFood);
     }
     //################################# Breed #################################

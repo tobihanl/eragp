@@ -28,7 +28,8 @@ public:
     LivingEntity(int x, int y, SDL_Color color, float speed, float size, Brain* brain);
     void render() override;
     void tick() override;
-    virtual ~LivingEntity();
+
+    ~LivingEntity() override;
 };
 
 

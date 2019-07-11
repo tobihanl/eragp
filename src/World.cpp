@@ -1,6 +1,8 @@
 #include "World.h"
 #include <algorithm>
-#include <stdlib.h>
+#include <cstdlib>
+
+// TODO [VERY IMPORTANT!] Implement checking if entity already exists in a vector to prevent duplicates!
 
 std::vector<LivingEntity *> World::living = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::food = std::vector<FoodEntity *>();
@@ -20,12 +22,6 @@ void World::render() {
     }
 }
 
-bool World::toRemoveLiving(LivingEntity *e){
-    return std::find(removeLiving.begin(), removeLiving.end(), e) != removeLiving.end();
-}
-bool World::toRemoveFood(FoodEntity *e){
-    return std::find(removeFood.begin(), removeFood.end(), e) != removeFood.end();
-}
 void World::tick() {
     addFoodEntity(new FoodEntity(rand() % WORLD_WIDTH, rand() % WORLD_HEIGHT, 4 * 60));
     for (const auto &e : living) {
@@ -36,21 +32,19 @@ void World::tick() {
     food.erase(std::remove_if(food.begin(), food.end(), toRemoveFood), food.end());
     food.insert(food.end(), addFood.begin(), addFood.end());
 
-    for(int i = 0; i < removeLiving.size(); i++) {
-        delete removeLiving[i];
-    }
-    for(int i = 0; i < removeFood.size(); i++) {
-        delete removeFood[i];
-    }
-    removeLiving.clear();
-    removeFood.clear();
-    addLiving.clear();
-    addFood.clear();
+    // Destroy entities
+    for (const auto &e : removeLiving) delete e;
+    for (const auto &e : removeFood) delete e;
 
+    // Clear vectors and deallocate memory
+    std::vector<LivingEntity *>().swap(removeLiving);
+    std::vector<FoodEntity *>().swap(removeFood);
+    std::vector<LivingEntity *>().swap(addLiving);
+    std::vector<FoodEntity *>().swap(addFood);
 }
 
-FoodEntity* World::findNearestFood(int x, int y) {
-    if (food.size() == 0) return nullptr;
+FoodEntity *World::findNearestFood(int x, int y) {
+    if (food.empty()) return nullptr;
     FoodEntity *f = food[0];
     int dist = f->getSquaredDistance(x, y);
     for (const auto &e : food) {
@@ -64,7 +58,7 @@ FoodEntity* World::findNearestFood(int x, int y) {
 }
 
 LivingEntity *World::findNearestLiving(int x, int y) {
-    if (living.size() == 0) return nullptr;
+    if (living.empty()) return nullptr;
     LivingEntity *n = living[0];
     int dist = n->getSquaredDistance(x, y);
     for (const auto &e : living) {
@@ -78,19 +72,39 @@ LivingEntity *World::findNearestLiving(int x, int y) {
 }
 
 void World::addLivingEntity(LivingEntity *e) {
-    addLiving.push_back(e);
+    if (!toAddLiving(e))
+        addLiving.push_back(e);
 }
 
 void World::addFoodEntity(FoodEntity *e) {
-    addFood.push_back(e);
+    if (!toAddFood(e))
+        addFood.push_back(e);
 }
 
 void World::removeLivingEntity(LivingEntity *e) {
-    removeLiving.push_back(e);
+    if (!toRemoveLiving(e))
+        removeLiving.push_back(e);
 }
 
 void World::removeFoodEntity(FoodEntity *e) {
-    removeFood.push_back(e);
+    if (!toRemoveFood(e))
+        removeFood.push_back(e);
+}
+
+bool World::toRemoveLiving(LivingEntity *e) {
+    return std::find(removeLiving.begin(), removeLiving.end(), e) != removeLiving.end();
+}
+
+bool World::toAddLiving(LivingEntity *e) {
+    return std::find(addLiving.begin(), addLiving.end(), e) != addLiving.end();
+}
+
+bool World::toRemoveFood(FoodEntity *e) {
+    return std::find(removeFood.begin(), removeFood.end(), e) != removeFood.end();
+}
+
+bool World::toAddFood(FoodEntity *e) {
+    return std::find(addFood.begin(), addFood.end(), e) != addFood.end();
 }
 
 //TODO cleanup for destroyed entities
