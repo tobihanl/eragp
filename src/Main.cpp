@@ -6,6 +6,7 @@
 #include "Renderer.h"
 #include "World.h"
 #include "Brain.h"
+#include "Tile.h"
 
 #define WINDOW_WIDTH 960
 #define WINDOW_HEIGHT 720
@@ -23,6 +24,13 @@ int main() {
     LivingEntity::digits[7] = Renderer::renderFont("7", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
     LivingEntity::digits[8] = Renderer::renderFont("8", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
     LivingEntity::digits[9] = Renderer::renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+
+    Tile::GRASS.texture = Renderer::renderImage("grass.png");
+    Tile::STONE.texture = Renderer::renderImage("stone.png");
+    Tile::SAND.texture = Renderer::renderImage("sand.png");
+    Tile::WATER.texture = Renderer::renderImage("water.png");
+
+    World::generateTerrain();
 
     //============================= ADD TEST ENTITIES =============================
     for(int i = 0; i < 100; i++) {

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <assert.h>
+#include "Renderer.h"
 
 // TODO [VERY IMPORTANT!] Implement checking if entity already exists in a vector to prevent duplicates!
 
@@ -13,8 +14,35 @@ std::vector<FoodEntity *> World::removeFood = std::vector<FoodEntity *>();
 std::vector<LivingEntity *> World::addLiving = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::addFood = std::vector<FoodEntity *>();
 
+const Tile* World::terrain[(WORLD_HEIGHT / TILE_SIZE) * (WORLD_WIDTH / TILE_SIZE)];
+
+void World::generateTerrain() {
+    for(int y = 0; y < WORLD_HEIGHT / TILE_SIZE; y++) {
+        for(int x = 0; x < WORLD_WIDTH / TILE_SIZE; x++) {
+            if((x / 8) % 2 == 0) {
+                if((y / 8) % 2 == 0) {
+                    terrain[y * (WORLD_WIDTH / TILE_SIZE) + x] = &Tile::GRASS;
+                } else {
+                    terrain[y * (WORLD_WIDTH / TILE_SIZE) + x] = &Tile::SAND;
+                }
+            } else {
+                if ((y / 8) % 2 == 0) {
+                    terrain[y * (WORLD_WIDTH / TILE_SIZE) + x] = &Tile::STONE;
+                } else {
+                    terrain[y * (WORLD_WIDTH / TILE_SIZE) + x] = &Tile::WATER;
+                }
+            }
+        }
+    }
+}
+
 void World::render() {
-    //TODO render terrain
+    for(int y = 0; y < WORLD_HEIGHT / TILE_SIZE; y++) {
+        for(int x = 0; x < WORLD_WIDTH / TILE_SIZE; x++) {
+            SDL_Texture* t = terrain[y * (WORLD_WIDTH / TILE_SIZE) + x]->texture;
+            Renderer::copy(t, x * TILE_SIZE, y * TILE_SIZE);
+        }
+    }
     for (const auto &f : food) {
         f->render();
     }

@@ -5,6 +5,7 @@
 #include <vector>
 #include "FoodEntity.h"
 #include "LivingEntity.h"
+#include "Tile.h"
 
 #define WORLD_WIDTH 960
 #define WORLD_HEIGHT 720
@@ -21,7 +22,11 @@ private:
     static std::vector<LivingEntity*> removeLiving;
     static std::vector<FoodEntity*> addFood;
     static std::vector<LivingEntity*> addLiving;
+
+    static const Tile* terrain[];
 public:
+    static void generateTerrain();
+
     static void render();
     static void tick();
 
