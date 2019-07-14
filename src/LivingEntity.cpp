@@ -19,7 +19,7 @@ SDL_Texture* LivingEntity::digits[10];
 
 //################################Begin object##############################################
 
-LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float si, Brain* b) : Entity(startX, startY, c, (int) ((1.0f + si) * TILE_SIZE / 2)), color(c), speed(sp), size(si), brain(b), energy(60 * 2), cooldown(60) {
+LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float si, Brain* b) : Entity(startX, startY, c, (int) ((1.0f + si) * TILE_SIZE / 2)), color(c), speed(sp >= 0 ? sp : 0), size(si >= 0 ? si : 0), brain(b), energy(60 * 2), cooldown(60) {
 
 }
 
@@ -81,15 +81,18 @@ void LivingEntity::tick() {
             }
         }
     }
+    //################################# Energy ################################
+    energy -= (brainMove ? speed * 8 : 0) + size * 4 + 1;
+    assert((((int)(brainMove ? speed * 8 : 0) + size * 4 + 1)) > 0 && "Entity not loosing Energy");
+    if(energy <= 0) World::removeLivingEntity(this);
+
     //################################# Breed #################################
     if(cooldown > 0) cooldown--;
     if(cooldown == 0 && energy >= 60 * 2) {
+        energy -= 60;
         World::addLivingEntity(new LivingEntity(x, y, color, speed + normalDistribution(randomGenerator), size + normalDistribution(randomGenerator), brain->createMutatedCopy()));
         cooldown += 60;
     }
-    //################################# Energy ################################
-    energy -= (brainMove ? speed * 8 : 0) + size * 4 + 0.5;
-    if(energy <= 0) World::removeLivingEntity(this);
 }
 
 LivingEntity::~LivingEntity() {
