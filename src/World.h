@@ -26,18 +26,17 @@ public:
     static void tick();
 
     static FoodEntity *findNearestFood(int x, int y);
+    static FoodEntity *findNearestSurvivingFood(int x, int y);
     static LivingEntity *findNearestLiving(int x, int y);
     static void addLivingEntity(LivingEntity *e);
     static void addFoodEntity(FoodEntity *e);
     static void removeLivingEntity(LivingEntity *e);
     static void removeFoodEntity(FoodEntity *e);
 
+    static bool toRemoveFood(FoodEntity *e);
 private:
     static bool toRemoveLiving(LivingEntity *e);
-
     static bool toAddLiving(LivingEntity *e);
-    static bool toRemoveFood(FoodEntity *e);
-
     static bool toAddFood(FoodEntity *e);
 };
 

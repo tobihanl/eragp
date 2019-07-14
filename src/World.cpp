@@ -1,6 +1,7 @@
 #include "World.h"
 #include <algorithm>
 #include <cstdlib>
+#include <assert.h>
 
 // TODO [VERY IMPORTANT!] Implement checking if entity already exists in a vector to prevent duplicates!
 
@@ -36,11 +37,11 @@ void World::tick() {
     for (const auto &e : removeLiving) delete e;
     for (const auto &e : removeFood) delete e;
 
-    // Clear vectors and deallocate memory
-    std::vector<LivingEntity *>().swap(removeLiving);
-    std::vector<FoodEntity *>().swap(removeFood);
-    std::vector<LivingEntity *>().swap(addLiving);
-    std::vector<FoodEntity *>().swap(addFood);
+    // Clear vectors without deallocating memory
+    removeFood.clear();
+    removeLiving.clear();
+    addFood.clear();
+    addLiving.clear();
 }
 
 FoodEntity *World::findNearestFood(int x, int y) {
@@ -50,6 +51,20 @@ FoodEntity *World::findNearestFood(int x, int y) {
     for (const auto &e : food) {
         int tempDist = e->getSquaredDistance(x, y);
         if (tempDist < dist) {
+            f = e;
+            dist = tempDist;
+        }
+    }
+    return f;
+}
+
+FoodEntity *World::findNearestSurvivingFood(int x, int y) {
+    FoodEntity *f = nullptr;
+    int dist = 0;
+    for (const auto &e : food) {
+        if(toRemoveFood(e)) continue;
+        int tempDist = e->getSquaredDistance(x, y);
+        if (!f || tempDist < dist) {
             f = e;
             dist = tempDist;
         }
@@ -87,8 +102,8 @@ void World::removeLivingEntity(LivingEntity *e) {
 }
 
 void World::removeFoodEntity(FoodEntity *e) {
-    if (!toRemoveFood(e))
-        removeFood.push_back(e);
+    assert(!toRemoveFood(e) && "Tried to remove same FoodEntity multiple times");
+    removeFood.push_back(e);
 }
 
 bool World::toRemoveLiving(LivingEntity *e) {

@@ -70,8 +70,16 @@ void LivingEntity::tick() {
     }
     //################################## Eat ##################################
     if(nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-        energy += nearestFood->energy; // TODO: [BUG] Multiple LivingEntities can eat the same food!
-        World::removeFoodEntity(nearestFood);
+        if(!World::toRemoveFood(nearestFood)) {
+            World::removeFoodEntity(nearestFood); //TODO don't forget to synchronize
+            energy += nearestFood->energy;
+        } else {
+            nearestFood = World::findNearestSurvivingFood(x, y);
+            if(nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
+                World::removeFoodEntity(nearestFood); //TODO don't forget to synchronize
+                energy += nearestFood->energy;
+            }
+        }
     }
     //################################# Breed #################################
     if(cooldown > 0) cooldown--;
