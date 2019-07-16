@@ -70,6 +70,7 @@ void LivingEntity::tick() {
                      (float) energy});
     thoughts = brain->think(thoughts);
     bool brainMove = thoughts(0, 0) > -1000;
+    WorldDim dim = World::getWorldDim();
     //################################# Move ##################################
     if (brainMove) {//evaluate whether to move TODO change bias after applying norm function
         float brainXDif = thoughts(1, 0);
@@ -77,10 +78,10 @@ void LivingEntity::tick() {
         float factor = TILE_SIZE * speed / std::sqrt(brainXDif * brainXDif + brainYDif * brainYDif);
         x += (int) std::round(factor * brainXDif);
         if (x < 0) x = 0;
-        else if (x >= WORLD_WIDTH) x = WORLD_WIDTH - 1;
+        else if (x >= dim.w) x = dim.w - 1;
         y += (int) std::round(factor * brainYDif);
         if (y < 0) y = 0;
-        else if (y >= WORLD_HEIGHT) y = WORLD_HEIGHT - 1;
+        else if (y >= dim.h) y = dim.h - 1;
     }
     //################################## Eat ##################################
     if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {

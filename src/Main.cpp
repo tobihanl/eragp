@@ -10,8 +10,6 @@
 #include "Brain.h"
 #include "Tile.h"
 
-#define WINDOW_WIDTH 960
-#define WINDOW_HEIGHT 720
 #define MS_PER_TICK 100
 
 /**
@@ -19,8 +17,8 @@
  *
  * @param world The world, which should be updated and rendered
  */
-void renderLoop() {
-    Renderer::setup(WINDOW_WIDTH, WINDOW_HEIGHT);
+void renderLoop(int windowWidth, int windowHeight) {
+    Renderer::setup(windowWidth, windowHeight);
     LivingEntity::digits[0] = Renderer::renderFont("0", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
     LivingEntity::digits[1] = Renderer::renderFont("1", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
     LivingEntity::digits[2] = Renderer::renderFont("2", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
@@ -137,27 +135,26 @@ int main(int argc, char **argv) {
 
     // Init and set-up world
     World::setup(width, height);
-
-    World::generateTerrain();
+    WorldDim dim = World::getWorldDim();
 
     //============================= ADD TEST ENTITIES =============================
     for (int i = 0; i < 100; i++) {
         int layers[3] = {3, 4, 10};
         auto *brain = new Brain(3, layers);
-        auto *entity = new LivingEntity(std::rand() % WORLD_WIDTH, std::rand() % WORLD_HEIGHT,
+        auto *entity = new LivingEntity(std::rand() % dim.w, std::rand() % dim.h,
                                         {static_cast<Uint8>(std::rand()), static_cast<Uint8>(std::rand()),
                                          static_cast<Uint8>(std::rand()), 255},
                                         (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f, brain);
         World::addLivingEntity(entity);
     }
     for (int i = 0; i < 250; i++) {
-        World::addFoodEntity(new FoodEntity(std::rand() % WORLD_WIDTH, std::rand() % WORLD_HEIGHT, 8 * 60));
+        World::addFoodEntity(new FoodEntity(std::rand() % dim.w, std::rand() % dim.h, 8 * 60));
     }
     //=========================== END ADD TEST ENTITIES ===========================
 
 
     // Render-Event Loop
-    renderLoop();
+    renderLoop(dim.w, dim.h);
 
     // END MPI
     MPI_Finalize();

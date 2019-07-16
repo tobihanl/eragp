@@ -32,7 +32,7 @@ int World::height = 0;
 
 bool World::isSetup = false;
 
-const Tile *World::terrain[(WORLD_HEIGHT / TILE_SIZE) * (WORLD_WIDTH / TILE_SIZE)];
+std::vector<Tile *> World::terrain = std::vector<Tile *>();
 
 /**
  * Initialize the world, which is part of the overall world and set
@@ -60,24 +60,26 @@ void World::setup(int overallWidth, int overallHeight) {
     width = dim.w;
     height = dim.h;
 
-    // World is setup
+    generateTerrain();
     isSetup = true;
 }
 
 void World::generateTerrain() {
-    for (int y = 0; y < WORLD_HEIGHT / TILE_SIZE; y++) {
-        for (int x = 0; x < WORLD_WIDTH / TILE_SIZE; x++) {
+    terrain.reserve((World::height / TILE_SIZE) * (World::width / TILE_SIZE));
+
+    for (int y = 0; y < World::height / TILE_SIZE; y++) {
+        for (int x = 0; x < World::width / TILE_SIZE; x++) {
             if ((x / 8) % 2 == 0) {
                 if ((y / 8) % 2 == 0) {
-                    terrain[y * (WORLD_WIDTH / TILE_SIZE) + x] = &Tile::GRASS;
+                    terrain[y * (World::width / TILE_SIZE) + x] = &Tile::GRASS;
                 } else {
-                    terrain[y * (WORLD_WIDTH / TILE_SIZE) + x] = &Tile::SAND;
+                    terrain[y * (World::width / TILE_SIZE) + x] = &Tile::SAND;
                 }
             } else {
                 if ((y / 8) % 2 == 0) {
-                    terrain[y * (WORLD_WIDTH / TILE_SIZE) + x] = &Tile::STONE;
+                    terrain[y * (World::width / TILE_SIZE) + x] = &Tile::STONE;
                 } else {
-                    terrain[y * (WORLD_WIDTH / TILE_SIZE) + x] = &Tile::WATER;
+                    terrain[y * (World::width / TILE_SIZE) + x] = &Tile::WATER;
                 }
             }
         }
@@ -85,9 +87,9 @@ void World::generateTerrain() {
 }
 
 void World::render() {
-    for (int y = 0; y < WORLD_HEIGHT / TILE_SIZE; y++) {
-        for (int x = 0; x < WORLD_WIDTH / TILE_SIZE; x++) {
-            SDL_Texture *t = terrain[y * (WORLD_WIDTH / TILE_SIZE) + x]->texture;
+    for (int y = 0; y < World::height / TILE_SIZE; y++) {
+        for (int x = 0; x < World::width / TILE_SIZE; x++) {
+            SDL_Texture *t = terrain[y * (World::width / TILE_SIZE) + x]->texture;
             Renderer::copy(t, x * TILE_SIZE, y * TILE_SIZE);
         }
     }
@@ -100,7 +102,7 @@ void World::render() {
 }
 
 void World::tick() {
-    addFoodEntity(new FoodEntity(rand() % WORLD_WIDTH, rand() % WORLD_HEIGHT, 4 * 60));
+    addFoodEntity(new FoodEntity(rand() % World::width, rand() % World::height, 4 * 60));
     for (const auto &e : living) {
         e->tick();
     }
@@ -233,6 +235,10 @@ WorldDim World::calcWorldDimensions(int rank, int num) {
     }
 
     return dim;
+}
+
+WorldDim World::getWorldDim() {
+    return {x, y, width, height};
 }
 
 bool World::toRemoveLiving(LivingEntity *e) {

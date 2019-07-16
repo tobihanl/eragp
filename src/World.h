@@ -6,8 +6,6 @@
 #include "LivingEntity.h"
 #include "Tile.h"
 
-#define WORLD_WIDTH 960
-#define WORLD_HEIGHT 720
 #define TILE_SIZE 8
 
 
@@ -42,7 +40,7 @@ private:
     static std::vector<FoodEntity *> addFood;
     static std::vector<LivingEntity *> addLiving;
 
-    static const Tile *terrain[];
+    static std::vector<Tile *> terrain;
 
     World() = default;
 
@@ -54,6 +52,8 @@ public:
     static void setup(int overallWidth, int overallHeight);
 
     static WorldDim calcWorldDimensions(int rank, int num);
+
+    static WorldDim getWorldDim();
 
     static void render();
     static void tick();
