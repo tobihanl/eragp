@@ -16,20 +16,30 @@ static std::mt19937 createGenerator() {
 std::mt19937 LivingEntity::randomGenerator = createGenerator();
 std::normal_distribution<float> LivingEntity::normalDistribution(0, 0.1);
 
-SDL_Texture* LivingEntity::digits[10];
+SDL_Texture *LivingEntity::digits[10];
 
 //################################Begin object##############################################
 
-LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float si, Brain* b) : Entity(startX, startY, c, (int) ((1.0f + si) * TILE_SIZE / 2)), color(c), speed(sp >= 0 ? sp : 0), size(si >= 0 ? si : 0), brain(b), energy(60 * 2), cooldown(60) {
+LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float si, Brain *b) : Entity(startX, startY,
+                                                                                                       c, (int) ((1.0f +
+                                                                                                                  si) *
+                                                                                                                 TILE_SIZE /
+                                                                                                                 2)),
+                                                                                                color(c),
+                                                                                                speed(sp >= 0 ? sp : 0),
+                                                                                                size(si >= 0 ? si : 0),
+                                                                                                brain(b),
+                                                                                                energy(60 * 2),
+                                                                                                cooldown(60) {
 
 }
 
 static int getNumDigits(int x) {
-    if(x < 10) return 1;
-    else if(x < 100) return 2;
-    else if(x < 1000) return 3;
-    else if(x < 10000) return 4;
-    else if(x < 100000) return 5;
+    if (x < 10) return 1;
+    else if (x < 100) return 2;
+    else if (x < 1000) return 3;
+    else if (x < 10000) return 4;
+    else if (x < 100000) return 5;
     assert(false && "Too much energy");
 }
 
@@ -37,13 +47,14 @@ void LivingEntity::render() {
     float radius = (1.0f + size) * TILE_SIZE / 2.0f;
     int radiusI = round(radius);
     Renderer::copy(texture, x - radiusI, y - radiusI);
-    if(energy <= 0) {
+    if (energy <= 0) {
         Renderer::copy(digits[0], x - (ENERGY_FONT_SIZE / 2), y - 4 - ENERGY_FONT_SIZE);
     } else {//max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
         int numDigits = getNumDigits(energy);
         int energyToDisplay = energy;
-        int baseX = x + numDigits * 4 - 4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
-        for(int i = 0; energyToDisplay > 0; i++) {
+        int baseX = x + numDigits * 4 -
+                    4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
+        for (int i = 0; energyToDisplay > 0; i++) {
             Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, y - 4 - ENERGY_FONT_SIZE);
             energyToDisplay /= 10;
         }
@@ -53,30 +64,33 @@ void LivingEntity::render() {
 
 void LivingEntity::tick() {
     //################################# Think #################################
-    FoodEntity* nearestFood = World::findNearestFood(x, y);
-    Matrix thoughts(3, 1, {(float)(!nearestFood ? x : nearestFood->x - x), (float)(!nearestFood ? y : nearestFood->y - y), (float)energy});
+    FoodEntity *nearestFood = World::findNearestFood(x, y);
+    Matrix thoughts(3, 1,
+                    {(float) (!nearestFood ? x : nearestFood->x - x), (float) (!nearestFood ? y : nearestFood->y - y),
+                     (float) energy});
     thoughts = brain->think(thoughts);
     bool brainMove = thoughts(0, 0) > -1000;
+    WorldDim dim = World::getWorldDim();
     //################################# Move ##################################
-    if(brainMove) {//evaluate whether to move TODO change bias after applying norm function
+    if (brainMove) {//evaluate whether to move TODO change bias after applying norm function
         float brainXDif = thoughts(1, 0);
         float brainYDif = thoughts(2, 0);
         float factor = TILE_SIZE * speed / std::sqrt(brainXDif * brainXDif + brainYDif * brainYDif);
         x += (int) std::round(factor * brainXDif);
-        if(x < 0) x = 0;
-        else if(x >= WORLD_WIDTH) x = WORLD_WIDTH - 1;
+        if (x < 0) x = 0;
+        else if (x >= dim.w) x = dim.w - 1;
         y += (int) std::round(factor * brainYDif);
-        if(y < 0) y = 0;
-        else if(y >= WORLD_HEIGHT) y = WORLD_HEIGHT - 1;
+        if (y < 0) y = 0;
+        else if (y >= dim.h) y = dim.h - 1;
     }
     //################################## Eat ##################################
-    if(nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-        if(!World::toRemoveFood(nearestFood)) {
+    if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
+        if (!World::toRemoveFood(nearestFood)) {
             World::removeFoodEntity(nearestFood); //TODO don't forget to synchronize
             energy += nearestFood->energy;
         } else {
             nearestFood = World::findNearestSurvivingFood(x, y);
-            if(nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
+            if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
                 World::removeFoodEntity(nearestFood); //TODO don't forget to synchronize
                 energy += nearestFood->energy;
             }
@@ -84,22 +98,20 @@ void LivingEntity::tick() {
     }
     //################################# Energy ################################
     energy -= (brainMove ? speed * 8 : 0) + size * 4 + 1;
-    assert((((int)(brainMove ? speed * 8 : 0) + size * 4 + 1)) > 0 && "Entity not loosing Energy");
-    if(energy <= 0) World::removeLivingEntity(this);
+    assert((((int) (brainMove ? speed * 8 : 0) + size * 4 + 1)) > 0 && "Entity not loosing Energy");
+    if (energy <= 0) World::removeLivingEntity(this);
 
     //################################# Breed #################################
-    if(cooldown > 0) cooldown--;
-    if(cooldown == 0 && energy >= 60 * 2) {
+    if (cooldown > 0) cooldown--;
+    if (cooldown == 0 && energy >= 60 * 2) {
         energy -= 60;
-        World::addLivingEntity(new LivingEntity(x, y, color, speed + normalDistribution(randomGenerator), size + normalDistribution(randomGenerator), brain->createMutatedCopy()));
+        World::addLivingEntity(new LivingEntity(x, y, color, speed + normalDistribution(randomGenerator),
+                                                size + normalDistribution(randomGenerator),
+                                                brain->createMutatedCopy()));
         cooldown += 60;
     }
 }
 
 LivingEntity::~LivingEntity() {
     delete brain;
-}
-
-double LivingEntity::distanceToPoint(int x, int y) {
-    return sqrt(pow(this->x - x, 2) + pow(this->y - y, 2));
 }

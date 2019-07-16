@@ -4,7 +4,10 @@
 
 int Entity::currentId = 0;
 
-Entity::Entity(int startX, int startY, const SDL_Color &color, int radius) : x(startX), y(startY), texture(Renderer::renderDot(radius, color)), id(currentId++) {}
+Entity::Entity(int startX, int startY, const SDL_Color &color, int radius) : x(startX), y(startY),
+                                                                             texture(Renderer::renderDot(radius,
+                                                                                                         color)),
+                                                                             id(currentId++) {}
 
 Entity::~Entity() {
     Renderer::cleanup(texture);

@@ -8,10 +8,12 @@ private:
     static int currentId;
     int id;
 protected:
-    SDL_Texture* texture;
+    SDL_Texture *texture;
 public:
     int x, y;
+
     Entity(int x, int y, const SDL_Color &color, int radius);
+
     virtual ~Entity();
 
     virtual void render() = 0;

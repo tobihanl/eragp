@@ -14,7 +14,7 @@ public:
     static Tile SAND;
     static Tile WATER;
 
-    SDL_Texture* texture;
+    SDL_Texture *texture;
     const SDL_Color color;
 
 };

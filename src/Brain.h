@@ -16,15 +16,17 @@ private:
 
 public:
     Brain(int layerAmount, int layerSizes[]);
+
     virtual ~Brain();
 
     Matrix think(Matrix input);
+
     /**
      * Creates a mutated copy. Remember to delete it after usage-
      * @return pointer to the mutated copy
      */
-    Brain* createMutatedCopy();
-    
+    Brain *createMutatedCopy();
+
 };
 
 

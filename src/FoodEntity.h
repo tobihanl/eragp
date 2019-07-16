@@ -9,6 +9,7 @@ private:
 
 public:
     int energy;
+
     FoodEntity(int x, int y, int energy);
 
     ~FoodEntity() override = default;
