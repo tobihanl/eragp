@@ -38,7 +38,7 @@ int main() {
         auto *brain = new Brain(3, layers);
         auto *entity = new LivingEntity(std::rand() % WORLD_WIDTH, std::rand() % WORLD_HEIGHT,
                                         {static_cast<Uint8>(std::rand()), static_cast<Uint8>(std::rand()),
-                                         static_cast<Uint8>(std::rand()), 0},
+                                         static_cast<Uint8>(std::rand()), 255},
                                                 (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f, brain);
         World::addLivingEntity(entity);
     }

@@ -2,7 +2,7 @@
 #include <cmath>
 #include "Renderer.h"
 
-int Entity::currentId;
+int Entity::currentId = 0;
 
 Entity::Entity(int startX, int startY, const SDL_Color &color, int radius) : x(startX), y(startY), texture(Renderer::renderDot(radius, color)), id(currentId++) {}
 
