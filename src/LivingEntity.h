@@ -26,10 +26,10 @@ public:
     static SDL_Texture* digits[];
 
     LivingEntity(int x, int y, SDL_Color color, float speed, float size, Brain* brain);
+    ~LivingEntity() override;
+    double distanceToPoint(int x, int y);
     void render() override;
     void tick() override;
-
-    ~LivingEntity() override;
 };
 
 

@@ -2,10 +2,20 @@
 #include <cmath>
 #include "Renderer.h"
 
-Entity::Entity(int startX, int startY, const SDL_Color &color, int radius) : x(startX), y(startY), texture(Renderer::renderDot(radius, color)) {}
+int Entity::currentId;
+
+Entity::Entity(int startX, int startY, const SDL_Color &color, int radius) : x(startX), y(startY), texture(Renderer::renderDot(radius, color)), id(currentId++) {}
 
 Entity::~Entity() {
     Renderer::cleanup(texture);
+}
+
+bool Entity::operator==(const Entity &other) const {
+    return this->id == other.id;
+}
+
+bool Entity::operator!=(const Entity &other) const {
+    return !(*this == other);
 }
 
 int Entity::getSquaredDistance(int x, int y) {

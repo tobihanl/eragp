@@ -4,6 +4,9 @@
 
 #include <SDL.h>
 class Entity {
+private:
+    static int currentId;
+    int id;
 protected:
     SDL_Texture* texture;
 public:
@@ -31,6 +34,8 @@ public:
      * @return the squared distance
      */
     int getSquaredDistance(int x, int y);
+    bool operator==(const Entity &other) const;
+    bool operator!=(const Entity &other) const;
 };
 
 

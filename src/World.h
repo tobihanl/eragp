@@ -37,6 +37,7 @@ public:
     static void addFoodEntity(FoodEntity *e);
     static void removeLivingEntity(LivingEntity *e);
     static void removeFoodEntity(FoodEntity *e);
+    LivingEntity getNearestEntity(LivingEntity entity);
 
     static bool toRemoveFood(FoodEntity *e);
 private:

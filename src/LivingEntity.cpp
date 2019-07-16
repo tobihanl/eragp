@@ -1,4 +1,5 @@
 
+#include <cmath>
 #include "LivingEntity.h"
 #include "Renderer.h"
 #include "World.h"
@@ -97,4 +98,8 @@ void LivingEntity::tick() {
 
 LivingEntity::~LivingEntity() {
     delete brain;
+}
+
+double LivingEntity::distanceToPoint(int x, int y) {
+    return sqrt(pow(this->x - x, 2) + pow(this->y - y, 2));
 }
