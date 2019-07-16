@@ -8,11 +8,6 @@ typedef float(*MatrixFunction)(float);
 
 class Matrix {
 private:
-    /**
-     * Creates a matrix without data to initialize it later on. Do not use unless necessary
-     */
-    Matrix();
-
     std::size_t height, width; //size_t is guaranteed to be able to express the maximum size of any object including array
     std::vector<float> data;
 
@@ -30,6 +25,18 @@ private:
     
     friend bool operator==(const Matrix &lhs, const Matrix &rhs);
 public:
+
+    /**
+     * Copy constructor
+     * @param m pointer to Matrix to copy
+     */
+    Matrix(Matrix *m);
+
+    /**
+    * Creates a matrix without data to initialize it later on. Do not use unless necessary
+    */
+    Matrix();
+
     /**
      * Creates a matrix with all elements having the same value
      *

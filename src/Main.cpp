@@ -1,10 +1,14 @@
+//TODO to disable asserts in release: #define NDEBUG
 #include <iostream>
 #include <chrono>
+#include <cstdlib>
 #include <SDL.h>
 #include <mpi.h>
 #include <unistd.h>
 #include "Renderer.h"
 #include "World.h"
+#include "Brain.h"
+#include "Tile.h"
 
 #define WINDOW_WIDTH 960
 #define WINDOW_HEIGHT 720
@@ -17,6 +21,21 @@
  */
 void renderLoop() {
     Renderer::setup(WINDOW_WIDTH, WINDOW_HEIGHT);
+    LivingEntity::digits[0] = Renderer::renderFont("0", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    LivingEntity::digits[1] = Renderer::renderFont("1", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    LivingEntity::digits[2] = Renderer::renderFont("2", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    LivingEntity::digits[3] = Renderer::renderFont("3", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    LivingEntity::digits[4] = Renderer::renderFont("4", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    LivingEntity::digits[5] = Renderer::renderFont("5", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    LivingEntity::digits[6] = Renderer::renderFont("6", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    LivingEntity::digits[7] = Renderer::renderFont("7", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    LivingEntity::digits[8] = Renderer::renderFont("8", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    LivingEntity::digits[9] = Renderer::renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+
+    Tile::GRASS.texture = Renderer::renderImage("grass.png");
+    Tile::STONE.texture = Renderer::renderImage("stone.png");
+    Tile::SAND.texture = Renderer::renderImage("sand.png");
+    Tile::WATER.texture = Renderer::renderImage("water.png");
 
     bool render;
     int lag = 0, currentTime, elapsedTime;
@@ -118,6 +137,24 @@ int main(int argc, char **argv) {
 
     // Init and set-up world
     World::setup(width, height);
+
+    World::generateTerrain();
+
+    //============================= ADD TEST ENTITIES =============================
+    for (int i = 0; i < 100; i++) {
+        int layers[3] = {3, 4, 10};
+        auto *brain = new Brain(3, layers);
+        auto *entity = new LivingEntity(std::rand() % WORLD_WIDTH, std::rand() % WORLD_HEIGHT,
+                                        {static_cast<Uint8>(std::rand()), static_cast<Uint8>(std::rand()),
+                                         static_cast<Uint8>(std::rand()), 255},
+                                        (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f, brain);
+        World::addLivingEntity(entity);
+    }
+    for (int i = 0; i < 250; i++) {
+        World::addFoodEntity(new FoodEntity(std::rand() % WORLD_WIDTH, std::rand() % WORLD_HEIGHT, 8 * 60));
+    }
+    //=========================== END ADD TEST ENTITIES ===========================
+
 
     // Render-Event Loop
     renderLoop();
