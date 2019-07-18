@@ -18,11 +18,13 @@ bool Renderer::isSetup = false;
  *
  * @param width Width of the new window
  * @param height Height of the new window
+ * @param x Position of the window (x coordinate)
+ * @param y Position of the window (y coordinate)
  *
  * @return  0 if successful, 1 if not successful, -1 if the
  *          renderer is already setup
  */
-int Renderer::setup(int width, int height) {
+int Renderer::setup(int x, int y, int width, int height) {
     // Renderer already set up?
     if (isSetup)
         return -1;
@@ -40,8 +42,7 @@ int Renderer::setup(int width, int height) {
     }
 
     // Create Window
-    win = SDL_CreateWindow("Evolution", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
-                           SDL_WINDOW_SHOWN);
+    win = SDL_CreateWindow("Evolution", x, y, width, height, SDL_WINDOW_SHOWN);
 
     if (win == nullptr) {
         logSDLError(std::cerr, "SDL_CreateWindow");

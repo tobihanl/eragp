@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
     // Init and set-up world & renderer
     World::setup(width, height);
     WorldDim dim = World::getWorldDim();
-    Renderer::setup(dim.w, dim.h);
+    Renderer::setup(dim.x, dim.y, dim.w, dim.h);
 
     //============================= ADD TEST ENTITIES =============================
     for (int i = 0; i < 100; i++) {
