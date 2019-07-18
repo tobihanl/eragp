@@ -1,22 +1,22 @@
 target_sources(${PROJECT_NAME}
         PUBLIC
-        Entity.cpp
-        Entity.h
-        FoodEntity.cpp
-        FoodEntity.h
-        LivingEntity.cpp
-        LivingEntity.h
-        Main.cpp
-        Matrix.cpp
-        Matrix.h
-        Renderer.cpp
-        Renderer.h
-        World.cpp
-        World.h
-        Brain.cpp
-        Brain.h
-        Tile.cpp
-        Tile.h
+        ${CMAKE_CURRENT_LIST_DIR}/Entity.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/Entity.h
+        ${CMAKE_CURRENT_LIST_DIR}/FoodEntity.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/FoodEntity.h
+        ${CMAKE_CURRENT_LIST_DIR}/LivingEntity.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/LivingEntity.h
+        ${CMAKE_CURRENT_LIST_DIR}/Main.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/Matrix.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/Matrix.h
+        ${CMAKE_CURRENT_LIST_DIR}/Renderer.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/Renderer.h
+        ${CMAKE_CURRENT_LIST_DIR}/World.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/World.h
+        ${CMAKE_CURRENT_LIST_DIR}/Brain.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/Brain.h
+        ${CMAKE_CURRENT_LIST_DIR}/Tile.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/Tile.h
         )
 
 find_package(SDL2 REQUIRED)

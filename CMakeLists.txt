@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.5)
 project(Evolution)
 
 set(CMAKE_CXX_STANDARD 14)
@@ -10,7 +10,7 @@ include_directories(${MPI_INCLUDE_PATH})
 include_directories(include)
 
 add_executable(${PROJECT_NAME} "")
-add_subdirectory(src)
+include(src/CMakeLists.txt)
 
 # Adding MPI to build target
 target_link_libraries(${PROJECT_NAME} PUBLIC ${MPI_LIBRARIES})
