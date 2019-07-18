@@ -3,7 +3,7 @@
 #include "World.h"
 #include <algorithm>
 #include <cstdlib>
-#include <assert.h>
+#include <cassert>
 #include "Renderer.h"
 
 int *splitRect(int num, int width, int height);
@@ -203,7 +203,7 @@ WorldDim World::calcWorldDimensions(int rank, int num) {
 
     // Get Position of the world (and update width and height if needed)
     int overlap;
-    for (int i = 1; i <= MPI_Rank; i++) {
+    for (int i = 1; i <= rank; i++) {
         dim.x += dim.w;
 
         // Height overlap? -> Last row

@@ -17,8 +17,7 @@
  *
  * @param world The world, which should be updated and rendered
  */
-void renderLoop(int windowWidth, int windowHeight) {
-    Renderer::setup(windowWidth, windowHeight);
+void renderLoop() {
     LivingEntity::digits[0] = Renderer::renderFont("0", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
     LivingEntity::digits[1] = Renderer::renderFont("1", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
     LivingEntity::digits[2] = Renderer::renderFont("2", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
@@ -133,9 +132,10 @@ int main(int argc, char **argv) {
         }
     }
 
-    // Init and set-up world
+    // Init and set-up world & renderer
     World::setup(width, height);
     WorldDim dim = World::getWorldDim();
+    Renderer::setup(dim.w, dim.h);
 
     //============================= ADD TEST ENTITIES =============================
     for (int i = 0; i < 100; i++) {
@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
 
 
     // Render-Event Loop
-    renderLoop(dim.w, dim.h);
+    renderLoop();
 
     // END MPI
     MPI_Finalize();
