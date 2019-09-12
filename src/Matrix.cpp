@@ -10,11 +10,11 @@ Matrix::Matrix(Matrix *m) : height(m->height), width(m->width), data(m->data) {
 
 }
 
-Matrix::Matrix(std::size_t h, std::size_t w, float initValue) : height(h), width(w), data(w * h, initValue) {
+Matrix::Matrix(int h, int w, float initValue) : height(h), width(w), data(w * h, initValue) {
 
 }
 
-Matrix::Matrix(std::size_t h, std::size_t w, float from, float to) : height(h), width(w) {
+Matrix::Matrix(int h, int w, float from, float to) : height(h), width(w) {
     static std::random_device rd;
     static std::mt19937 mt(rd());
     std::uniform_real_distribution<float> dist(from, to);
@@ -26,7 +26,7 @@ Matrix::Matrix(std::size_t h, std::size_t w, float from, float to) : height(h), 
     generate(data.begin(), data.end(), gen);
 }
 
-Matrix::Matrix(std::size_t h, std::size_t w, std::vector<float> d) : height(h), width(w), data(d) {
+Matrix::Matrix(int h, int w, std::vector<float> d) : height(h), width(w), data(d) {
     if(w * h != d.size()) throw std::invalid_argument("A Matrix of dimensions (" + std::to_string(h) + " x " + std::to_string(w) + ") must have " + std::to_string(w * h) + " instead of " + std::to_string(d.size()) + " arguments.");
 }
 

@@ -8,7 +8,7 @@ typedef float(*MatrixFunction)(float);
 
 class Matrix {
 private:
-    std::size_t height, width; //size_t is guaranteed to be able to express the maximum size of any object including array
+    int height, width; //size_t is guaranteed to be able to express the maximum size of any object including array
     std::vector<float> data;
 
     friend std::ostream& operator<<(std::ostream &strm, const Matrix &m);
@@ -22,7 +22,7 @@ private:
     friend Matrix operator-(Matrix lhs, float rhs);
     friend Matrix operator*(Matrix lhs, float rhs);
     friend Matrix operator/(Matrix lhs, float rhs);
-    
+
     friend bool operator==(const Matrix &lhs, const Matrix &rhs);
 public:
 
@@ -44,7 +44,7 @@ public:
      * @param width width of the matrix
      * @param initValue initial value for all elements (defaults to 0)
      */
-    Matrix(std::size_t height, std::size_t width, float initValue = 0);
+    Matrix(int height, int width, float initValue = 0);
 
     /**
      * Creates a matrix with random elements
@@ -54,7 +54,7 @@ public:
      * @param from the minimum value of the random elements
      * @param to the maximum value of the random elements
      */
-    Matrix(std::size_t height, std::size_t width, float from, float to);
+    Matrix(int height, int width, float from, float to);
     /**
      * Creates a Matrix from a vector of elements
      *
@@ -64,7 +64,7 @@ public:
      * The first [width] elements will be the first row and so on.
      * The size has to be [width] * [height]
      */
-    Matrix(std::size_t height, std::size_t width, std::vector<float> data);
+    Matrix(int height, int width, std::vector<float> data);
 
     virtual ~Matrix();
 
