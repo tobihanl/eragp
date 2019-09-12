@@ -17,7 +17,7 @@ Link to Trello task as first line in commit message.
 
 - **Height** `-h` (optional): Integer value declaring the height (in pixels) of the whole world. Default is 720px.
 
-- **MaiMUC** `-m` (optional): Run the program with the MaiMUC configuration. No value required.
+- **MaiMUC** `-m` (optional): Run the application with the MaiMUC configuration. No value required.
 
 ## Local Dev Env
 A docker container exists for easy local development.
@@ -26,7 +26,8 @@ It also exposes a HTML client directly accessible in a browser at ``http://local
 
 All commands assume they are executed inside this project folder.
 
-Start the container:
+### Start the Container
+
 ```
 docker run --rm -p 5901:5901 -p 6901:6901 -v $(pwd):/app --name eragp tobiashanl/eragp-evolution 
 ```
@@ -40,15 +41,19 @@ For my notebook: (sorry for misusing this)
 docker run --rm -p 5901:5901 -p 6901:6901 -v "//c/users/jonas/OneDrive - tum.de/Dokumente/Studium/02 - SS 2019/ERA GP/CLion/eragp-maimuc-evo-2019:/app" --name eragp tobiashanl/eragp-evolution
 ```
 
+### CMake (init & build) and execute the application
+
 Initially and after changes to cmake, cmake has to be loaded:
 ```
-docker exec -it eragp sh -c 'cmake -DCMAKE_C_COMPILER=/usr/bin/mpicc .'
+docker exec -it eragp sh -c 'cd ./build/ && cmake ./..'
 ```
 Build the project and execute it:
 ```
-docker exec -it --user 0 eragp sh -c 'cmake --build . --target Evolution -- -j && mpirun ./Evolution'
+docker exec -it --user 0 eragp sh -c 'cd ./build/ && cmake --build . --target Evolution && mpirun ./Evolution'
 ```
-(Parameters can be specified after mpirun, i.e. mpirun -np 4 ./Evolution)
+(Parameters can be specified after mpirun, i.e. mpirun -np 4 ./Evolution, and ./Evolution. See *Commandline arguments* for more information)
+
+### Build the Container
 
 Optionally, you can also build the container yourself
 ```
