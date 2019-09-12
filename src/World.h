@@ -49,7 +49,7 @@ private:
 public:
     static void generateTerrain();
 
-    static void setup(int overallWidth, int overallHeight);
+    static void setup(int overallWidth, int overallHeight, bool maimuc);
 
     static WorldDim calcWorldDimensions(int rank, int num);
 

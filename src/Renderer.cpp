@@ -42,7 +42,7 @@ int Renderer::setup(int x, int y, int width, int height) {
     }
 
     // Create Window
-    win = SDL_CreateWindow("Evolution", x, y, width, height, SDL_WINDOW_SHOWN);
+    win = SDL_CreateWindow("Evolution", x, y, width, height, SDL_WINDOW_BORDERLESS);
 
     if (win == nullptr) {
         logSDLError(std::cerr, "SDL_CreateWindow");

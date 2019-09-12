@@ -38,27 +38,47 @@ std::vector<Tile *> World::terrain = std::vector<Tile *>();
  * Initialize the world, which is part of the overall world and set
  * it up.
  *
- * @param overallWidth Width of the overall world
+ * @param overallWidth  Width of the overall world
  * @param overallHeight Height of the overall world
+ * @param maimuc        Indicates, whether the program is executed on
+ *                      MaiMUC or not
  */
-void World::setup(int overallWidth, int overallHeight) {
+void World::setup(int overallWidth, int overallHeight, bool maimuc) {
     if (isSetup)
         return;
-
-    // Set overall World size
-    World::overallWidth = overallWidth;
-    World::overallHeight = overallHeight;
 
     // Get MPI Rank and number of nodes
     MPI_Comm_rank(MPI_COMM_WORLD, &MPI_Rank);
     MPI_Comm_size(MPI_COMM_WORLD, &MPI_Nodes);
 
-    // Get and set dimesions for this world
-    WorldDim dim = calcWorldDimensions(MPI_Rank, MPI_Nodes);
-    x = dim.x;
-    y = dim.y;
-    width = dim.w;
-    height = dim.h;
+    // MaiMUC specific configuration?
+    if (maimuc) {
+        // MaiMUC consists of 10 nodes!
+        if (MPI_Nodes != 10) {
+            std::cerr << "Program started on MaiMUC without running on 10 nodes!" << std::endl;
+            abort();
+        }
+
+        World::overallWidth = 960;
+        World::overallHeight = 1600;
+
+        // Set dimensions for this world on MaiMUC
+        x = ((MPI_Rank % 2) == 0) ? 0 : 480;
+        y = (MPI_Rank / 2) * 320;
+        width = 480;
+        height = 320;
+
+    } else {
+        World::overallWidth = overallWidth;
+        World::overallHeight = overallHeight;
+
+        // Get and set dimesions for this world
+        WorldDim dim = calcWorldDimensions(MPI_Rank, MPI_Nodes);
+        x = dim.x;
+        y = dim.y;
+        width = dim.w;
+        height = dim.h;
+    }
 
     generateTerrain();
     isSetup = true;

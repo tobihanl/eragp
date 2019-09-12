@@ -104,20 +104,29 @@ int main(int argc, char **argv) {
     // START MPI
     MPI_Init(&argc, &argv);
 
-    int width = 0, height = 0;
+    int width = 960, height = 720;
+    bool maimuc = false;
 
     // Scan program arguments
     int c;
-    while ((c = getopt(argc, argv, "h:w:")) != -1) {
+    while ((c = getopt(argc, argv, "h::w::m::")) != -1) {
         switch (c) {
+            // Height
             case 'h':
-                height = strtol(optarg, nullptr, 10);
+                if (optarg != nullptr) height = strtol(optarg, nullptr, 10);
                 break;
 
+                // Width
             case 'w':
-                width = strtol(optarg, nullptr, 10);
+                if (optarg != nullptr) width = strtol(optarg, nullptr, 10);
                 break;
 
+                // MaiMUC
+            case 'm':
+                maimuc = true;
+                break;
+
+                // Unknown Option
             case '?':
                 if (optopt == 'h' || optopt == 'w')
                     std::cerr << "Option -h and -w require an integer!" << std::endl;
@@ -133,7 +142,7 @@ int main(int argc, char **argv) {
     }
 
     // Init and set-up world & renderer
-    World::setup(width, height);
+    World::setup(width, height, maimuc);
     WorldDim dim = World::getWorldDim();
     Renderer::setup(dim.x, dim.y, dim.w, dim.h);
 
