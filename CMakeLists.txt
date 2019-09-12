@@ -11,6 +11,7 @@ include_directories(include)
 
 add_executable(${PROJECT_NAME} "")
 include(src/CMakeLists.txt)
+include(src/SimplexNoise/CMakeLists.txt)
 
 # Adding MPI to build target
 target_link_libraries(${PROJECT_NAME} PUBLIC ${MPI_LIBRARIES})
