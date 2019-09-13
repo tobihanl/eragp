@@ -1,10 +1,10 @@
 #include <mpi.h>
-#include <cfloat>
 #include "World.h"
 #include <algorithm>
 #include <cstdlib>
 #include <cassert>
 #include "Renderer.h"
+#include "SimplexNoise/SimplexNoise.h"
 
 int *splitRect(int num, int width, int height);
 
@@ -38,10 +38,10 @@ std::vector<Tile *> World::terrain = std::vector<Tile *>();
  * Initialize the world, which is part of the overall world and set
  * it up.
  *
- * @param overallWidth  Width of the overall world
- * @param overallHeight Height of the overall world
- * @param maimuc        Indicates, whether the program is executed on
- *                      MaiMUC or not
+ * @param   overallWidth    Width of the overall world
+ * @param   overallHeight   Height of the overall world
+ * @param   maimuc          Indicates, whether the program is executed on
+ *                          MaiMUC or not
  */
 void World::setup(int overallWidth, int overallHeight, bool maimuc) {
     if (isSetup)
@@ -89,18 +89,16 @@ void World::generateTerrain() {
 
     for (int y = 0; y < World::height / TILE_SIZE; y++) {
         for (int x = 0; x < World::width / TILE_SIZE; x++) {
-            if ((x / 8) % 2 == 0) {
-                if ((y / 8) % 2 == 0) {
-                    terrain[y * (World::width / TILE_SIZE) + x] = &Tile::GRASS;
-                } else {
-                    terrain[y * (World::width / TILE_SIZE) + x] = &Tile::SAND;
-                }
+            float val = SimplexNoise::noise((float) x / 36.f, (float) y / 36.f);
+
+            if (val < -0.4) {
+                terrain[y * (World::width / TILE_SIZE) + x] = &Tile::WATER;
+            } else if (val < -0.2) {
+                terrain[y * (World::width / TILE_SIZE) + x] = &Tile::SAND;
+            } else if (val < 0.7) {
+                terrain[y * (World::width / TILE_SIZE) + x] = &Tile::GRASS;
             } else {
-                if ((y / 8) % 2 == 0) {
-                    terrain[y * (World::width / TILE_SIZE) + x] = &Tile::STONE;
-                } else {
-                    terrain[y * (World::width / TILE_SIZE) + x] = &Tile::WATER;
-                }
+                terrain[y * (World::width / TILE_SIZE) + x] = &Tile::STONE;
             }
         }
     }
