@@ -260,3 +260,7 @@ Matrix& Matrix::transpose() {
     }
     return *this;
 }
+
+int Matrix::serializedSize() {
+    return (2 + width * height) * 4;
+}

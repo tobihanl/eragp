@@ -6,13 +6,15 @@
 class Entity {
 private:
     static int currentId;
-    int id;
 protected:
     SDL_Texture *texture;
+    int id;
 public:
     int x, y;
 
     Entity(int x, int y, const SDL_Color &color, int radius);
+
+    Entity(int id, int x, int y, const SDL_Color &color, float size);
 
     virtual ~Entity();
 

@@ -34,6 +34,18 @@ LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float 
 
 }
 
+
+LivingEntity::LivingEntity(void *&ptr) : Entity(((int *) ptr)[0], ((int *) ptr)[1], ((int *) ptr)[2],
+                                                {(Uint8)(((int *) ptr)[3] >> 24), (Uint8)(((int *) ptr)[3] >> 16),
+                                                 (Uint8)(((int *) ptr)[3] >> 8), (Uint8)((int *) ptr)[3]},
+                                                ((float *) ptr)[5]), speed(((float *) ptr)[4]),
+                                         size(((float *) ptr)[5]) {
+    color = {(Uint8)(((int *) ptr)[3] >> 24), (Uint8)(((int *) ptr)[3] >> 16), (Uint8)(((int *) ptr)[3] >> 8),
+             (Uint8)((int *) ptr)[3]};
+    ptr = static_cast<int *>(ptr) + 6;
+    brain = new Brain(ptr);
+}
+
 static int getNumDigits(int x) {
     if (x < 10) return 1;
     else if (x < 100) return 2;
@@ -112,6 +124,36 @@ void LivingEntity::tick() {
     }
 }
 
+int LivingEntity::serializedSize() {
+    return 6 * 4 + brain->serializedSized();
+}
+
+/**
+ * Writes the data to the given point in memory and sets the pointer to point to the next free byte after the written data
+ * Only works on platforms with sizeof(int) = sizeof(float) = 32 bit
+ * @param ptr Where to write the data. Use serializedSize() before, to determine the required space for allocation
+ */
+void LivingEntity::serialize(void *&ptr) {
+    //continuous counting only works due to sizeof(int) = sizeof(float)
+    ((int *) ptr)[0] = id;
+    ((int *) ptr)[1] = x;
+    ((int *) ptr)[2] = y;
+    ((int *) ptr)[3] = ((int) color.r << 24) | ((int) color.g << 16) | ((int) color.b << 8) | color.a;
+    ((float *) ptr)[4] = speed;
+    ((float *) ptr)[5] = size;
+    ptr = static_cast<int *>(ptr) + 6;
+    brain->serialize(ptr);
+}
+
+std::ostream &operator<<(std::ostream &strm, const LivingEntity &l) {
+    strm << "Entity:[id: " << l.id << ", x: " << l.x << ", y: " << l.y << ", color:{r: " << ((int) l.color.r) << ", g: "
+         << ((int) l.color.g) << ", b: " << ((int) l.color.b) << "}, speed: " << l.speed << ", size: " << l.size
+         << ", brainLayers: " << l.brain->getNumLayers() << "]";
+    return strm;
+}
+
 LivingEntity::~LivingEntity() {
     delete brain;
 }
+
+

@@ -14,8 +14,15 @@ private:
      */
     Brain(Brain *b);
 
+    friend std::ostream &operator<<(std::ostream &strm, const Brain &b);
 public:
     Brain(int layerAmount, int layerSizes[]);
+
+    /**
+     * Deserialization
+     * @param ptr first byte to deserialize. Points to next free byte after execution.
+     */
+    Brain(void *&ptr);
 
     virtual ~Brain();
 
@@ -25,8 +32,14 @@ public:
      * Creates a mutated copy. Remember to delete it after usage-
      * @return pointer to the mutated copy
      */
+
     Brain *createMutatedCopy();
 
+    int serializedSized();
+
+    void serialize(void *&ptr);
+
+    int getNumLayers();
 };
 
 

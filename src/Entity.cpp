@@ -1,13 +1,19 @@
 #include "Entity.h"
 #include <cmath>
 #include "Renderer.h"
+#include "World.h"
 
 int Entity::currentId = 0;
 
 Entity::Entity(int startX, int startY, const SDL_Color &color, int radius) : x(startX), y(startY),
                                                                              texture(Renderer::renderDot(radius,
                                                                                                          color)),
-                                                                             id(currentId++) {}
+                                                                             id(currentId++) {
+
+}
+
+Entity::Entity(int i, int ix, int iy, const SDL_Color &color, float size)
+        : texture(Renderer::renderDot((int) ((1.0f + size) * TILE_SIZE / 2), color)), id(i), x(ix), y(iy) {}
 
 Entity::~Entity() {
     Renderer::cleanup(texture);

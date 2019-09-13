@@ -9,7 +9,6 @@ typedef float(*MatrixFunction)(float);
 class Matrix {
 private:
     int height, width; //size_t is guaranteed to be able to express the maximum size of any object including array
-    std::vector<float> data;
 
     friend std::ostream& operator<<(std::ostream &strm, const Matrix &m);
 
@@ -25,7 +24,7 @@ private:
 
     friend bool operator==(const Matrix &lhs, const Matrix &rhs);
 public:
-
+    std::vector<float> data;
     /**
      * Copy constructor
      * @param m pointer to Matrix to copy
@@ -109,6 +108,8 @@ public:
      * @return itself
      */
     Matrix& transpose();
+
+    int serializedSize();
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_MATRIX_H
