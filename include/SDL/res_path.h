@@ -20,7 +20,7 @@ namespace Include {
 
         // IMPORTANT:   Change this path according to the location of the binary!
         //              Otherwise SDL won't be able to find any resources!
-        const std::string PATH_TO_BINARY = "cmake-build-debug";
+        const std::string PATH_TO_BINARY = "build";
 
         static std::string baseRes;
         if (baseRes.empty()) {
