@@ -89,7 +89,11 @@ void World::generateTerrain() {
 
     for (int y = 0; y < World::height / TILE_SIZE; y++) {
         for (int x = 0; x < World::width / TILE_SIZE; x++) {
-            if ((x / 8) % 2 == 0) {
+            //4,3 - 11,8                                        32         96          24       72
+            terrain[y * (World::width / TILE_SIZE) + x] = (x > 4 * 8 && x < 12 * 8 && y > 3 * 8 && y < 9 * 8)
+                                                          ? &Tile::WATER : &Tile::GRASS;
+
+            /*if ((x / 8) % 2 == 0) {
                 if ((y / 8) % 2 == 0) {
                     terrain[y * (World::width / TILE_SIZE) + x] = &Tile::GRASS;
                 } else {
@@ -101,7 +105,7 @@ void World::generateTerrain() {
                 } else {
                     terrain[y * (World::width / TILE_SIZE) + x] = &Tile::WATER;
                 }
-            }
+            }*/
         }
     }
 }
@@ -122,7 +126,7 @@ void World::render() {
 }
 
 void World::tick() {
-    addFoodEntity(new FoodEntity(rand() % World::width, rand() % World::height, 4 * 60));
+    addFoodEntity(new FoodEntity(rand() % World::width, rand() % World::height, 8 * 60));
     for (const auto &e : living) {
         e->tick();
     }
@@ -322,8 +326,8 @@ int *splitRect(int num, int width, int height) {
 }
 
 Tile *World::tileAt(int x, int y) {
-    if (x < 0 || x >= width || y < 0 || y >= height) return nullptr;
-    return terrain[x / TILE_SIZE, y / TILE_SIZE];
+    if (x < 0 || x >= width || y < 0 || y >= height) return &Tile::INVALID;
+    return terrain[(y / TILE_SIZE) * (width / TILE_SIZE) + (x / TILE_SIZE)];
 }
 
 //TODO cleanup for destroyed entities

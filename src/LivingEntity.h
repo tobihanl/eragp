@@ -15,10 +15,13 @@ private:
     static std::mt19937 randomGenerator;
     static std::normal_distribution<float> normalDistribution;
 
+
+    float rotation; //TODO add to serialization
+
     SDL_Color color;
     float speed;
     float size;
-    float rotation; //TODO add to serialization
+    float waterAgility; //TODO add to serialization
 
     int energy;
     int cooldown;
@@ -29,7 +32,7 @@ public:
 
     Brain *brain;
 
-    LivingEntity(int x, int y, SDL_Color color, float speed, float size, Brain *brain);
+    LivingEntity(int x, int y, SDL_Color color, float speed, float size, float waterAgility, Brain *brain);
 
     LivingEntity(void *&ptr);
 

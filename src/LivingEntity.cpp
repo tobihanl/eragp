@@ -17,23 +17,37 @@ static std::mt19937 createGenerator() {
 }
 
 std::mt19937 LivingEntity::randomGenerator = createGenerator();
-std::normal_distribution<float> LivingEntity::normalDistribution(0, 0.1);
+std::normal_distribution<float> LivingEntity::normalDistribution(0, 0.01);
 
 SDL_Texture *LivingEntity::digits[10];
 
 //################################Begin object##############################################
 
-LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float si, Brain *b) : Entity(startX, startY,
-                                                                                                       c, (int) ((1.0f +
+LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float si, float wa, Brain *b) : Entity(startX,
+                                                                                                                 startY,
+                                                                                                                 c,
+                                                                                                                 (int) ((1.0f +
                                                                                                                   si) *
                                                                                                                  TILE_SIZE /
                                                                                                                  2)),
-                                                                                                color(c),
-                                                                                                speed(sp >= 0 ? sp : 0),
-                                                                                                size(si >= 0 ? si : 0),
-                                                                                                brain(b),
-                                                                                                energy(60 * 2),
-                                                                                                cooldown(60) {
+                                                                                                          color(c),
+                                                                                                          speed(sp >= 0
+                                                                                                                ? sp
+                                                                                                                : 0),
+                                                                                                          size(si >= 0
+                                                                                                               ? si
+                                                                                                               : 0),
+                                                                                                          waterAgility(
+                                                                                                                  wa < 0
+                                                                                                                  ? 0
+                                                                                                                  : (wa >
+                                                                                                                     1
+                                                                                                                     ? 1
+                                                                                                                     : wa)),
+                                                                                                          brain(b),
+                                                                                                          energy(60 *
+                                                                                                                 2),
+                                                                                                          cooldown(60) {
 
 }
 
@@ -82,7 +96,7 @@ void LivingEntity::tick() {
     FoodEntity *nearestFood = World::findNearestFood(x, y);
     LivingEntity *nearestEnemy = World::findNearestLiving(this);//TODO implement real logic
     LivingEntity *nearestMate = World::findNearestLiving(this);//TODO implement real logic
-    //all valid
+
     Matrix continuousIn(6, 1, {
             (float) (nearestFood ? nearestFood->getDistance(x, y) : BRAIN_NOT_FOUND),
             (float) (nearestEnemy ? nearestEnemy->getDistance(x, y) : BRAIN_NOT_FOUND),
@@ -94,8 +108,8 @@ void LivingEntity::tick() {
             (float) (nearestFood ? std::atan2(nearestFood->x - x, nearestFood->y - y) / PI : rotation),
             (float) (nearestEnemy ? std::atan2(nearestEnemy->x - x, nearestEnemy->y - y) / PI : rotation),
             (float) (nearestMate ? std::atan2(nearestMate->x - x, nearestMate->y - y) / PI : rotation),
-            World::tileAt(x + std::round(std::cos(rotation * PI) * TILE_SIZE),
-                          y + std::round(std::sin(rotation * PI) * TILE_SIZE)) == &Tile::WATER ? -1.f : 1.f
+            *World::tileAt(x + std::round(std::cos(rotation * PI) * TILE_SIZE),
+                           y + std::round(std::sin(rotation * PI) * TILE_SIZE)) == Tile::WATER ? -1.f : 1.f
     });
     //std::cout << continuousIn << normalizedIn << std::endl;
     ThinkResult thoughts = brain->think(continuousIn, normalizedIn);
@@ -103,12 +117,18 @@ void LivingEntity::tick() {
     WorldDim dim = World::getWorldDim();
     //################################# Move ##################################
     if (thoughts.move) {
-        x += (int) std::round(TILE_SIZE * speed * std::cos(rotation * PI));
-        if (x < 0) x = 0;
-        else if (x >= dim.w) x = dim.w - 1;
-        y += (int) std::round(TILE_SIZE * speed * std::sin(rotation * PI));
-        if (y < 0) y = 0;
-        else if (y >= dim.h) y = dim.h - 1;
+        float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
+        int xTo = x + (int) std::round(TILE_SIZE * speed * agility * 2 * std::cos(rotation * PI));
+        if (xTo < 0) xTo = 0;
+        else if (xTo >= dim.w) xTo = dim.w - 1;
+        int yTo = y + (int) std::round(TILE_SIZE * speed * agility * 2 * std::sin(rotation * PI));
+        if (yTo < 0) yTo = 0;
+        else if (yTo >= dim.h) yTo = dim.h - 1;
+        if (*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2
+            || *World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8) {
+            x = xTo;
+            y = yTo;
+        }
     }
     //################################## Eat ##################################
     if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
@@ -133,6 +153,7 @@ void LivingEntity::tick() {
         //energy -= 60; leaving out might give better results
         World::addLivingEntity(new LivingEntity(x, y, color, speed + normalDistribution(randomGenerator),
                                                 size + normalDistribution(randomGenerator),
+                                                waterAgility + normalDistribution(randomGenerator),
                                                 brain->createMutatedCopy()));
         cooldown += 60;
     }
@@ -162,7 +183,7 @@ void LivingEntity::serialize(void *&ptr) {
 std::ostream &operator<<(std::ostream &strm, const LivingEntity &l) {
     strm << "Entity:[id: " << l.id << ", x: " << l.x << ", y: " << l.y << ", color:{r: " << ((int) l.color.r) << ", g: "
          << ((int) l.color.g) << ", b: " << ((int) l.color.b) << "}, speed: " << l.speed << ", size: " << l.size
-         << ", brainLayers: " << l.brain->getNumLayers() << "]";
+         << ", waterAgility: " << l.waterAgility << ", brainLayers: " << l.brain->getNumLayers() << "]";
     return strm;
 }
 

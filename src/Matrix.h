@@ -21,6 +21,8 @@ private:
     friend Matrix operator/(Matrix lhs, float rhs);
 
     friend bool operator==(const Matrix &lhs, const Matrix &rhs);
+
+    friend bool operator!=(const Matrix &lhs, const Matrix &rhs);
 public:
     int height, width;
 

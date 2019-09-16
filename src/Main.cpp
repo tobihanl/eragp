@@ -152,10 +152,11 @@ int main(int argc, char **argv) {
         auto *entity = new LivingEntity(std::rand() % dim.w, std::rand() % dim.h,
                                         {static_cast<Uint8>(std::rand()), static_cast<Uint8>(std::rand()),
                                          static_cast<Uint8>(std::rand()), 255},
-                                        (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f, brain);
+                                        (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f,
+                                        (rand() % 10000) / 10000.0f, brain);
         World::addLivingEntity(entity);
     }
-    for (int i = 0; i < 250; i++) {
+    for (int i = 0; i < 100; i++) {
         World::addFoodEntity(new FoodEntity(std::rand() % dim.w, std::rand() % dim.h, 8 * 60));
     }
     //=========================== END ADD TEST ENTITIES ===========================

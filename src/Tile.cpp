@@ -2,11 +2,20 @@
 #include "Renderer.h"
 
 //TODO better fitting colors
-Tile Tile::GRASS = Tile({0, 255, 0, 255});
-Tile Tile::STONE = Tile({127, 127, 127, 255});
-Tile Tile::SAND = Tile({255, 255, 0, 255});
-Tile Tile::WATER = Tile({0, 0, 255, 255});
+Tile Tile::INVALID = Tile(-1, {0, 0, 0, 0});
+Tile Tile::GRASS = Tile(0, {0, 255, 0, 255});
+Tile Tile::WATER = Tile(1, {0, 0, 255, 255});
+Tile Tile::STONE = Tile(2, {127, 127, 127, 255});
+Tile Tile::SAND = Tile(3, {255, 255, 0, 255});
 
-Tile::Tile(SDL_Color c) : color(c) {
+Tile::Tile(int i, SDL_Color c) : id(i), color(c) {
 
+}
+
+bool operator==(const Tile &lhs, const Tile &rhs) {
+    return lhs.id == rhs.id;
+}
+
+bool operator!=(const Tile &lhs, const Tile &rhs) {
+    return lhs.id != rhs.id;
 }

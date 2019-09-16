@@ -206,6 +206,10 @@ bool operator==(const Matrix &lhs, const Matrix &rhs) {
     return true;
 }
 
+bool operator!=(const Matrix &lhs, const Matrix &rhs) {
+    return !(lhs == rhs);
+}
+
 Matrix Matrix::dotProduct(const Matrix &other) {
     if(width != other.height) throw std::invalid_argument("Width of the first Matrix with dimensions (" + std::to_string(height) + " x " + std::to_string(width) + ") must be equal to the height of the second Matrix with dimensions (" + std::to_string(other.height) + " x " + std::to_string(other.width) + ").");
     Matrix m(height, other.width);
