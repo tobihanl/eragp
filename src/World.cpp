@@ -170,12 +170,14 @@ FoodEntity *World::findNearestSurvivingFood(int x, int y) {
     return f;
 }
 
-LivingEntity *World::findNearestLiving(int x, int y) {
-    if (living.empty()) return nullptr;
+LivingEntity *World::findNearestLiving(LivingEntity *le) {
+    if (living.empty() || living.size() == 1) return nullptr;
     LivingEntity *n = living[0];
-    int dist = n->getSquaredDistance(x, y);
+    if (*n == *le) n = living[1];
+    int dist = n->getSquaredDistance(le->x, le->y);
     for (const auto &e : living) {
-        int tempDist = e->getSquaredDistance(x, y);
+        if (*e == *le) continue;
+        int tempDist = e->getSquaredDistance(le->x, le->y);
         if (tempDist < dist) {
             n = e;
             dist = tempDist;
@@ -317,6 +319,11 @@ int *splitRect(int num, int width, int height) {
     dim[0] = width;
     dim[1] = height;
     return dim;
+}
+
+Tile *World::tileAt(int x, int y) {
+    if (x < 0 || x >= width || y < 0 || y >= height) return nullptr;
+    return terrain[x / TILE_SIZE, y / TILE_SIZE];
 }
 
 //TODO cleanup for destroyed entities

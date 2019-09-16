@@ -148,8 +148,7 @@ int main(int argc, char **argv) {
 
     //============================= ADD TEST ENTITIES =============================
     for (int i = 0; i < 100; i++) {
-        int layers[3] = {3, 4, 10};
-        auto *brain = new Brain(3, layers);
+        auto *brain = new Brain(6, 8, 4, 4, 10, 4);
         auto *entity = new LivingEntity(std::rand() % dim.w, std::rand() % dim.h,
                                         {static_cast<Uint8>(std::rand()), static_cast<Uint8>(std::rand()),
                                          static_cast<Uint8>(std::rand()), 255},

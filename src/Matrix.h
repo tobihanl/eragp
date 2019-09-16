@@ -8,8 +8,6 @@ typedef float(*MatrixFunction)(float);
 
 class Matrix {
 private:
-    int height, width; //size_t is guaranteed to be able to express the maximum size of any object including array
-
     friend std::ostream& operator<<(std::ostream &strm, const Matrix &m);
 
     friend Matrix operator+(Matrix lhs, const Matrix& rhs);
@@ -24,6 +22,9 @@ private:
 
     friend bool operator==(const Matrix &lhs, const Matrix &rhs);
 public:
+    int height, width;
+
+
     std::vector<float> data;
     /**
      * Copy constructor
@@ -67,8 +68,9 @@ public:
 
     virtual ~Matrix();
 
-    size_t getWidth();
-    size_t getHeight();
+    int getWidth();
+
+    int getHeight();
     float getMax();
     float getMin();
 
@@ -82,8 +84,9 @@ public:
     Matrix& operator*=(float rhs);
     Matrix& operator/=(float rhs);
 
-    float& operator()(size_t y, size_t x);
-    float operator()(size_t y, size_t x) const;
+    float &operator()(int y, int x);
+
+    float operator()(int y, int x) const;
 
     Matrix dotProduct(const Matrix &other);
     /**

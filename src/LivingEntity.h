@@ -18,6 +18,7 @@ private:
     SDL_Color color;
     float speed;
     float size;
+    float rotation; //TODO add to serialization
 
     int energy;
     int cooldown;

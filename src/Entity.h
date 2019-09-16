@@ -6,6 +6,10 @@
 class Entity {
 private:
     static int currentId;
+
+    friend bool operator==(const Entity &lhs, const Entity &rhs);
+
+    friend bool operator!=(const Entity &lhs, const Entity &rhs);
 protected:
     SDL_Texture *texture;
     int id;
@@ -38,8 +42,6 @@ public:
      * @return the squared distance
      */
     int getSquaredDistance(int x, int y);
-    bool operator==(const Entity &other) const;
-    bool operator!=(const Entity &other) const;
 };
 
 

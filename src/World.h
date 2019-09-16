@@ -62,7 +62,7 @@ public:
 
     static FoodEntity *findNearestSurvivingFood(int x, int y);
 
-    static LivingEntity *findNearestLiving(int x, int y);
+    static LivingEntity *findNearestLiving(LivingEntity *le);
 
     static void addLivingEntity(LivingEntity *e);
 
@@ -73,6 +73,8 @@ public:
     static void removeFoodEntity(FoodEntity *e);
 
     static bool toRemoveFood(FoodEntity *e);
+
+    static Tile *tileAt(int x, int y);
 
 private:
     static bool toRemoveLiving(LivingEntity *e);

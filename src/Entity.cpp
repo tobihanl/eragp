@@ -19,12 +19,12 @@ Entity::~Entity() {
     Renderer::cleanup(texture);
 }
 
-bool Entity::operator==(const Entity &other) const {
-    return this->id == other.id;
+bool operator==(const Entity &lhs, const Entity &rhs) {
+    return lhs.id == rhs.id;
 }
 
-bool Entity::operator!=(const Entity &other) const {
-    return !(*this == other);
+bool operator!=(const Entity &lhs, const Entity &rhs) {
+    return !(lhs == rhs);
 }
 
 int Entity::getSquaredDistance(int x, int y) {
