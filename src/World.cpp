@@ -190,6 +190,36 @@ LivingEntity *World::findNearestLiving(LivingEntity *le) {
     return n;
 }
 
+LivingEntity *World::findNearestEnemy(LivingEntity *le) {
+    if (living.empty() || living.size() == 1) return nullptr;
+    LivingEntity *n = nullptr;
+    int dist = 0;
+    for (const auto &e : living) {
+        if (*e == *le || le->similarity(*e) < 0.8) continue;//TODO adjust threshold
+        int tempDist = e->getSquaredDistance(le->x, le->y);
+        if (!n || tempDist < dist) {
+            n = e;
+            dist = tempDist;
+        }
+    }
+    return n;
+}
+
+LivingEntity *World::findNearestMate(LivingEntity *le) {
+    if (living.empty() || living.size() == 1) return nullptr;
+    LivingEntity *n = nullptr;
+    int dist = 0;
+    for (const auto &e : living) {
+        if (*e == *le || le->similarity(*e) >= 0.8) continue;//TODO adjust threshold
+        int tempDist = e->getSquaredDistance(le->x, le->y);
+        if (!n || tempDist < dist) {
+            n = e;
+            dist = tempDist;
+        }
+    }
+    return n;
+}
+
 void World::addLivingEntity(LivingEntity *e) {
     if (!toAddLiving(e))
         addLiving.push_back(e);

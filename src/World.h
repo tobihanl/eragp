@@ -64,6 +64,10 @@ public:
 
     static LivingEntity *findNearestLiving(LivingEntity *le);
 
+    static LivingEntity *findNearestEnemy(LivingEntity *le);
+
+    static LivingEntity *findNearestMate(LivingEntity *le);
+
     static void addLivingEntity(LivingEntity *e);
 
     static void addFoodEntity(FoodEntity *e);

@@ -94,8 +94,8 @@ void LivingEntity::render() {
 void LivingEntity::tick() {
     //################################# Think #################################
     FoodEntity *nearestFood = World::findNearestFood(x, y);
-    LivingEntity *nearestEnemy = World::findNearestLiving(this);//TODO implement real logic
-    LivingEntity *nearestMate = World::findNearestLiving(this);//TODO implement real logic
+    LivingEntity *nearestEnemy = World::findNearestEnemy(this);
+    LivingEntity *nearestMate = World::findNearestMate(this);
 
     Matrix continuousIn(6, 1, {
             (float) (nearestFood ? nearestFood->getDistance(x, y) : BRAIN_NOT_FOUND),
@@ -157,6 +157,16 @@ void LivingEntity::tick() {
                                                 brain->createMutatedCopy()));
         cooldown += 60;
     }
+}
+
+//TODO consider new properties when added
+float LivingEntity::similarity(const LivingEntity &e) {
+    return std::sqrt((e.color.r - color.r) * (e.color.r - color.r)
+                     + (e.color.g - color.g) * (e.color.g - color.g)
+                     + (e.color.b - color.b) * (e.color.b - color.b)
+                     + (e.speed - speed) * (e.speed - speed)
+                     + (e.size - size) * (e.size - size)
+                     + (e.waterAgility - waterAgility) * (e.waterAgility - waterAgility));//TODO consider brain
 }
 
 int LivingEntity::serializedSize() {
