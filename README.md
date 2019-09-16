@@ -21,10 +21,13 @@ Link to Trello task as first line in commit message.
 
 ## Using the keyboard and mouse while running the application
 
-- **Pause/Play** `P`: Pause the simulation for further inspection of the entities. Hitting the key again resumes the
-simulation.
+- **Pause/Play** `P`: Pauses simulation for further inspection of entities. Hitting the key again resumes simulation.
 
-- **Quit** `Q`: Stop the simulation and quit the application.
+- **Similarity mode** `S`: Pauses simulation and two living entities can be selected via left-clicks. After that the
+similarity of both living entities will be printed into the console. Hitting the key again resumes simulation and
+disables the similarity mode.
+
+- **Quit** `Q`: Stops simulation and quits the application.
 
 - **Left-click**: Get information about the nearest living entity, where the mouse was pressed, printed in the console.
 

@@ -39,11 +39,15 @@ void renderLoop() {
     int previousTime = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count();
 
+    // Debug flags and other stuff
+    bool paused = false, similarityMode = false;
+    std::vector<LivingEntity *> selectedEntities;
+
     //=============================================================================
     //                               BEGIN MAIN LOOP
     //=============================================================================
     SDL_Event e;
-    bool run = true, paused = false;
+    bool run = true;
     while (true) {
         render = false;
 
@@ -60,13 +64,26 @@ void renderLoop() {
                 // Key pressed?
                 case SDL_KEYDOWN:
                     switch (e.key.keysym.sym) {
+                        // Pause/Play
                         case SDLK_p:
-                            paused = !paused;
-                            render = true;
+                            // Simulation is already paused in similarity mode!
+                            if (!similarityMode) {
+                                paused = !paused;
+                                render = true;
+                            }
                             break;
 
+                            // QUIT
                         case SDLK_q:
                             run = false;
+                            break;
+
+                            // Similarity mode
+                        case SDLK_s:
+                            if (!similarityMode) similarityMode = paused = render = true;
+                            else similarityMode = paused = false;
+
+                            selectedEntities.clear();
                             break;
 
                         default:
@@ -78,8 +95,20 @@ void renderLoop() {
                 case SDL_MOUSEBUTTONDOWN:
                     if (e.button.button == SDL_BUTTON_LEFT) {
                         LivingEntity *nearest = World::findNearestLiving(e.button.x, e.button.y, -1);
-                        if (nearest) std::cout << *nearest << std::endl;
-                        else std::cout << "No nearest entity available!" << std::endl;
+
+                        if (similarityMode) {
+                            if (nearest) selectedEntities.push_back(nearest);
+
+                            // Two entities selected?
+                            if (selectedEntities.size() == 2) {
+                                std::cout << "Similarity: " << selectedEntities[0]->similarity(*selectedEntities[1])
+                                          << std::endl;
+                                selectedEntities.clear();
+                            }
+                        } else {
+                            if (nearest) std::cout << *nearest << std::endl;
+                            else std::cout << "No nearest entity available!" << std::endl;
+                        }
                     }
                     break;
 
