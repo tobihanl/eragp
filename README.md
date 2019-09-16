@@ -19,6 +19,13 @@ Link to Trello task as first line in commit message.
 
 - **MaiMUC** `-m` (optional): Run the application with the MaiMUC configuration. No value required.
 
+## Using the keyboard while running the application
+
+- **Pause/Play** `P`: Pause the simulation for further inspection of the entities. Hitting the key again resumes the
+simulation.
+
+- **Quit** `Q`: Stop the simulation and quit the application.
+
 ## Local Dev Env
 A docker container exists for easy local development.
 The docker container exposes a VNC server at the address `vnc://localhost:5901` with password ``vncpassword``.

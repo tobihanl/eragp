@@ -43,7 +43,7 @@ void renderLoop() {
     //                               BEGIN MAIN LOOP
     //=============================================================================
     SDL_Event e;
-    bool run = true;
+    bool run = true, paused = false;
     while (true) {
         render = false;
 
@@ -56,8 +56,32 @@ void renderLoop() {
 
         // Process input
         while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT)
-                run = false;
+            switch (e.type) {
+                // Key pressed?
+                case SDL_KEYDOWN:
+                    switch (e.key.keysym.sym) {
+                        case SDLK_p:
+                            paused = !paused;
+                            render = true;
+                            break;
+
+                        case SDLK_q:
+                            run = false;
+                            break;
+
+                        default:
+                            break;
+                    }
+                    break;
+
+                    // QUIT
+                case SDL_QUIT:
+                    run = false;
+                    break;
+
+                default:
+                    break;
+            }
         }
 
         if (!run) break;
@@ -66,15 +90,21 @@ void renderLoop() {
         while (lag >= MS_PER_TICK) {
             lag -= MS_PER_TICK;
 
-            render = true;
-            World::tick();
+            if (!paused) {
+                render = true;
+                World::tick();
+            }
         }
 
         // Render if needed
         if (render) {
-            // Render everything
             Renderer::clear();
+
+            // Render everything
             World::render();
+            if (paused)
+                Renderer::copy(Renderer::renderFont("Paused", 25, {0, 0, 0, 255}, "font.ttf"), 10, 10);
+
             Renderer::present();
         }
 
