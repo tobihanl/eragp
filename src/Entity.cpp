@@ -19,6 +19,10 @@ Entity::~Entity() {
     Renderer::cleanup(texture);
 }
 
+int Entity::getId() {
+    return id;
+}
+
 bool operator==(const Entity &lhs, const Entity &rhs) {
     return lhs.id == rhs.id;
 }

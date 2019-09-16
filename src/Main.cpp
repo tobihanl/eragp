@@ -74,6 +74,15 @@ void renderLoop() {
                     }
                     break;
 
+                    // Mouse clicked?
+                case SDL_MOUSEBUTTONDOWN:
+                    if (e.button.button == SDL_BUTTON_LEFT) {
+                        LivingEntity *nearest = World::findNearestLiving(e.button.x, e.button.y, -1);
+                        if (nearest) std::cout << *nearest << std::endl;
+                        else std::cout << "No nearest entity available!" << std::endl;
+                    }
+                    break;
+
                     // QUIT
                 case SDL_QUIT:
                     run = false;

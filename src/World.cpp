@@ -1,5 +1,4 @@
 #include <mpi.h>
-#include <cfloat>
 #include "World.h"
 #include <algorithm>
 #include <cstdlib>
@@ -183,6 +182,24 @@ LivingEntity *World::findNearestLiving(LivingEntity *le) {
         if (*e == *le) continue;
         int tempDist = e->getSquaredDistance(le->x, le->y);
         if (tempDist < dist) {
+            n = e;
+            dist = tempDist;
+        }
+    }
+    return n;
+}
+
+/**
+ * @param id    ID of the LivingEntity, which will be excluded for the
+ *              search of the nearest LivingEntity
+ */
+LivingEntity *World::findNearestLiving(int x, int y, int id) {
+    LivingEntity *n = nullptr;
+    int dist = 0;
+    for (const auto &e : living) {
+        if (n && n->getId() == id) continue;
+        int tempDist = e->getSquaredDistance(x, y);
+        if (!n || tempDist < dist) {
             n = e;
             dist = tempDist;
         }

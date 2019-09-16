@@ -64,6 +64,8 @@ public:
 
     static LivingEntity *findNearestLiving(LivingEntity *le);
 
+    static LivingEntity *findNearestLiving(int x, int y, int id);
+
     static LivingEntity *findNearestEnemy(LivingEntity *le);
 
     static LivingEntity *findNearestMate(LivingEntity *le);

@@ -4,7 +4,6 @@
 #include "Renderer.h"
 #include "World.h"
 #include "FoodEntity.h"
-#include <cmath>
 #include <cassert>
 
 #define PI 3.14159265
@@ -23,31 +22,15 @@ SDL_Texture *LivingEntity::digits[10];
 
 //################################Begin object##############################################
 
-LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float si, float wa, Brain *b) : Entity(startX,
-                                                                                                                 startY,
-                                                                                                                 c,
-                                                                                                                 (int) ((1.0f +
-                                                                                                                  si) *
-                                                                                                                 TILE_SIZE /
-                                                                                                                 2)),
-                                                                                                          color(c),
-                                                                                                          speed(sp >= 0
-                                                                                                                ? sp
-                                                                                                                : 0),
-                                                                                                          size(si >= 0
-                                                                                                               ? si
-                                                                                                               : 0),
-                                                                                                          waterAgility(
-                                                                                                                  wa < 0
-                                                                                                                  ? 0
-                                                                                                                  : (wa >
-                                                                                                                     1
-                                                                                                                     ? 1
-                                                                                                                     : wa)),
-                                                                                                          brain(b),
-                                                                                                          energy(60 *
-                                                                                                                 2),
-                                                                                                          cooldown(60) {
+LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float si, float wa, Brain *b) :
+        Entity(startX, startY, c, (int) ((1.0f + si) * TILE_SIZE / 2)),
+        color(c),
+        speed(sp >= 0 ? sp : 0),
+        size(si >= 0 ? si : 0),
+        waterAgility(wa < 0 ? 0 : (wa > 1 ? 1 : wa)),
+        brain(b),
+        energy(60 * 2),
+        cooldown(60) {
 
 }
 

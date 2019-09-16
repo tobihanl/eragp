@@ -19,12 +19,14 @@ Link to Trello task as first line in commit message.
 
 - **MaiMUC** `-m` (optional): Run the application with the MaiMUC configuration. No value required.
 
-## Using the keyboard while running the application
+## Using the keyboard and mouse while running the application
 
 - **Pause/Play** `P`: Pause the simulation for further inspection of the entities. Hitting the key again resumes the
 simulation.
 
 - **Quit** `Q`: Stop the simulation and quit the application.
+
+- **Left-click**: Get information about the nearest living entity, where the mouse was pressed, printed in the console.
 
 ## Local Dev Env
 A docker container exists for easy local development.
