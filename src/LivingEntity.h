@@ -40,7 +40,7 @@ public:
     void render() override;
     void tick() override;
 
-    float similarity(const LivingEntity &e);
+    float difference(const LivingEntity &e);
 
     int serializedSize();
     void serialize(void *&ptr);

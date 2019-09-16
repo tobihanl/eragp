@@ -212,7 +212,7 @@ LivingEntity *World::findNearestEnemy(LivingEntity *le) {
     LivingEntity *n = nullptr;
     int dist = 0;
     for (const auto &e : living) {
-        if (*e == *le || le->similarity(*e) < 0.8) continue;//TODO adjust threshold
+        if (*e == *le || le->difference(*e) < 0.04) continue;
         int tempDist = e->getSquaredDistance(le->x, le->y);
         if (!n || tempDist < dist) {
             n = e;
@@ -227,7 +227,7 @@ LivingEntity *World::findNearestMate(LivingEntity *le) {
     LivingEntity *n = nullptr;
     int dist = 0;
     for (const auto &e : living) {
-        if (*e == *le || le->similarity(*e) >= 0.8) continue;//TODO adjust threshold
+        if (*e == *le || le->difference(*e) >= 0.04) continue;
         int tempDist = e->getSquaredDistance(le->x, le->y);
         if (!n || tempDist < dist) {
             n = e;

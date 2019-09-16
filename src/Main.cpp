@@ -101,7 +101,7 @@ void renderLoop() {
 
                             // Two entities selected?
                             if (selectedEntities.size() == 2) {
-                                std::cout << "Similarity: " << selectedEntities[0]->similarity(*selectedEntities[1])
+                                std::cout << "Difference: " << selectedEntities[0]->difference(*selectedEntities[1])
                                           << std::endl;
                                 selectedEntities.clear();
                             }

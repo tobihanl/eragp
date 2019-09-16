@@ -143,10 +143,10 @@ void LivingEntity::tick() {
 }
 
 //TODO consider new properties when added
-float LivingEntity::similarity(const LivingEntity &e) {
-    return std::sqrt((e.color.r - color.r) * (e.color.r - color.r)
-                     + (e.color.g - color.g) * (e.color.g - color.g)
-                     + (e.color.b - color.b) * (e.color.b - color.b)
+float LivingEntity::difference(const LivingEntity &e) {
+    return std::sqrt(((e.color.r - color.r) / 255.f) * ((e.color.r - color.r) / 255.f)
+                     + ((e.color.g - color.g) / 255.f) * ((e.color.g - color.g) / 255.f)
+                     + ((e.color.b - color.b) / 255.f) * ((e.color.b - color.b) / 255.f)
                      + (e.speed - speed) * (e.speed - speed)
                      + (e.size - size) * (e.size - size)
                      + (e.waterAgility - waterAgility) * (e.waterAgility - waterAgility));//TODO consider brain
