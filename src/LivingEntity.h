@@ -36,6 +36,10 @@ public:
     void render() override;
     void tick() override;
 
+    void setEnergy(int energy) {
+        this->energy = energy;
+    }
+
     int serializedSize();
 
     void serialize(void *&ptr);

@@ -21,6 +21,8 @@ public:
     virtual void render() = 0;
     virtual void tick() = 0;
 
+    void assignNewId();
+
     /**
      * Calculates distance to a given position
      * @param x the x coordinate of the position

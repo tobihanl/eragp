@@ -89,11 +89,28 @@ void LivingEntity::tick() {
         float brainYDif = thoughts(2, 0);
         float factor = TILE_SIZE * speed / std::sqrt(brainXDif * brainXDif + brainYDif * brainYDif);
         x += (int) std::round(factor * brainXDif);
-        if (x < 0) x = 0;
-        else if (x >= dim.w) x = dim.w - 1;
         y += (int) std::round(factor * brainYDif);
-        if (y < 0) y = 0;
-        else if (y >= dim.h) y = dim.h - 1;
+
+        // check if entity needs to be moved to a neighbor node
+        if (x >= dim.w) {
+            if (y < 0) World::moveToNeighbor(this, 1);
+            else if (y >= dim.h) World::moveToNeighbor(this, 3);
+            else World::moveToNeighbor(this, 2);
+        } else if (x < 0) {
+            if (y < 0) World::moveToNeighbor(this, 7);
+            else if (y >= dim.h) World::moveToNeighbor(this, 5);
+            else World::moveToNeighbor(this, 6);
+        } else {
+            if (y < 0) World::moveToNeighbor(this, 0);
+            else if (y >= dim.h) World::moveToNeighbor(this, 4);
+        }
+
+        // calculate position on new node, might have to be done on new node if dimensions differ
+        if (x >= dim.w) x -= dim.w;
+        else if (x < 0) x = dim.w - x;
+
+        if (y >= dim.h) y -= dim.h;
+        else if (y < 0) y = dim.h - y;
     }
     //################################## Eat ##################################
     if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
@@ -147,7 +164,8 @@ void LivingEntity::serialize(void *&ptr) {
 
 std::ostream &operator<<(std::ostream &strm, const LivingEntity &l) {
     strm << "Entity:[id: " << l.id << ", x: " << l.x << ", y: " << l.y << ", color:{r: " << ((int) l.color.r) << ", g: "
-         << ((int) l.color.g) << ", b: " << ((int) l.color.b) << "}, speed: " << l.speed << ", size: " << l.size
+         << ((int) l.color.g) << ", b: " << ((int) l.color.b) << "}, speed: " << l.speed << ", size: " << l.size <<
+         ", energy: " << l.energy
          << ", brainLayers: " << l.brain->getNumLayers() << "]";
     return strm;
 }

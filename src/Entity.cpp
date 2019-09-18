@@ -34,3 +34,7 @@ int Entity::getSquaredDistance(int x, int y) {
 float Entity::getDistance(int x, int y) {
     return std::sqrt((this->x - x) * (this->x - x) + (this->y - y) * (this->y - y));
 }
+
+void Entity::assignNewId() {
+    this->id = currentId++;
+}

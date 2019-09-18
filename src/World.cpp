@@ -18,6 +18,8 @@ std::vector<FoodEntity *> World::removeFood = std::vector<FoodEntity *>();
 std::vector<LivingEntity *> World::addLiving = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::addFood = std::vector<FoodEntity *>();
 
+std::vector<LivingEntity *> World::livingEntitiesToMoveToNeighbors[NUMBER_OF_NEIGHBORS] = {};
+
 // Init static attributes
 int World::overallWidth = 0;
 int World::overallHeight = 0;
@@ -53,8 +55,7 @@ void World::setup(int overallWidth, int overallHeight, bool maimuc) {
 
     // MaiMUC specific configuration?
     if (maimuc) {
-        // MaiMUC consists of 10 nodes!
-        if (MPI_Nodes != 10) {
+        if (MPI_Nodes != NUMBER_OF_MAIMUC_NODES) {
             std::cerr << "Program started on MaiMUC without running on 10 nodes!" << std::endl;
             abort();
         }
@@ -121,11 +122,62 @@ void World::render() {
     }
 }
 
+int World::getNeighborNodeRank(int neighbor) {
+    int rank = MPI_Rank;
+    if (neighbor != 0 && neighbor != 4) { // if neighbor to the right or left
+        if (rank % 2 == 0) rank++;
+        else rank--;
+    }
+
+    if (neighbor == 7 || neighbor == 0 || neighbor == 1) rank -= 2; // to the top
+    if (neighbor == 5 || neighbor == 4 || neighbor == 3) rank += 2; // to the bottom
+
+    return (rank % NUMBER_OF_MAIMUC_NODES) < 0 ? NUMBER_OF_MAIMUC_NODES + rank : rank % NUMBER_OF_MAIMUC_NODES;
+}
+
 void World::tick() {
     addFoodEntity(new FoodEntity(rand() % World::width, rand() % World::height, 4 * 60));
     for (const auto &e : living) {
         e->tick();
     }
+
+    for (int i = 0; i < NUMBER_OF_NEIGHBORS; i++) {
+        int totalSize = 0;
+        for (const auto &e : livingEntitiesToMoveToNeighbors[i]) {
+            totalSize += e->serializedSize();
+        }
+
+        void *buffer = malloc(totalSize);
+        void *start = buffer;
+
+        for (const auto &e : livingEntitiesToMoveToNeighbors[i]) {
+            e->serialize(buffer);
+            removeLivingEntity(e);
+        }
+        livingEntitiesToMoveToNeighbors[i].clear();
+
+        MPI_Request entityRequest;
+        MPI_Isend(start, totalSize, MPI_BYTE, getNeighborNodeRank(i), 42, MPI_COMM_WORLD, &entityRequest);
+    }
+
+    for (int i = 0; i < NUMBER_OF_NEIGHBORS; i++) {
+        void *buffer = malloc(10000);
+        void *start = buffer;
+        MPI_Status stat;
+        MPI_Recv(buffer, 10000, MPI_BYTE, getNeighborNodeRank(i), 42, MPI_COMM_WORLD, &stat);
+
+        int receivedBytes;
+        MPI_Get_count(&stat, MPI_BYTE, &receivedBytes);
+
+        while (buffer < (char *) start + receivedBytes) {
+            auto *e = new LivingEntity(buffer);
+            e->setEnergy(1000);
+            e->assignNewId();
+            addLivingEntity(e);
+        }
+        free(start);
+    }
+
     living.erase(std::remove_if(living.begin(), living.end(), toRemoveLiving), living.end());
     living.insert(living.end(), addLiving.begin(), addLiving.end());
     food.erase(std::remove_if(food.begin(), food.end(), toRemoveFood), food.end());
@@ -275,6 +327,10 @@ bool World::toRemoveFood(FoodEntity *e) {
 
 bool World::toAddFood(FoodEntity *e) {
     return std::find(addFood.begin(), addFood.end(), e) != addFood.end();
+}
+
+void World::moveToNeighbor(LivingEntity *e, int neighbor) {
+    livingEntitiesToMoveToNeighbors[neighbor].push_back(e);
 }
 
 /**
