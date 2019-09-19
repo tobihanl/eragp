@@ -19,13 +19,6 @@ Link to Trello task as first line in commit message.
 
 - **MaiMUC** `-m` (optional): Run the application with the MaiMUC configuration. No value required.
 
-## Local Dev Env
-A docker container exists for easy local development.
-The docker container exposes a VNC server at the address `vnc://localhost:5901` with password ``vncpassword``.
-It also exposes a HTML client directly accessible in a browser at ``http://localhost:6901/?password=vncpassword``
-
-All commands assume they are executed inside this project folder.
-
 ## Run on MaiMUC
 
 *Note*: execute every command in the project's root folder. **Don't** execute ``deploy.sh`` and ``run.sh`` in the local
@@ -41,6 +34,13 @@ To start running the application on MaiMUC (with MPI) use the following command/
 ```
 ./utils/run.sh
 ```
+
+## Local Dev Env
+A docker container exists for easy local development.
+The docker container exposes a VNC server at the address `vnc://localhost:5901` with password ``vncpassword``.
+It also exposes a HTML client directly accessible in a browser at ``http://localhost:6901/?password=vncpassword``
+
+All commands assume they are executed inside this project folder.
 
 ### Start the Container
 
