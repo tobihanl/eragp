@@ -15,13 +15,11 @@ private:
     static std::mt19937 randomGenerator;
     static std::normal_distribution<float> normalDistribution;
 
-
-    float rotation; //TODO add to serialization
-
     SDL_Color color;
     float speed;
     float size;
-    float waterAgility; //TODO add to serialization
+    float waterAgility;
+    float rotation;
 
     int energy;
     int cooldown;

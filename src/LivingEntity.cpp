@@ -8,6 +8,7 @@
 
 #define PI 3.14159265
 #define BRAIN_NOT_FOUND 1000 //TODO search better dummy value
+#define AMOUNT_OF_PARAMS 8
 
 static std::mt19937 createGenerator() {
     std::random_device rd;
@@ -39,10 +40,11 @@ LivingEntity::LivingEntity(void *&ptr) : Entity(((int *) ptr)[0], ((int *) ptr)[
                                                 {(Uint8)(((int *) ptr)[3] >> 24), (Uint8)(((int *) ptr)[3] >> 16),
                                                  (Uint8)(((int *) ptr)[3] >> 8), (Uint8)((int *) ptr)[3]},
                                                 ((float *) ptr)[5]), speed(((float *) ptr)[4]),
-                                         size(((float *) ptr)[5]) {
+                                         size(((float *) ptr)[5]), waterAgility(((float *) ptr)[6]),
+                                         rotation(((float *) ptr)[7]) {
     color = {(Uint8)(((int *) ptr)[3] >> 24), (Uint8)(((int *) ptr)[3] >> 16), (Uint8)(((int *) ptr)[3] >> 8),
              (Uint8)((int *) ptr)[3]};
-    ptr = static_cast<int *>(ptr) + 6;
+    ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
     brain = new Brain(ptr);
 }
 
@@ -153,7 +155,7 @@ float LivingEntity::difference(const LivingEntity &e) {
 }
 
 int LivingEntity::serializedSize() {
-    return 6 * 4 + brain->serializedSized();
+    return AMOUNT_OF_PARAMS * 4 + brain->serializedSized();
 }
 
 /**
@@ -169,7 +171,9 @@ void LivingEntity::serialize(void *&ptr) {
     ((int *) ptr)[3] = ((int) color.r << 24) | ((int) color.g << 16) | ((int) color.b << 8) | color.a;
     ((float *) ptr)[4] = speed;
     ((float *) ptr)[5] = size;
-    ptr = static_cast<int *>(ptr) + 6;
+    ((float *) ptr)[6] = waterAgility;
+    ((float *) ptr)[7] = rotation;
+    ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
     brain->serialize(ptr);
 }
 
