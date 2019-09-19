@@ -60,15 +60,14 @@ void World::setup(int overallWidth, int overallHeight, bool maimuc) {
             abort();
         }
 
-        World::overallWidth = 960;
-        World::overallHeight = 1600;
-
         // Set dimensions for this world on MaiMUC
-        x = ((MPI_Rank % 2) == 0) ? 0 : 480;
-        y = (MPI_Rank / 2) * 320;
-        width = 480;
-        height = 320;
+        width = 800;
+        height = 600;
+        x = ((MPI_Rank % 2) == 0) ? 0 : width;
+        y = (MPI_Rank / 2) * height;
 
+        World::overallWidth = width * 2;
+        World::overallHeight = height * 5;
     } else {
         World::overallWidth = overallWidth;
         World::overallHeight = overallHeight;

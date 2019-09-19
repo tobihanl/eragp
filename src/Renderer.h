@@ -16,7 +16,7 @@ private:
     ~Renderer() = default;
 
 public:
-    static int setup(int x, int y, int width, int height);
+    static int setup(int x, int y, int width, int height, bool fullscreen);
 
     static void destroy();
 

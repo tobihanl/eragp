@@ -144,10 +144,13 @@ int main(int argc, char **argv) {
     // Init and set-up world & renderer
     World::setup(width, height, maimuc);
     WorldDim dim = World::getWorldDim();
-    Renderer::setup(dim.x, dim.y, dim.w, dim.h);
+    if (maimuc)
+        Renderer::setup(0, 0, dim.w, dim.h, true);
+    else
+        Renderer::setup(dim.x, dim.y, dim.w, dim.h, false);
 
     //============================= ADD TEST ENTITIES =============================
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 10; i++) {
         int layers[3] = {3, 4, 10};
         auto *brain = new Brain(3, layers);
         auto *entity = new LivingEntity(std::rand() % dim.w, std::rand() % dim.h,
