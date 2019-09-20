@@ -16,15 +16,17 @@ bool Renderer::isSetup = false;
  * Set up the renderer by creating a window with the given width
  * and height
  *
- * @param width Width of the new window
- * @param height Height of the new window
- * @param x Position of the window (x coordinate)
- * @param y Position of the window (y coordinate)
+ * @param   x           Position of the window (x coordinate)
+ * @param   y           Position of the window (y coordinate)
+ * @param   width       Width of the new window
+ * @param   height      Height of the new window
+ * @param   fullscreen  Decide, whether the application should be run in
+ *                      fullscreen mode or not
  *
  * @return  0 if successful, 1 if not successful, -1 if the
  *          renderer is already setup
  */
-int Renderer::setup(int x, int y, int width, int height) {
+int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
     // Renderer already set up?
     if (isSetup)
         return -1;
@@ -42,7 +44,10 @@ int Renderer::setup(int x, int y, int width, int height) {
     }
 
     // Create Window
-    win = SDL_CreateWindow("Evolution", x, y, width, height, SDL_WINDOW_BORDERLESS);
+    if (fullscreen)
+        win = SDL_CreateWindow("Evolution", 0, 0, 1, 1, SDL_WINDOW_FULLSCREEN);
+    else
+        win = SDL_CreateWindow("Evolution", x, y, width, height, SDL_WINDOW_BORDERLESS);
 
     if (win == nullptr) {
         logSDLError(std::cerr, "SDL_CreateWindow");

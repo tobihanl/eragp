@@ -40,6 +40,10 @@ public:
 
     float difference(const LivingEntity &e);
 
+    void setEnergy(int energy) {
+        this->energy = energy;
+    }
+
     int serializedSize();
     void serialize(void *&ptr);
 

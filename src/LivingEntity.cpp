@@ -4,6 +4,7 @@
 #include "Renderer.h"
 #include "World.h"
 #include "FoodEntity.h"
+#include <cmath>
 #include <cassert>
 
 #define PI 3.14159265
@@ -104,16 +105,31 @@ void LivingEntity::tick() {
     if (thoughts.move) {
         float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
         int xTo = x + (int) std::round(TILE_SIZE * speed * agility * 2 * std::cos(rotation * PI));
-        if (xTo < 0) xTo = 0;
-        else if (xTo >= dim.w) xTo = dim.w - 1;
         int yTo = y + (int) std::round(TILE_SIZE * speed * agility * 2 * std::sin(rotation * PI));
-        if (yTo < 0) yTo = 0;
-        else if (yTo >= dim.h) yTo = dim.h - 1;
-        if (*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2
+        /*if (*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2 TODO reenable
             || *World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8) {
             x = xTo;
             y = yTo;
+        }*/
+        if (x >= dim.w) {
+            if (y < 0) World::moveToNeighbor(this, 1);
+            else if (y >= dim.h) World::moveToNeighbor(this, 3);
+            else World::moveToNeighbor(this, 2);
+        } else if (x < 0) {
+            if (y < 0) World::moveToNeighbor(this, 7);
+            else if (y >= dim.h) World::moveToNeighbor(this, 5);
+            else World::moveToNeighbor(this, 6);
+        } else {
+            if (y < 0) World::moveToNeighbor(this, 0);
+            else if (y >= dim.h) World::moveToNeighbor(this, 4);
         }
+
+        // calculate position on new node, might have to be done on new node if dimensions differ
+        if (x >= dim.w) x -= dim.w;
+        else if (x < 0) x = dim.w - x;
+
+        if (y >= dim.h) y -= dim.h;
+        else if (y < 0) y = dim.h - y;
     }
     //################################## Eat ##################################
     if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {

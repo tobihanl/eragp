@@ -31,6 +31,22 @@ disables the similarity mode.
 
 - **Left-click**: Get information about the nearest living entity, where the mouse was pressed, printed in the console.
 
+## Run on MaiMUC
+
+*Note*: execute every command in the project's root folder. **Don't** execute ``deploy.sh`` and ``run.sh`` in the local
+dev environment!
+
+After building the application, the executable and resources must be transferred to all other nodes on the MaiMUC. This
+can be done with the following command:
+```
+./utils/deploy.sh
+```
+
+To start running the application on MaiMUC (with MPI) use the following command/script:
+```
+./utils/run.sh
+```
+
 ## Local Dev Env
 A docker container exists for easy local development.
 The docker container exposes a VNC server at the address `vnc://localhost:5901` with password ``vncpassword``.
@@ -57,13 +73,14 @@ docker run --rm -p 5901:5901 -p 6901:6901 -v "//c/users/jonas/OneDrive - tum.de/
 
 Initially and after changes to cmake, cmake has to be loaded:
 ```
-docker exec -it eragp sh -c 'cd ./build/ && cmake ./..'
+docker exec -it eragp sh -c './utils/init.sh'
 ```
 Build the project and execute it:
 ```
-docker exec -it --user 0 eragp sh -c 'cd ./build/ && cmake --build . --target Evolution && mpirun ./Evolution'
+docker exec -it --user 0 eragp sh -c './utils/build.sh && mpirun ./build/Evolution'
 ```
-(Parameters can be specified after mpirun, i.e. mpirun -np 4 ./Evolution, and ./Evolution. See *Commandline arguments* for more information)
+(Parameters can be specified after ``mpirun``, i.e. ``mpirun -np 4``, and ``./build/Evolution``. See *Commandline
+arguments* for more information)
 
 ### Build the Container
 
