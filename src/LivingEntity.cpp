@@ -7,6 +7,10 @@
 #include <cmath>
 #include <cassert>
 
+#define PI 3.14159265
+#define BRAIN_NOT_FOUND 1000 //TODO search better dummy value
+#define AMOUNT_OF_PARAMS 8
+
 static std::mt19937 createGenerator() {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -14,24 +18,35 @@ static std::mt19937 createGenerator() {
 }
 
 std::mt19937 LivingEntity::randomGenerator = createGenerator();
-std::normal_distribution<float> LivingEntity::normalDistribution(0, 0.1);
+std::normal_distribution<float> LivingEntity::normalDistribution(0, 0.01);
 
 SDL_Texture *LivingEntity::digits[10];
 
 //################################Begin object##############################################
 
-LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float si, Brain *b) : Entity(startX, startY,
-                                                                                                       c, (int) ((1.0f +
-                                                                                                                  si) *
-                                                                                                                 TILE_SIZE /
-                                                                                                                 2)),
-                                                                                                color(c),
-                                                                                                speed(sp >= 0 ? sp : 0),
-                                                                                                size(si >= 0 ? si : 0),
-                                                                                                brain(b),
-                                                                                                energy(60 * 2),
-                                                                                                cooldown(60) {
+LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float si, float wa, Brain *b) :
+        Entity(startX, startY, c, (int) ((1.0f + si) * TILE_SIZE / 2)),
+        color(c),
+        speed(sp >= 0 ? sp : 0),
+        size(si >= 0 ? si : 0),
+        waterAgility(wa < 0 ? 0 : (wa > 1 ? 1 : wa)),
+        brain(b),
+        energy(60 * 2),
+        cooldown(60) {
 
+}
+
+
+LivingEntity::LivingEntity(void *&ptr) : Entity(((int *) ptr)[0], ((int *) ptr)[1], ((int *) ptr)[2],
+                                                {(Uint8)(((int *) ptr)[3] >> 24), (Uint8)(((int *) ptr)[3] >> 16),
+                                                 (Uint8)(((int *) ptr)[3] >> 8), (Uint8)((int *) ptr)[3]},
+                                                ((float *) ptr)[5]), speed(((float *) ptr)[4]),
+                                         size(((float *) ptr)[5]), waterAgility(((float *) ptr)[6]),
+                                         rotation(((float *) ptr)[7]) {
+    color = {(Uint8)(((int *) ptr)[3] >> 24), (Uint8)(((int *) ptr)[3] >> 16), (Uint8)(((int *) ptr)[3] >> 8),
+             (Uint8)((int *) ptr)[3]};
+    ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
+    brain = new Brain(ptr);
 }
 
 static int getNumDigits(int x) {
@@ -65,23 +80,56 @@ void LivingEntity::render() {
 void LivingEntity::tick() {
     //################################# Think #################################
     FoodEntity *nearestFood = World::findNearestFood(x, y);
-    Matrix thoughts(3, 1,
-                    {(float) (!nearestFood ? x : nearestFood->x - x), (float) (!nearestFood ? y : nearestFood->y - y),
-                     (float) energy});
-    thoughts = brain->think(thoughts);
-    bool brainMove = thoughts(0, 0) > -1000;
+    LivingEntity *nearestEnemy = World::findNearestEnemy(this);
+    LivingEntity *nearestMate = World::findNearestMate(this);
+
+    Matrix continuousIn(6, 1, {
+            (float) (nearestFood ? nearestFood->getDistance(x, y) : BRAIN_NOT_FOUND),
+            (float) (nearestEnemy ? nearestEnemy->getDistance(x, y) : BRAIN_NOT_FOUND),
+            (float) (nearestMate ? nearestMate->getDistance(x, y) : BRAIN_NOT_FOUND),
+            (float) energy, (float) (nearestMate ? nearestMate->energy : BRAIN_NOT_FOUND),
+            nearestEnemy ? (float) nearestEnemy->size * 500 : 0.f
+    });
+    Matrix normalizedIn(4, 1, {
+            (float) (nearestFood ? std::atan2(nearestFood->x - x, nearestFood->y - y) / PI : rotation),
+            (float) (nearestEnemy ? std::atan2(nearestEnemy->x - x, nearestEnemy->y - y) / PI : rotation),
+            (float) (nearestMate ? std::atan2(nearestMate->x - x, nearestMate->y - y) / PI : rotation),
+            *World::tileAt(x + std::round(std::cos(rotation * PI) * TILE_SIZE),
+                           y + std::round(std::sin(rotation * PI) * TILE_SIZE)) == Tile::WATER ? -1.f : 1.f
+    });
+    //std::cout << continuousIn << normalizedIn << std::endl;
+    ThinkResult thoughts = brain->think(continuousIn, normalizedIn);
+    rotation = thoughts.rotation;
     WorldDim dim = World::getWorldDim();
     //################################# Move ##################################
-    if (brainMove) {//evaluate whether to move TODO change bias after applying norm function
-        float brainXDif = thoughts(1, 0);
-        float brainYDif = thoughts(2, 0);
-        float factor = TILE_SIZE * speed / std::sqrt(brainXDif * brainXDif + brainYDif * brainYDif);
-        x += (int) std::round(factor * brainXDif);
-        if (x < 0) x = 0;
-        else if (x >= dim.w) x = dim.w - 1;
-        y += (int) std::round(factor * brainYDif);
-        if (y < 0) y = 0;
-        else if (y >= dim.h) y = dim.h - 1;
+    if (thoughts.move) {
+        float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
+        int xTo = x + (int) std::round(TILE_SIZE * speed * agility * 2 * std::cos(rotation * PI));
+        int yTo = y + (int) std::round(TILE_SIZE * speed * agility * 2 * std::sin(rotation * PI));
+        /*if (*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2 TODO reenable
+            || *World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8) {
+            x = xTo;
+            y = yTo;
+        }*/
+        if (x >= dim.w) {
+            if (y < 0) World::moveToNeighbor(this, 1);
+            else if (y >= dim.h) World::moveToNeighbor(this, 3);
+            else World::moveToNeighbor(this, 2);
+        } else if (x < 0) {
+            if (y < 0) World::moveToNeighbor(this, 7);
+            else if (y >= dim.h) World::moveToNeighbor(this, 5);
+            else World::moveToNeighbor(this, 6);
+        } else {
+            if (y < 0) World::moveToNeighbor(this, 0);
+            else if (y >= dim.h) World::moveToNeighbor(this, 4);
+        }
+
+        // calculate position on new node, might have to be done on new node if dimensions differ
+        if (x >= dim.w) x -= dim.w;
+        else if (x < 0) x = dim.w - x;
+
+        if (y >= dim.h) y -= dim.h;
+        else if (y < 0) y = dim.h - y;
     }
     //################################## Eat ##################################
     if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
@@ -97,21 +145,70 @@ void LivingEntity::tick() {
         }
     }
     //################################# Energy ################################
-    energy -= (brainMove ? speed * 8 : 0) + size * 4 + 1;
-    assert((((int) (brainMove ? speed * 8 : 0) + size * 4 + 1)) > 0 && "Entity not loosing Energy");
+    energy -= (thoughts.move ? speed * 8 : 0) + size * 4 + 1;
+    assert((((int) (thoughts.move ? speed * 8 : 0) + size * 4 + 1)) > 0 && "Entity not loosing Energy");
     if (energy <= 0) World::removeLivingEntity(this);
-
     //################################# Breed #################################
     if (cooldown > 0) cooldown--;
     if (cooldown == 0 && energy >= 60 * 2) {
-        energy -= 60;
-        World::addLivingEntity(new LivingEntity(x, y, color, speed + normalDistribution(randomGenerator),
+        //energy -= 60; leaving out might give better results
+        Uint8 nr = color.r + std::round(normalDistribution(randomGenerator) * 255);
+        nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
+        Uint8 ng = color.g + std::round(normalDistribution(randomGenerator) * 255);
+        ng = ng < 0 ? 0 : (ng > 255 ? 255 : ng);
+        Uint8 nb = color.b + std::round(normalDistribution(randomGenerator) * 255);
+        nb = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
+        World::addLivingEntity(new LivingEntity(x, y, {nr, ng, nb, 255}, speed + normalDistribution(randomGenerator),
                                                 size + normalDistribution(randomGenerator),
+                                                waterAgility + normalDistribution(randomGenerator),
                                                 brain->createMutatedCopy()));
         cooldown += 60;
     }
 }
 
+//TODO consider new properties when added
+float LivingEntity::difference(const LivingEntity &e) {
+    return std::sqrt(((e.color.r - color.r) / 255.f) * ((e.color.r - color.r) / 255.f)
+                     + ((e.color.g - color.g) / 255.f) * ((e.color.g - color.g) / 255.f)
+                     + ((e.color.b - color.b) / 255.f) * ((e.color.b - color.b) / 255.f)
+                     + (e.speed - speed) * (e.speed - speed)
+                     + (e.size - size) * (e.size - size)
+                     + (e.waterAgility - waterAgility) * (e.waterAgility - waterAgility));//TODO consider brain
+}
+
+int LivingEntity::serializedSize() {
+    return AMOUNT_OF_PARAMS * 4 + brain->serializedSized();
+}
+
+/**
+ * Writes the data to the given point in memory and sets the pointer to point to the next free byte after the written data
+ * Only works on platforms with sizeof(int) = sizeof(float) = 32 bit
+ * @param ptr Where to write the data. Use serializedSize() before, to determine the required space for allocation
+ */
+void LivingEntity::serialize(void *&ptr) {
+    //continuous counting only works due to sizeof(int) = sizeof(float)
+    ((int *) ptr)[0] = id;
+    ((int *) ptr)[1] = x;
+    ((int *) ptr)[2] = y;
+    ((int *) ptr)[3] = ((int) color.r << 24) | ((int) color.g << 16) | ((int) color.b << 8) | color.a;
+    ((float *) ptr)[4] = speed;
+    ((float *) ptr)[5] = size;
+    ((float *) ptr)[6] = waterAgility;
+    ((float *) ptr)[7] = rotation;
+    ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
+    brain->serialize(ptr);
+}
+
+std::ostream &operator<<(std::ostream &strm, const LivingEntity &l) {
+    strm << "Entity:[id: " << l.id << ", x: " << l.x << ", y: " << l.y << ", color:{r: " << ((int) l.color.r) << ", g: "
+         << ((int) l.color.g) << ", b: " << ((int) l.color.b) << "}, speed: " << l.speed << ", size: " << l.size
+         << ", waterAgility: " << l.waterAgility << ", brainLayers: " << l.brain->getNumLayers() << "]";
+    return strm;
+}
+
+
 LivingEntity::~LivingEntity() {
     delete brain;
 }
+
+

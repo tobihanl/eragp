@@ -39,6 +39,10 @@ void renderLoop() {
     int previousTime = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count();
 
+    // Debug flags and other stuff
+    bool paused = false, similarityMode = false;
+    std::vector<LivingEntity *> selectedEntities;
+
     //=============================================================================
     //                               BEGIN MAIN LOOP
     //=============================================================================
@@ -56,8 +60,66 @@ void renderLoop() {
 
         // Process input
         while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT)
-                run = false;
+            switch (e.type) {
+                // Key pressed?
+                case SDL_KEYDOWN:
+                    switch (e.key.keysym.sym) {
+                        // Pause/Play
+                        case SDLK_p:
+                            // Simulation is already paused in similarity mode!
+                            if (!similarityMode) {
+                                paused = !paused;
+                                render = true;
+                            }
+                            break;
+
+                            // QUIT
+                        case SDLK_q:
+                            run = false;
+                            break;
+
+                            // Similarity mode
+                        case SDLK_s:
+                            if (!similarityMode) similarityMode = paused = render = true;
+                            else similarityMode = paused = false;
+
+                            selectedEntities.clear();
+                            break;
+
+                        default:
+                            break;
+                    }
+                    break;
+
+                    // Mouse clicked?
+                case SDL_MOUSEBUTTONDOWN:
+                    if (e.button.button == SDL_BUTTON_LEFT) {
+                        LivingEntity *nearest = World::findNearestLiving(e.button.x, e.button.y, -1);
+
+                        if (similarityMode) {
+                            if (nearest) selectedEntities.push_back(nearest);
+
+                            // Two entities selected?
+                            if (selectedEntities.size() == 2) {
+                                std::cout << "Difference: " << selectedEntities[0]->difference(*selectedEntities[1])
+                                          << std::endl;
+                                selectedEntities.clear();
+                            }
+                        } else {
+                            if (nearest) std::cout << *nearest << std::endl;
+                            else std::cout << "No nearest entity available!" << std::endl;
+                        }
+                    }
+                    break;
+
+                    // QUIT
+                case SDL_QUIT:
+                    run = false;
+                    break;
+
+                default:
+                    break;
+            }
         }
 
         if (!run) break;
@@ -66,15 +128,21 @@ void renderLoop() {
         while (lag >= MS_PER_TICK) {
             lag -= MS_PER_TICK;
 
-            render = true;
-            World::tick();
+            if (!paused) {
+                render = true;
+                World::tick();
+            }
         }
 
         // Render if needed
         if (render) {
-            // Render everything
             Renderer::clear();
+
+            // Render everything
             World::render();
+            if (paused)
+                Renderer::copy(Renderer::renderFont("Paused", 25, {0, 0, 0, 255}, "font.ttf"), 10, 10);
+
             Renderer::present();
         }
 
@@ -144,19 +212,22 @@ int main(int argc, char **argv) {
     // Init and set-up world & renderer
     World::setup(width, height, maimuc);
     WorldDim dim = World::getWorldDim();
-    Renderer::setup(dim.x, dim.y, dim.w, dim.h);
+    if (maimuc)
+        Renderer::setup(0, 0, dim.w, dim.h, true);
+    else
+        Renderer::setup(dim.x, dim.y, dim.w, dim.h, false);
 
     //============================= ADD TEST ENTITIES =============================
-    for (int i = 0; i < 100; i++) {
-        int layers[3] = {3, 4, 10};
-        auto *brain = new Brain(3, layers);
+    for (int i = 0; i < 10; i++) {
+        auto *brain = new Brain(6, 8, 4, 4, 10, 4);
         auto *entity = new LivingEntity(std::rand() % dim.w, std::rand() % dim.h,
                                         {static_cast<Uint8>(std::rand()), static_cast<Uint8>(std::rand()),
                                          static_cast<Uint8>(std::rand()), 255},
-                                        (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f, brain);
+                                        (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f,
+                                        (rand() % 10000) / 10000.0f, brain);
         World::addLivingEntity(entity);
     }
-    for (int i = 0; i < 250; i++) {
+    for (int i = 0; i < 100; i++) {
         World::addFoodEntity(new FoodEntity(std::rand() % dim.w, std::rand() % dim.h, 8 * 60));
     }
     //=========================== END ADD TEST ENTITIES ===========================

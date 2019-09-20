@@ -18,6 +18,8 @@ std::vector<FoodEntity *> World::removeFood = std::vector<FoodEntity *>();
 std::vector<LivingEntity *> World::addLiving = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::addFood = std::vector<FoodEntity *>();
 
+std::vector<LivingEntity *> World::livingEntitiesToMoveToNeighbors[NUMBER_OF_NEIGHBORS] = {};
+
 // Init static attributes
 int World::overallWidth = 0;
 int World::overallHeight = 0;
@@ -53,21 +55,19 @@ void World::setup(int overallWidth, int overallHeight, bool maimuc) {
 
     // MaiMUC specific configuration?
     if (maimuc) {
-        // MaiMUC consists of 10 nodes!
-        if (MPI_Nodes != 10) {
+        if (MPI_Nodes != NUMBER_OF_MAIMUC_NODES) {
             std::cerr << "Program started on MaiMUC without running on 10 nodes!" << std::endl;
             abort();
         }
 
-        World::overallWidth = 960;
-        World::overallHeight = 1600;
-
         // Set dimensions for this world on MaiMUC
-        x = ((MPI_Rank % 2) == 0) ? 0 : 480;
-        y = (MPI_Rank / 2) * 320;
-        width = 480;
-        height = 320;
+        width = 800;
+        height = 600;
+        x = ((MPI_Rank % 2) == 0) ? 0 : width;
+        y = (MPI_Rank / 2) * height;
 
+        World::overallWidth = width * 2;
+        World::overallHeight = height * 5;
     } else {
         World::overallWidth = overallWidth;
         World::overallHeight = overallHeight;
@@ -122,11 +122,62 @@ void World::render() {
     }
 }
 
+int World::getNeighborNodeRank(int neighbor) {
+    int rank = MPI_Rank;
+    if (neighbor != 0 && neighbor != 4) { // if neighbor to the right or left
+        if (rank % 2 == 0) rank++;
+        else rank--;
+    }
+
+    if (neighbor == 7 || neighbor == 0 || neighbor == 1) rank -= 2; // to the top
+    if (neighbor == 5 || neighbor == 4 || neighbor == 3) rank += 2; // to the bottom
+
+    return (rank % NUMBER_OF_MAIMUC_NODES) < 0 ? NUMBER_OF_MAIMUC_NODES + rank : rank % NUMBER_OF_MAIMUC_NODES;
+}
+
 void World::tick() {
-    addFoodEntity(new FoodEntity(rand() % World::width, rand() % World::height, 4 * 60));
+    addFoodEntity(new FoodEntity(rand() % World::width, rand() % World::height, 8 * 60));
     for (const auto &e : living) {
         e->tick();
     }
+
+    for (int i = 0; i < NUMBER_OF_NEIGHBORS; i++) {
+        int totalSize = 0;
+        for (const auto &e : livingEntitiesToMoveToNeighbors[i]) {
+            totalSize += e->serializedSize();
+        }
+
+        void *buffer = malloc(totalSize);
+        void *start = buffer;
+
+        for (const auto &e : livingEntitiesToMoveToNeighbors[i]) {
+            e->serialize(buffer);
+            removeLivingEntity(e);
+        }
+        livingEntitiesToMoveToNeighbors[i].clear();
+
+        MPI_Request entityRequest;
+        MPI_Isend(start, totalSize, MPI_BYTE, getNeighborNodeRank(i), 42, MPI_COMM_WORLD, &entityRequest);
+    }
+
+    for (int i = 0; i < NUMBER_OF_NEIGHBORS; i++) {
+        void *buffer = malloc(10000);
+        void *start = buffer;
+        MPI_Status stat;
+        MPI_Recv(buffer, 10000, MPI_BYTE, getNeighborNodeRank(i), 42, MPI_COMM_WORLD, &stat);
+
+        int receivedBytes;
+        MPI_Get_count(&stat, MPI_BYTE, &receivedBytes);
+
+        while (buffer < (char *) start + receivedBytes) {
+            auto *e = new LivingEntity(buffer);
+            e->setEnergy(1000);
+            e->assignNewId();
+            addLivingEntity(e);
+        }
+        free(start);
+    }
+
     living.erase(std::remove_if(living.begin(), living.end(), toRemoveLiving), living.end());
     living.insert(living.end(), addLiving.begin(), addLiving.end());
     food.erase(std::remove_if(food.begin(), food.end(), toRemoveFood), food.end());
@@ -171,13 +222,63 @@ FoodEntity *World::findNearestSurvivingFood(int x, int y) {
     return f;
 }
 
-LivingEntity *World::findNearestLiving(int x, int y) {
-    if (living.empty()) return nullptr;
+LivingEntity *World::findNearestLiving(LivingEntity *le) {
+    if (living.empty() || living.size() == 1) return nullptr;
     LivingEntity *n = living[0];
-    int dist = n->getSquaredDistance(x, y);
+    if (*n == *le) n = living[1];
+    int dist = n->getSquaredDistance(le->x, le->y);
     for (const auto &e : living) {
-        int tempDist = e->getSquaredDistance(x, y);
+        if (*e == *le) continue;
+        int tempDist = e->getSquaredDistance(le->x, le->y);
         if (tempDist < dist) {
+            n = e;
+            dist = tempDist;
+        }
+    }
+    return n;
+}
+
+/**
+ * @param id    ID of the LivingEntity, which will be excluded for the
+ *              search of the nearest LivingEntity
+ */
+LivingEntity *World::findNearestLiving(int x, int y, int id) {
+    LivingEntity *n = nullptr;
+    int dist = 0;
+    for (const auto &e : living) {
+        if (n && n->getId() == id) continue;
+        int tempDist = e->getSquaredDistance(x, y);
+        if (!n || tempDist < dist) {
+            n = e;
+            dist = tempDist;
+        }
+    }
+    return n;
+}
+
+LivingEntity *World::findNearestEnemy(LivingEntity *le) {
+    if (living.empty() || living.size() == 1) return nullptr;
+    LivingEntity *n = nullptr;
+    int dist = 0;
+    for (const auto &e : living) {
+        if (*e == *le || le->difference(*e) < 0.04) continue;
+        int tempDist = e->getSquaredDistance(le->x, le->y);
+        if (!n || tempDist < dist) {
+            n = e;
+            dist = tempDist;
+        }
+    }
+    return n;
+}
+
+LivingEntity *World::findNearestMate(LivingEntity *le) {
+    if (living.empty() || living.size() == 1) return nullptr;
+    LivingEntity *n = nullptr;
+    int dist = 0;
+    for (const auto &e : living) {
+        if (*e == *le || le->difference(*e) >= 0.04) continue;
+        int tempDist = e->getSquaredDistance(le->x, le->y);
+        if (!n || tempDist < dist) {
             n = e;
             dist = tempDist;
         }
@@ -278,6 +379,10 @@ bool World::toAddFood(FoodEntity *e) {
     return std::find(addFood.begin(), addFood.end(), e) != addFood.end();
 }
 
+void World::moveToNeighbor(LivingEntity *e, int neighbor) {
+    livingEntitiesToMoveToNeighbors[neighbor].push_back(e);
+}
+
 /**
  * Splits a given rectangle (with width and height) into num smaller
  * rectangles that have around the same area as the given rectangle
@@ -318,6 +423,11 @@ int *splitRect(int num, int width, int height) {
     dim[0] = width;
     dim[1] = height;
     return dim;
+}
+
+Tile *World::tileAt(int x, int y) {
+    if (x < 0 || x >= width || y < 0 || y >= height) return &Tile::INVALID;
+    return terrain[(y / TILE_SIZE) * (width / TILE_SIZE) + (x / TILE_SIZE)];
 }
 
 //TODO cleanup for destroyed entities

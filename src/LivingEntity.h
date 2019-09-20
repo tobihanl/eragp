@@ -18,18 +18,35 @@ private:
     SDL_Color color;
     float speed;
     float size;
-    Brain *brain;
+    float waterAgility;
+    float rotation;
 
     int energy;
     int cooldown;
+
+    friend std::ostream &operator<<(std::ostream &strm, const LivingEntity &e);
 public:
     static SDL_Texture *digits[];
 
-    LivingEntity(int x, int y, SDL_Color color, float speed, float size, Brain *brain);
+    Brain *brain;
+
+    LivingEntity(int x, int y, SDL_Color color, float speed, float size, float waterAgility, Brain *brain);
+
+    LivingEntity(void *&ptr);
 
     ~LivingEntity() override;
     void render() override;
     void tick() override;
+
+    float difference(const LivingEntity &e);
+
+    void setEnergy(int energy) {
+        this->energy = energy;
+    }
+
+    int serializedSize();
+    void serialize(void *&ptr);
+
 };
 
 

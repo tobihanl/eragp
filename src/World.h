@@ -7,6 +7,8 @@
 #include "Tile.h"
 
 #define TILE_SIZE 8
+#define NUMBER_OF_NEIGHBORS 8
+#define NUMBER_OF_MAIMUC_NODES 10
 
 
 struct WorldDim {
@@ -40,6 +42,21 @@ private:
     static std::vector<FoodEntity *> addFood;
     static std::vector<LivingEntity *> addLiving;
 
+    /*
+     *   7 0 1
+     *   6 x 2
+     *   5 4 3
+     *
+     *
+     *   0 1
+     *   2 3
+     *   4 5
+     *   6 7
+     *   8 9
+     */
+
+    static std::vector<LivingEntity *> livingEntitiesToMoveToNeighbors[NUMBER_OF_NEIGHBORS];
+
     static std::vector<Tile *> terrain;
 
     World() = default;
@@ -62,7 +79,13 @@ public:
 
     static FoodEntity *findNearestSurvivingFood(int x, int y);
 
-    static LivingEntity *findNearestLiving(int x, int y);
+    static LivingEntity *findNearestLiving(LivingEntity *le);
+
+    static LivingEntity *findNearestLiving(int x, int y, int id);
+
+    static LivingEntity *findNearestEnemy(LivingEntity *le);
+
+    static LivingEntity *findNearestMate(LivingEntity *le);
 
     static void addLivingEntity(LivingEntity *e);
 
@@ -74,12 +97,19 @@ public:
 
     static bool toRemoveFood(FoodEntity *e);
 
+    static Tile *tileAt(int x, int y);
+
+    static void moveToNeighbor(LivingEntity *e, int neighbor);
+
 private:
     static bool toRemoveLiving(LivingEntity *e);
 
     static bool toAddLiving(LivingEntity *e);
 
     static bool toAddFood(FoodEntity *e);
+
+    static int getNeighborNodeRank(int neighbor);
+
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H

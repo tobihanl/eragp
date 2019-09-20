@@ -6,17 +6,21 @@
 
 class Tile {
 private:
-    Tile(SDL_Color color);
+    Tile(int id, SDL_Color color);
 
+    friend bool operator==(const Tile &lhs, const Tile &rhs);
+
+    friend bool operator!=(const Tile &lhs, const Tile &rhs);
 public:
+    static Tile INVALID;
     static Tile GRASS;
+    static Tile WATER;
     static Tile STONE;
     static Tile SAND;
-    static Tile WATER;
 
     SDL_Texture *texture;
+    const int id;
     const SDL_Color color;
-
 };
 
 #endif //EVOLUTION_TILE_H

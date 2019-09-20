@@ -6,18 +6,28 @@
 class Entity {
 private:
     static int currentId;
-    int id;
+
+    friend bool operator==(const Entity &lhs, const Entity &rhs);
+
+    friend bool operator!=(const Entity &lhs, const Entity &rhs);
 protected:
     SDL_Texture *texture;
+    int id;
 public:
     int x, y;
 
     Entity(int x, int y, const SDL_Color &color, int radius);
 
+    Entity(int id, int x, int y, const SDL_Color &color, float size);
+
     virtual ~Entity();
 
     virtual void render() = 0;
     virtual void tick() = 0;
+
+    void assignNewId();
+
+    int getId();
 
     /**
      * Calculates distance to a given position
@@ -36,8 +46,6 @@ public:
      * @return the squared distance
      */
     int getSquaredDistance(int x, int y);
-    bool operator==(const Entity &other) const;
-    bool operator!=(const Entity &other) const;
 };
 
 
