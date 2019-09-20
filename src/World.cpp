@@ -87,9 +87,12 @@ void World::setup(int overallWidth, int overallHeight, bool maimuc) {
 void World::generateTerrain() {
     terrain.reserve((World::height / TILE_SIZE) * (World::width / TILE_SIZE));
 
+    float xOffset = (float) World::x / TILE_SIZE;
+    float yOffset = (float) World::y / TILE_SIZE;
+
     for (int y = 0; y < World::height / TILE_SIZE; y++) {
         for (int x = 0; x < World::width / TILE_SIZE; x++) {
-            float val = SimplexNoise::noise((float) x / 36.f, (float) y / 36.f);
+            float val = SimplexNoise::noise(((float) x + xOffset) / 36.f, ((float) y + yOffset) / 36.f);
 
             if (val < -0.4) {
                 terrain[y * (World::width / TILE_SIZE) + x] = &Tile::WATER;
