@@ -136,7 +136,13 @@ void LivingEntity::tick() {
     if (cooldown > 0) cooldown--;
     if (cooldown == 0 && energy >= 60 * 2) {
         //energy -= 60; leaving out might give better results
-        World::addLivingEntity(new LivingEntity(x, y, color, speed + normalDistribution(randomGenerator),
+        Uint8 nr = color.r + std::round(normalDistribution(randomGenerator) * 255);
+        nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
+        Uint8 ng = color.g + std::round(normalDistribution(randomGenerator) * 255);
+        ng = ng < 0 ? 0 : (ng > 255 ? 255 : ng);
+        Uint8 nb = color.b + std::round(normalDistribution(randomGenerator) * 255);
+        nb = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
+        World::addLivingEntity(new LivingEntity(x, y, {nr, ng, nb, 255}, speed + normalDistribution(randomGenerator),
                                                 size + normalDistribution(randomGenerator),
                                                 waterAgility + normalDistribution(randomGenerator),
                                                 brain->createMutatedCopy()));
