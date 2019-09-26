@@ -101,6 +101,8 @@ public:
 
     static int numOfNeighbors();
 
+    static size_t getRankAt(int x, int y);
+
 private:
     static WorldDim calcWorldDimensions(int rank, int num);
 

@@ -437,6 +437,12 @@ int World::numOfNeighbors() {
     return neighbors.size();
 }
 
+size_t World::getRankAt(int x, int y) {
+    for (size_t i = 0; i < worlds.size(); i++)
+        if (worlds[i].x <= x && x < worlds[i].x + worlds[i].w && worlds[i].y <= y && y < worlds[i].y + worlds[i].h)
+            return i;
+}
+
 /**
  * Splits a given rectangle (with width and height) into num smaller
  * rectangles that have around the same area as the given rectangle
