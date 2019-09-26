@@ -56,6 +56,8 @@ private:
      */
 
     static std::vector<LivingEntity *> livingEntitiesToMoveToNeighbors[NUMBER_OF_NEIGHBORS];
+    static std::vector<WorldDim> worlds;
+    static std::vector<int> neighbors;
 
     static std::vector<Tile *> terrain;
 
@@ -64,11 +66,7 @@ private:
     ~World() = default;
 
 public:
-    static void generateTerrain();
-
     static void setup(int overallWidth, int overallHeight, bool maimuc);
-
-    static WorldDim calcWorldDimensions(int rank, int num);
 
     static WorldDim getWorldDim();
 
@@ -101,7 +99,13 @@ public:
 
     static void moveToNeighbor(LivingEntity *e, int neighbor);
 
+    static int numOfNeighbors();
+
 private:
+    static WorldDim calcWorldDimensions(int rank, int num);
+
+    static void generateTerrain();
+
     static bool toRemoveLiving(LivingEntity *e);
 
     static bool toAddLiving(LivingEntity *e);
@@ -110,6 +114,7 @@ private:
 
     static int getNeighborNodeRank(int neighbor);
 
+    static void calcNeighbors();
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H

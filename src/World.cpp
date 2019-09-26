@@ -19,6 +19,8 @@ std::vector<LivingEntity *> World::addLiving = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::addFood = std::vector<FoodEntity *>();
 
 std::vector<LivingEntity *> World::livingEntitiesToMoveToNeighbors[NUMBER_OF_NEIGHBORS] = {};
+std::vector<WorldDim> World::worlds = std::vector<WorldDim>();
+std::vector<int> World::neighbors = std::vector<int>();
 
 // Init static attributes
 int World::overallWidth = 0;
@@ -60,27 +62,34 @@ void World::setup(int overallWidth, int overallHeight, bool maimuc) {
             abort();
         }
 
-        // Set dimensions for this world on MaiMUC
-        width = 800;
-        height = 600;
-        x = ((MPI_Rank % 2) == 0) ? 0 : width;
-        y = (MPI_Rank / 2) * height;
+        // Get dimensions for all worlds
+        for (int i = 0; i < NUMBER_OF_MAIMUC_NODES; i++)
+            worlds.push_back({
+                                     ((i % 2) == 0) ? 0 : 800,
+                                     (i / 2) * 600,
+                                     800,
+                                     600
+                             });
 
-        World::overallWidth = width * 2;
-        World::overallHeight = height * 5;
+        World::overallWidth = 800 * 2;
+        World::overallHeight = 600 * 5;
     } else {
         World::overallWidth = overallWidth;
         World::overallHeight = overallHeight;
 
-        // Get and set dimesions for this world
-        WorldDim dim = calcWorldDimensions(MPI_Rank, MPI_Nodes);
-        x = dim.x;
-        y = dim.y;
-        width = dim.w;
-        height = dim.h;
+        // Get dimensions for all worlds
+        for (int i = 0; i < MPI_Nodes; i++)
+            worlds.push_back(calcWorldDimensions(i, MPI_Nodes));
     }
 
+    // Set dimension for this world
+    x = worlds[MPI_Rank].x;
+    y = worlds[MPI_Rank].y;
+    width = worlds[MPI_Rank].w;
+    height = worlds[MPI_Rank].h;
+
     generateTerrain();
+    calcNeighbors();
     isSetup = true;
 }
 
@@ -363,6 +372,43 @@ WorldDim World::calcWorldDimensions(int rank, int num) {
     return dim;
 }
 
+void World::calcNeighbors() {
+    int a, b, c, d;
+    for (size_t i = 0; i < worlds.size(); i++) {
+        auto dim = worlds[i];
+
+        // Upper or lower line (of THIS world)?
+        if ((dim.y + dim.h) % overallHeight == y || (y + height) % overallHeight == dim.y) {
+            // 1st line
+            a = x;
+            b = x + width;
+
+            // 2nd line
+            c = dim.x;
+            d = dim.x + dim.w;
+
+            // Do the lines touch each other?
+            if ((a <= c && c <= b) || (a <= d && d <= b) || (c <= a && b <= d)
+                || (a == 0 && d == overallWidth) || (b == overallWidth && c == 0))
+                neighbors.push_back(i);
+        } else if ((x + width) % overallWidth == dim.x ||
+                   (dim.x + dim.w) % overallWidth == x) { // Right or left line (of THIS world)?
+            // 1st line
+            a = y;
+            b = y + height;
+
+            // 2nd line
+            c = dim.y;
+            d = dim.y + dim.h;
+
+            // Do the lines touch each other?
+            if ((a <= c && c <= b) || (a <= d && d <= b) || (c <= a && b <= d)
+                || (a == 0 && d == overallWidth) || (b == overallWidth && c == 0))
+                neighbors.push_back(i);
+        }
+    }
+}
+
 WorldDim World::getWorldDim() {
     return {x, y, width, height};
 }
@@ -385,6 +431,10 @@ bool World::toAddFood(FoodEntity *e) {
 
 void World::moveToNeighbor(LivingEntity *e, int neighbor) {
     livingEntitiesToMoveToNeighbors[neighbor].push_back(e);
+}
+
+int World::numOfNeighbors() {
+    return neighbors.size();
 }
 
 /**
