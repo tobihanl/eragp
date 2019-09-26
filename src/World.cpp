@@ -120,6 +120,10 @@ void World::render() {
     for (const auto &e : living) {
         e->render();
     }
+
+    // Show the rank of the node in the upper left of the window
+    SDL_Texture *t = Renderer::renderFont(std::to_string(MPI_Rank), 25, {255, 255, 255, 255}, "font.ttf");
+    Renderer::copy(t, 10, 10);
 }
 
 int World::getNeighborNodeRank(int neighbor) {
