@@ -30,6 +30,10 @@ public:
 
     static void cleanup(SDL_Texture *texture);
 
+    static void setTarget(SDL_Texture *texture);
+
+    static SDL_Texture *createTexture(int width, int height, int access);
+
     static SDL_Texture *renderImage(const std::string &imagePath);
 
     static SDL_Texture *renderDot(int radius, const SDL_Color &color);

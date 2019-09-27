@@ -33,6 +33,8 @@ private:
 
     static bool isSetup;
 
+    static SDL_Texture *background;
+
     //TODO change list implementation and handle shared data
     static std::vector<FoodEntity *> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
     static std::vector<LivingEntity *> living;
@@ -110,6 +112,7 @@ private:
 
     static int getNeighborNodeRank(int neighbor);
 
+    static void renderTerrain();
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H

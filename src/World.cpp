@@ -34,6 +34,8 @@ int World::height = 0;
 
 bool World::isSetup = false;
 
+SDL_Texture *World::background = nullptr;
+
 std::vector<Tile *> World::terrain = std::vector<Tile *>();
 
 /**
@@ -107,13 +109,26 @@ void World::generateTerrain() {
     }
 }
 
+void World::renderTerrain() {
+    // Pre-render terrain for faster rendering
+    World::background = Renderer::createTexture(World::width, World::height, SDL_TEXTUREACCESS_TARGET);
+    Renderer::setTarget(World::background);
+    Renderer::clear();
+
+    // Copy textures to background
+    for (int y = 0; y < World::height / TILE_SIZE; y++)
+        for (int x = 0; x < World::width / TILE_SIZE; x++)
+            Renderer::copy(terrain[y * (World::width / TILE_SIZE) + x]->texture, x * TILE_SIZE, y * TILE_SIZE);
+
+    // Change render target back to default
+    Renderer::present();
+    Renderer::setTarget(nullptr);
+}
+
 void World::render() {
-    for (int y = 0; y < World::height / TILE_SIZE; y++) {
-        for (int x = 0; x < World::width / TILE_SIZE; x++) {
-            SDL_Texture *t = terrain[y * (World::width / TILE_SIZE) + x]->texture;
-            Renderer::copy(t, x * TILE_SIZE, y * TILE_SIZE);
-        }
-    }
+    if (World::background == nullptr) renderTerrain();
+    Renderer::copy(World::background, 0, 0);
+
     for (const auto &f : food) {
         f->render();
     }

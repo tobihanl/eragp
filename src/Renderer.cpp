@@ -1,5 +1,4 @@
 #include <iostream>
-#include <utility>
 #include <string>
 #include <SDL.h>
 #include <SDL_image.h>
@@ -137,6 +136,14 @@ void Renderer::copy(SDL_Texture *texture, int x, int y) {
  */
 void Renderer::cleanup(SDL_Texture *texture) {
     Include::cleanup(texture);
+}
+
+void Renderer::setTarget(SDL_Texture *target) {
+    SDL_SetRenderTarget(ren, target);
+}
+
+SDL_Texture *Renderer::createTexture(int width, int height, int access) {
+    return SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, access, width, height);
 }
 
 /**
