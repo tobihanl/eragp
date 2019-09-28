@@ -1,11 +1,9 @@
-
 #include <cmath>
+#include <cassert>
 #include "LivingEntity.h"
 #include "Renderer.h"
 #include "World.h"
 #include "FoodEntity.h"
-#include <cmath>
-#include <cassert>
 
 #define PI 3.14159265
 #define BRAIN_NOT_FOUND 1000 //TODO search better dummy value
@@ -111,25 +109,6 @@ void LivingEntity::tick() {
             x = xTo;
             y = yTo;
         }*/
-        if (x >= dim.w) {
-            if (y < 0) World::moveToNeighbor(this, 1);
-            else if (y >= dim.h) World::moveToNeighbor(this, 3);
-            else World::moveToNeighbor(this, 2);
-        } else if (x < 0) {
-            if (y < 0) World::moveToNeighbor(this, 7);
-            else if (y >= dim.h) World::moveToNeighbor(this, 5);
-            else World::moveToNeighbor(this, 6);
-        } else {
-            if (y < 0) World::moveToNeighbor(this, 0);
-            else if (y >= dim.h) World::moveToNeighbor(this, 4);
-        }
-
-        // calculate position on new node, might have to be done on new node if dimensions differ
-        if (x >= dim.w) x -= dim.w;
-        else if (x < 0) x = dim.w - x;
-
-        if (y >= dim.h) y -= dim.h;
-        else if (y < 0) y = dim.h - y;
     }
     //################################## Eat ##################################
     if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
@@ -163,6 +142,42 @@ void LivingEntity::tick() {
                                                 waterAgility + normalDistribution(randomGenerator),
                                                 brain->createMutatedCopy()));
         cooldown += 60;
+    }
+
+    //########################### Send to other node ##########################
+    if (x >= dim.w || x < 0 || y >= dim.h || y < 0) {
+        int rank = World::getRankAt(dim.x + x, dim.y + y);
+        WorldDim node = World::getWorldDimOf(rank);
+
+        // Other node?
+        if (rank != World::getMPIRank())
+            World::moveToNeighbor(this, rank);
+
+        // TODO: Adapt this, when Entities store their absolute position rather than relative to the actual world!
+        // TODO: Better positioning in code as this mustn't be related to sending!
+        // calculate position on (new) node
+        bool xOverflow = false, yOverflow = false;
+        if (x >= dim.w) {
+            x -= dim.w;
+            xOverflow = true;
+        } else if (x < 0) {
+            x += node.w;
+            xOverflow = true;
+        }
+
+        if (y >= dim.h) {
+            y -= dim.h;
+            yOverflow = true;
+        } else if (y < 0) {
+            y += node.h;
+            yOverflow = true;
+        }
+
+        if (xOverflow != yOverflow) {
+            // Offset between nodes
+            if (xOverflow) y += dim.y - node.y;
+            if (yOverflow) x += dim.x - node.x;
+        }
     }
 }
 

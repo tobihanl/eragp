@@ -7,10 +7,9 @@
 #include "Tile.h"
 
 #define TILE_SIZE 8
-#define NUMBER_OF_NEIGHBORS 8
 #define NUMBER_OF_MAIMUC_NODES 10
 
-
+//================================== Structs ==================================
 struct WorldDim {
     int x = 0;
     int y = 0;
@@ -18,6 +17,12 @@ struct WorldDim {
     int h = 0;
 };
 
+struct MPISendEntity {
+    int rank;
+    LivingEntity *entity;
+};
+
+//=================================== Class ===================================
 class World {
 private:
     static int overallWidth;
@@ -55,7 +60,7 @@ private:
      *   8 9
      */
 
-    static std::vector<LivingEntity *> livingEntitiesToMoveToNeighbors[NUMBER_OF_NEIGHBORS];
+    static std::vector<MPISendEntity> livingEntitiesToMoveToNeighbors;
     static std::vector<WorldDim> worlds;
     static std::vector<int> neighbors;
 
@@ -68,9 +73,14 @@ private:
 public:
     static void setup(int overallWidth, int overallHeight, bool maimuc);
 
+    static int getMPIRank();
+
     static WorldDim getWorldDim();
 
+    static WorldDim getWorldDimOf(int rank);
+
     static void render();
+
     static void tick();
 
     static FoodEntity *findNearestFood(int x, int y);
@@ -97,7 +107,7 @@ public:
 
     static Tile *tileAt(int x, int y);
 
-    static void moveToNeighbor(LivingEntity *e, int neighbor);
+    static void moveToNeighbor(LivingEntity *e, int rank);
 
     static int numOfNeighbors();
 
@@ -113,8 +123,6 @@ private:
     static bool toAddLiving(LivingEntity *e);
 
     static bool toAddFood(FoodEntity *e);
-
-    static int getNeighborNodeRank(int neighbor);
 
     static void calcNeighbors();
 };
