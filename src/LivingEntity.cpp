@@ -7,7 +7,7 @@
 
 #define PI 3.14159265
 #define BRAIN_NOT_FOUND 1000 //TODO search better dummy value
-#define AMOUNT_OF_PARAMS 8
+#define AMOUNT_OF_PARAMS 10
 
 static std::mt19937 createGenerator() {
     std::random_device rd;
@@ -34,15 +34,29 @@ LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float 
 
 }
 
-
-LivingEntity::LivingEntity(void *&ptr) : Entity(((int *) ptr)[0], ((int *) ptr)[1], ((int *) ptr)[2],
-                                                {(Uint8)(((int *) ptr)[3] >> 24), (Uint8)(((int *) ptr)[3] >> 16),
-                                                 (Uint8)(((int *) ptr)[3] >> 8), (Uint8)((int *) ptr)[3]},
-                                                ((float *) ptr)[5]), speed(((float *) ptr)[4]),
-                                         size(((float *) ptr)[5]), waterAgility(((float *) ptr)[6]),
-                                         rotation(((float *) ptr)[7]) {
-    color = {(Uint8)(((int *) ptr)[3] >> 24), (Uint8)(((int *) ptr)[3] >> 16), (Uint8)(((int *) ptr)[3] >> 8),
-             (Uint8)((int *) ptr)[3]};
+LivingEntity::LivingEntity(void *&ptr) :
+        Entity(((int *) ptr)[0],
+               ((int *) ptr)[1],
+               ((int *) ptr)[2],
+               {
+                       (Uint8) (((int *) ptr)[3] >> 24),
+                       (Uint8) (((int *) ptr)[3] >> 16),
+                       (Uint8) (((int *) ptr)[3] >> 8),
+                       (Uint8) ((int *) ptr)[3]
+               },
+               ((float *) ptr)[5]),
+        color({
+                      (Uint8) (((int *) ptr)[3] >> 24),
+                      (Uint8) (((int *) ptr)[3] >> 16),
+                      (Uint8) (((int *) ptr)[3] >> 8),
+                      (Uint8) ((int *) ptr)[3]
+              }),
+        speed(((float *) ptr)[4]),
+        size(((float *) ptr)[5]),
+        waterAgility(((float *) ptr)[6]),
+        rotation(((float *) ptr)[7]),
+        energy(((int *) ptr)[8]),
+        cooldown(((int *) ptr)[9]) {
     ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
     brain = new Brain(ptr);
 }
@@ -210,6 +224,8 @@ void LivingEntity::serialize(void *&ptr) {
     ((float *) ptr)[5] = size;
     ((float *) ptr)[6] = waterAgility;
     ((float *) ptr)[7] = rotation;
+    ((int *) ptr)[8] = energy;
+    ((int *) ptr)[9] = cooldown;
     ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
     brain->serialize(ptr);
 }

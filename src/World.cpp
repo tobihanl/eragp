@@ -177,7 +177,6 @@ void World::tick() {
 
         while (buffer < (char *) start + receivedBytes) {
             auto *e = new LivingEntity(buffer);
-            e->setEnergy(1000);
             e->assignNewId();
             addLivingEntity(e);
         }
