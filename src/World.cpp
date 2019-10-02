@@ -364,38 +364,47 @@ WorldDim World::calcWorldDimensions(int rank, int num) {
 }
 
 void World::calcNeighbors() {
-    int a, b, c, d;
+    int start1, end1, start2, end2;
     for (size_t i = 0; i < worlds.size(); i++) {
         auto dim = worlds[i];
 
         // Upper or lower line (of THIS world)?
-        if ((dim.y + dim.h) % overallHeight == y || (y + height) % overallHeight == dim.y) {
+        if ((dim.y + dim.h) % overallHeight == y ||
+            (y + height) % overallHeight == dim.y) {
             // 1st line
-            a = x;
-            b = x + width;
+            start1 = x;
+            end1 = x + width;
 
             // 2nd line
-            c = dim.x;
-            d = dim.x + dim.w;
+            start2 = dim.x;
+            end2 = dim.x + dim.w;
 
             // Do the lines touch each other?
-            if ((a <= c && c <= b) || (a <= d && d <= b) || (c <= a && b <= d)
-                || (a == 0 && d == overallWidth) || (b == overallWidth && c == 0))
+            if ((start1 <= start2 && start2 <= end1) ||
+                (start1 <= end2 && end2 <= end1) ||
+                (start2 <= start1 && end1 <= end2) ||
+                (start1 == 0 && end2 == overallWidth) ||
+                (end1 == overallWidth && start2 == 0)) {
                 neighbors.push_back(i);
+            }
         } else if ((x + width) % overallWidth == dim.x ||
                    (dim.x + dim.w) % overallWidth == x) { // Right or left line (of THIS world)?
             // 1st line
-            a = y;
-            b = y + height;
+            start1 = y;
+            end1 = y + height;
 
             // 2nd line
-            c = dim.y;
-            d = dim.y + dim.h;
+            start2 = dim.y;
+            end2 = dim.y + dim.h;
 
             // Do the lines touch each other?
-            if ((a <= c && c <= b) || (a <= d && d <= b) || (c <= a && b <= d)
-                || (a == 0 && d == overallWidth) || (b == overallWidth && c == 0))
+            if ((start1 <= start2 && start2 <= end1) ||
+                (start1 <= end2 && end2 <= end1) ||
+                (start2 <= start1 && end1 <= end2) ||
+                (start1 == 0 && end2 == overallWidth) ||
+                (end1 == overallWidth && start2 == 0)) {
                 neighbors.push_back(i);
+            }
         }
     }
 }
