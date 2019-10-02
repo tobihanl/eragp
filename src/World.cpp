@@ -177,7 +177,6 @@ void World::tick() {
 
         while (buffer < (char *) start + receivedBytes) {
             auto *e = new LivingEntity(buffer);
-            e->assignNewId();
             addLivingEntity(e);
         }
         free(start);
@@ -412,6 +411,11 @@ WorldDim World::getWorldDimOf(int rank) {
 int World::getMPIRank() {
     return MPI_Rank;
 }
+
+int World::getMPINodes() {
+    return MPI_Nodes;
+}
+
 
 bool World::toRemoveLiving(LivingEntity *e) {
     return std::find(removeLiving.begin(), removeLiving.end(), e) != removeLiving.end();

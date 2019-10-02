@@ -3,12 +3,13 @@
 #include "Renderer.h"
 #include "World.h"
 
-int Entity::currentId = 0;
+int Entity::idCounter = 0;
 
 Entity::Entity(int startX, int startY, const SDL_Color &color, int radius) : x(startX), y(startY),
                                                                              texture(Renderer::renderDot(radius,
                                                                                                          color)),
-                                                                             id(currentId++) {
+                                                                             id((idCounter++ * World::getMPINodes()) +
+                                                                                World::getMPIRank()) {
 
 }
 
@@ -39,6 +40,3 @@ float Entity::getDistance(int x, int y) {
     return std::sqrt((this->x - x) * (this->x - x) + (this->y - y) * (this->y - y));
 }
 
-void Entity::assignNewId() {
-    this->id = currentId++;
-}

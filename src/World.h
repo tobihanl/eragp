@@ -75,6 +75,8 @@ public:
 
     static int getMPIRank();
 
+    static int getMPINodes();
+
     static WorldDim getWorldDim();
 
     static WorldDim getWorldDimOf(int rank);
