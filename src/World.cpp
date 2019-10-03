@@ -10,8 +10,8 @@ int *splitRect(int num, int width, int height);
 
 // TODO [VERY IMPORTANT!] Implement checking if entity already exists in a vector to prevent duplicates!
 
-std::vector<LivingEntity *> World::living = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::food = std::vector<FoodEntity *>();
+std::vector<LivingEntity *> World::living = std::vector<LivingEntity *>();
 
 std::vector<LivingEntity *> World::removeLiving = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::removeFood = std::vector<FoodEntity *>();
@@ -165,13 +165,20 @@ void World::tick() {
         }
     }
 
+    //=============================================================================
+    //                            BEGIN MPI SEND/RECEIVE
+    //=============================================================================
+    MPI_Request reqs[numOfNeighbors()];
+    MPI_Status stats[numOfNeighbors()];
+    void *bufferStarts[numOfNeighbors()];
+
     for (int i = 0; i < numOfNeighbors(); i++) {
         int totalSize = 0;
         for (const auto &e : livingEntitiesToMoveToNeighbors)
             if (e.rank == neighbors[i]) totalSize += e.entity->serializedSize();
 
         void *buffer = malloc(totalSize);
-        void *start = buffer;
+        bufferStarts[i] = buffer;
 
         for (const auto &e : livingEntitiesToMoveToNeighbors) {
             if (e.rank == neighbors[i]) {
@@ -180,8 +187,7 @@ void World::tick() {
             }
         }
 
-        MPI_Request entityRequest;
-        MPI_Isend(start, totalSize, MPI_BYTE, neighbors[i], 42, MPI_COMM_WORLD, &entityRequest);
+        MPI_Isend(bufferStarts[i], totalSize, MPI_BYTE, neighbors[i], MPI_TAG_LIVING_ENTITY, MPI_COMM_WORLD, &reqs[i]);
     }
 
     livingEntitiesToMoveToNeighbors.clear();
@@ -190,14 +196,14 @@ void World::tick() {
         // MPI Probe to get information about the message (i.e. length)
         int receivedBytes;
         MPI_Status probeStat;
-        MPI_Probe(neighbors[i], 42, MPI_COMM_WORLD, &probeStat);
+        MPI_Probe(neighbors[i], MPI_TAG_LIVING_ENTITY, MPI_COMM_WORLD, &probeStat);
         MPI_Get_count(&probeStat, MPI_BYTE, &receivedBytes);
 
         void *buffer = malloc(receivedBytes);
         void *start = buffer;
 
         MPI_Status stat;
-        MPI_Recv(buffer, receivedBytes, MPI_BYTE, neighbors[i], 42, MPI_COMM_WORLD, &stat);
+        MPI_Recv(buffer, receivedBytes, MPI_BYTE, neighbors[i], MPI_TAG_LIVING_ENTITY, MPI_COMM_WORLD, &stat);
 
         while (buffer < (char *) start + receivedBytes) {
             auto *e = new LivingEntity(buffer);
@@ -205,6 +211,14 @@ void World::tick() {
         }
         free(start);
     }
+
+    // Wait for all sends and afterwards free buffers
+    MPI_Waitall(numOfNeighbors(), reqs, stats);
+    for (void *e : bufferStarts)
+        free(e);
+    //=============================================================================
+    //                             END MPI SEND/RECEIVE
+    //=============================================================================
 
     living.erase(std::remove_if(living.begin(), living.end(), toRemoveLiving), living.end());
     living.insert(living.end(), addLiving.begin(), addLiving.end());

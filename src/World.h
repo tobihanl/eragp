@@ -9,6 +9,8 @@
 #define TILE_SIZE 8
 #define NUMBER_OF_MAIMUC_NODES 10
 
+#define MPI_TAG_LIVING_ENTITY 42
+
 //================================== Structs ==================================
 struct WorldDim {
     int x = 0;
@@ -98,16 +100,12 @@ public:
 
     static Tile *tileAt(int x, int y);
 
-    static void moveToNeighbor(LivingEntity *e, int rank);
-
-    static int numOfNeighbors();
-
-    static size_t getRankAt(int x, int y);
-
 private:
     static WorldDim calcWorldDimensions(int rank, int num);
 
     static void generateTerrain();
+
+    static void renderTerrain();
 
     static bool toRemoveLiving(LivingEntity *e);
 
@@ -115,11 +113,15 @@ private:
 
     static bool toAddFood(FoodEntity *e);
 
-    static int getNeighborNodeRank(int neighbor);
+    static size_t getRankAt(int x, int y);
 
-    static void renderTerrain();
+    static void moveToNeighbor(LivingEntity *e, int rank);
+
+    static void moveToNeighbor(LivingEntity *e);
 
     static void calcNeighbors();
+
+    static int numOfNeighbors();
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H
