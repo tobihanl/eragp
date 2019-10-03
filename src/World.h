@@ -25,9 +25,6 @@ struct MPISendEntity {
 //=================================== Class ===================================
 class World {
 private:
-    static int overallWidth;
-    static int overallHeight;
-
     static int MPI_Rank;
     static int MPI_Nodes;
 
@@ -71,6 +68,9 @@ private:
     ~World() = default;
 
 public:
+    static int overallWidth;
+    static int overallHeight;
+
     static void setup(int overallWidth, int overallHeight, bool maimuc);
 
     static int getMPIRank();

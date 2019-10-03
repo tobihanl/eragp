@@ -136,7 +136,8 @@ void World::render() {
 }
 
 void World::tick() {
-    addFoodEntity(new FoodEntity(rand() % World::width, rand() % World::height, 8 * 60));
+    //TODO the same amount of food is spawned, regardless of the size of the node
+    addFoodEntity(new FoodEntity((rand() % World::width) + World::x, (rand() % World::height) + World::y, 8 * 60));
     for (const auto &e : living) {
         e->tick();
     }
@@ -452,13 +453,13 @@ int World::numOfNeighbors() {
 }
 
 size_t World::getRankAt(int x, int y) {
-    x = (x + overallWidth) % overallWidth;
+    x = (x + overallWidth) % overallWidth; //TODO could cause overflow for large worlds. Use long instead?
     y = (y + overallHeight) % overallHeight;
 
-    for (size_t i = 0; i < worlds.size(); i++)
+    for (size_t i = 0; i < worlds.size(); i++) {
         if (worlds[i].x <= x && x < worlds[i].x + worlds[i].w && worlds[i].y <= y && y < worlds[i].y + worlds[i].h)
             return i;
-
+    }
     return -1; // In case there's no matching world
 }
 

@@ -71,18 +71,19 @@ static int getNumDigits(int x) {
 }
 
 void LivingEntity::render() {
+    WorldDim dim = World::getWorldDim();
     float radius = (1.0f + size) * TILE_SIZE / 2.0f;
     int radiusI = round(radius);
-    Renderer::copy(texture, x - radiusI, y - radiusI);
+    Renderer::copy(texture, x - dim.x - radiusI, y - dim.y - radiusI);
     if (energy <= 0) {
-        Renderer::copy(digits[0], x - (ENERGY_FONT_SIZE / 2), y - 4 - ENERGY_FONT_SIZE);
+        Renderer::copy(digits[0], x - dim.x - (ENERGY_FONT_SIZE / 2), y - dim.y - 4 - ENERGY_FONT_SIZE);
     } else {//max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
         int numDigits = getNumDigits(energy);
         int energyToDisplay = energy;
-        int baseX = x + numDigits * 4 -
+        int baseX = x - dim.x + numDigits * 4 -
                     4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
         for (int i = 0; energyToDisplay > 0; i++) {
-            Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, y - 4 - ENERGY_FONT_SIZE);
+            Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, y - dim.y - 4 - ENERGY_FONT_SIZE);
             energyToDisplay /= 10;
         }
     }
@@ -90,6 +91,25 @@ void LivingEntity::render() {
 }
 
 void LivingEntity::tick() {
+    WorldDim dim = World::getWorldDim();
+    assert(x >= dim.x && x < dim.x + dim.w && y >= dim.y && y < dim.y + dim.h && "Coordinates don't match node."); //TODO change or remove with padding (because one entity can be on multiple nodes)
+
+    //################################# Breed ################################# at the beginning, so spawning happens before move ->on the right node
+    if (cooldown > 0) cooldown--;
+    if (cooldown == 0 && energy >= 60 * 2) {
+        //energy -= 60; leaving out might give better results
+        Uint8 nr = color.r + std::round(normalDistribution(randomGenerator) * 255);
+        nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
+        Uint8 ng = color.g + std::round(normalDistribution(randomGenerator) * 255);
+        ng = ng < 0 ? 0 : (ng > 255 ? 255 : ng);
+        Uint8 nb = color.b + std::round(normalDistribution(randomGenerator) * 255);
+        nb = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
+        World::addLivingEntity(new LivingEntity(x, y, {nr, ng, nb, 255}, speed + normalDistribution(randomGenerator),
+                                                size + normalDistribution(randomGenerator),
+                                                waterAgility + normalDistribution(randomGenerator),
+                                                brain->createMutatedCopy()));
+        cooldown += 60;
+    }
     //################################# Think #################################
     FoodEntity *nearestFood = World::findNearestFood(x, y);
     LivingEntity *nearestEnemy = World::findNearestEnemy(this);
@@ -112,7 +132,6 @@ void LivingEntity::tick() {
     //std::cout << continuousIn << normalizedIn << std::endl;
     ThinkResult thoughts = brain->think(continuousIn, normalizedIn);
     rotation = thoughts.rotation;
-    WorldDim dim = World::getWorldDim();
     //################################# Move ##################################
     if (thoughts.move) {
         float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
@@ -120,9 +139,11 @@ void LivingEntity::tick() {
         int yTo = y + (int) std::round(TILE_SIZE * speed * agility * 2 * std::sin(rotation * PI));
         /*if (*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2 TODO reenable
             || *World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8) {
-            x = xTo;
-            y = yTo;
+            x = (xTo + World::overallWidth) % World::overallWidth;
+            y = (yTo + World::overallHeight) % World::overallHeight;
         }*/
+        x = (xTo + World::overallWidth) % World::overallWidth; //TODO could cause overflow for large worlds. Use long instead?
+        y = (yTo + World::overallHeight) % World::overallHeight;
     }
     //################################## Eat ##################################
     if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
@@ -141,57 +162,14 @@ void LivingEntity::tick() {
     energy -= (thoughts.move ? speed * 8 : 0) + size * 4 + 1;
     assert((((int) (thoughts.move ? speed * 8 : 0) + size * 4 + 1)) > 0 && "Entity not loosing Energy");
     if (energy <= 0) World::removeLivingEntity(this);
-    //################################# Breed #################################
-    if (cooldown > 0) cooldown--;
-    if (cooldown == 0 && energy >= 60 * 2) {
-        //energy -= 60; leaving out might give better results
-        Uint8 nr = color.r + std::round(normalDistribution(randomGenerator) * 255);
-        nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
-        Uint8 ng = color.g + std::round(normalDistribution(randomGenerator) * 255);
-        ng = ng < 0 ? 0 : (ng > 255 ? 255 : ng);
-        Uint8 nb = color.b + std::round(normalDistribution(randomGenerator) * 255);
-        nb = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
-        World::addLivingEntity(new LivingEntity(x, y, {nr, ng, nb, 255}, speed + normalDistribution(randomGenerator),
-                                                size + normalDistribution(randomGenerator),
-                                                waterAgility + normalDistribution(randomGenerator),
-                                                brain->createMutatedCopy()));
-        cooldown += 60;
-    }
-
     //########################### Send to other node ##########################
-    if (x >= dim.w || x < 0 || y >= dim.h || y < 0) {
-        int rank = World::getRankAt(dim.x + x, dim.y + y);
+    if (x >= dim.x + dim.w || x < dim.x || y >= dim.y + dim.h || y < dim.y) {
+        int rank = World::getRankAt(x, y);
         WorldDim node = World::getWorldDimOf(rank);
 
         // Other node?
         if (rank != World::getMPIRank())
             World::moveToNeighbor(this, rank);
-
-        // TODO: Adapt this, when Entities store their absolute position rather than relative to the actual world!
-        // TODO: Better positioning in code as this mustn't be related to sending!
-        // calculate position on (new) node
-        bool xOverflow = false, yOverflow = false;
-        if (x >= dim.w) {
-            x -= dim.w;
-            xOverflow = true;
-        } else if (x < 0) {
-            x += node.w;
-            xOverflow = true;
-        }
-
-        if (y >= dim.h) {
-            y -= dim.h;
-            yOverflow = true;
-        } else if (y < 0) {
-            y += node.h;
-            yOverflow = true;
-        }
-
-        if (xOverflow != yOverflow) {
-            // Offset between nodes
-            if (xOverflow) y += dim.y - node.y;
-            if (yOverflow) x += dim.x - node.x;
-        }
     }
 }
 
