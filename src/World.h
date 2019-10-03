@@ -44,19 +44,6 @@ private:
     static std::vector<FoodEntity *> addFood;
     static std::vector<LivingEntity *> addLiving;
 
-    /*
-     *   7 0 1
-     *   6 x 2
-     *   5 4 3
-     *
-     *
-     *   0 1
-     *   2 3
-     *   4 5
-     *   6 7
-     *   8 9
-     */
-
     static std::vector<MPISendEntity> livingEntitiesToMoveToNeighbors;
     static std::vector<WorldDim> worlds;
     static std::vector<int> neighbors;
