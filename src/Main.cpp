@@ -212,7 +212,7 @@ int main(int argc, char **argv) {
     // Init and set-up world & renderer
     World::setup(width, height, maimuc);
     WorldDim dim = World::getWorldDim();
-    if (maimuc)
+    if (maimuc)//TODO change back
         Renderer::setup(0, 0, dim.w, dim.h, true);
     else
         Renderer::setup(dim.x, dim.y, dim.w, dim.h, false);
@@ -220,7 +220,7 @@ int main(int argc, char **argv) {
     //============================= ADD TEST ENTITIES =============================
     for (int i = 0; i < 10; i++) {
         auto *brain = new Brain(6, 8, 4, 4, 10, 4);
-        auto *entity = new LivingEntity(std::rand() % dim.w, std::rand() % dim.h,
+        auto *entity = new LivingEntity((std::rand() % dim.w) + dim.x, (std::rand() % dim.h) + dim.y,
                                         {static_cast<Uint8>(std::rand()), static_cast<Uint8>(std::rand()),
                                          static_cast<Uint8>(std::rand()), 255},
                                         (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f,
@@ -228,7 +228,7 @@ int main(int argc, char **argv) {
         World::addLivingEntity(entity);
     }
     for (int i = 0; i < 100; i++) {
-        World::addFoodEntity(new FoodEntity(std::rand() % dim.w, std::rand() % dim.h, 8 * 60));
+        World::addFoodEntity(new FoodEntity((std::rand() % dim.w) + dim.x, (std::rand() % dim.h) + dim.y, 8 * 60));
     }
     //=========================== END ADD TEST ENTITIES ===========================
 

@@ -5,7 +5,7 @@
 #include <SDL.h>
 class Entity {
 private:
-    static int currentId;
+    static int idCounter;
 
     friend bool operator==(const Entity &lhs, const Entity &rhs);
 
@@ -24,8 +24,6 @@ public:
 
     virtual void render() = 0;
     virtual void tick() = 0;
-
-    void assignNewId();
 
     int getId();
 

@@ -7,10 +7,9 @@
 #include "Tile.h"
 
 #define TILE_SIZE 8
-#define NUMBER_OF_NEIGHBORS 8
 #define NUMBER_OF_MAIMUC_NODES 10
 
-
+//================================== Structs ==================================
 struct WorldDim {
     int x = 0;
     int y = 0;
@@ -18,11 +17,14 @@ struct WorldDim {
     int h = 0;
 };
 
+struct MPISendEntity {
+    int rank;
+    LivingEntity *entity;
+};
+
+//=================================== Class ===================================
 class World {
 private:
-    static int overallWidth;
-    static int overallHeight;
-
     static int MPI_Rank;
     static int MPI_Nodes;
 
@@ -44,20 +46,9 @@ private:
     static std::vector<FoodEntity *> addFood;
     static std::vector<LivingEntity *> addLiving;
 
-    /*
-     *   7 0 1
-     *   6 x 2
-     *   5 4 3
-     *
-     *
-     *   0 1
-     *   2 3
-     *   4 5
-     *   6 7
-     *   8 9
-     */
-
-    static std::vector<LivingEntity *> livingEntitiesToMoveToNeighbors[NUMBER_OF_NEIGHBORS];
+    static std::vector<MPISendEntity> livingEntitiesToMoveToNeighbors;
+    static std::vector<WorldDim> worlds;
+    static std::vector<int> neighbors;
 
     static std::vector<Tile *> terrain;
 
@@ -66,15 +57,21 @@ private:
     ~World() = default;
 
 public:
-    static void generateTerrain();
+    static int overallWidth;
+    static int overallHeight;
 
     static void setup(int overallWidth, int overallHeight, bool maimuc);
 
-    static WorldDim calcWorldDimensions(int rank, int num);
+    static int getMPIRank();
+
+    static int getMPINodes();
 
     static WorldDim getWorldDim();
 
+    static WorldDim getWorldDimOf(int rank);
+
     static void render();
+
     static void tick();
 
     static FoodEntity *findNearestFood(int x, int y);
@@ -101,9 +98,17 @@ public:
 
     static Tile *tileAt(int x, int y);
 
-    static void moveToNeighbor(LivingEntity *e, int neighbor);
+    static void moveToNeighbor(LivingEntity *e, int rank);
+
+    static int numOfNeighbors();
+
+    static size_t getRankAt(int x, int y);
 
 private:
+    static WorldDim calcWorldDimensions(int rank, int num);
+
+    static void generateTerrain();
+
     static bool toRemoveLiving(LivingEntity *e);
 
     static bool toAddLiving(LivingEntity *e);
@@ -113,6 +118,8 @@ private:
     static int getNeighborNodeRank(int neighbor);
 
     static void renderTerrain();
+
+    static void calcNeighbors();
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H

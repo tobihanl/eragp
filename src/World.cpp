@@ -1,8 +1,8 @@
 #include <mpi.h>
-#include "World.h"
 #include <algorithm>
 #include <cstdlib>
 #include <cassert>
+#include "World.h"
 #include "Renderer.h"
 #include "SimplexNoise/SimplexNoise.h"
 
@@ -18,7 +18,9 @@ std::vector<FoodEntity *> World::removeFood = std::vector<FoodEntity *>();
 std::vector<LivingEntity *> World::addLiving = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::addFood = std::vector<FoodEntity *>();
 
-std::vector<LivingEntity *> World::livingEntitiesToMoveToNeighbors[NUMBER_OF_NEIGHBORS] = {};
+std::vector<MPISendEntity> World::livingEntitiesToMoveToNeighbors = std::vector<MPISendEntity>();
+std::vector<WorldDim> World::worlds = std::vector<WorldDim>();
+std::vector<int> World::neighbors = std::vector<int>();
 
 // Init static attributes
 int World::overallWidth = 0;
@@ -62,27 +64,34 @@ void World::setup(int overallWidth, int overallHeight, bool maimuc) {
             abort();
         }
 
-        // Set dimensions for this world on MaiMUC
-        width = 800;
-        height = 600;
-        x = ((MPI_Rank % 2) == 0) ? 0 : width;
-        y = (MPI_Rank / 2) * height;
+        // Get dimensions for all worlds
+        for (int i = 0; i < NUMBER_OF_MAIMUC_NODES; i++)
+            worlds.push_back({
+                                     ((i % 2) == 0) ? 0 : 800,
+                                     (i / 2) * 600,
+                                     800,
+                                     600
+                             });
 
-        World::overallWidth = width * 2;
-        World::overallHeight = height * 5;
+        World::overallWidth = 800 * 2;
+        World::overallHeight = 600 * 5;
     } else {
         World::overallWidth = overallWidth;
         World::overallHeight = overallHeight;
 
-        // Get and set dimesions for this world
-        WorldDim dim = calcWorldDimensions(MPI_Rank, MPI_Nodes);
-        x = dim.x;
-        y = dim.y;
-        width = dim.w;
-        height = dim.h;
+        // Get dimensions for all worlds
+        for (int i = 0; i < MPI_Nodes; i++)
+            worlds.push_back(calcWorldDimensions(i, MPI_Nodes));
     }
 
+    // Set dimension for this world
+    x = worlds[MPI_Rank].x;
+    y = worlds[MPI_Rank].y;
+    width = worlds[MPI_Rank].w;
+    height = worlds[MPI_Rank].h;
+
     generateTerrain();
+    calcNeighbors();
     isSetup = true;
 }
 
@@ -135,59 +144,55 @@ void World::render() {
     for (const auto &e : living) {
         e->render();
     }
-}
 
-int World::getNeighborNodeRank(int neighbor) {
-    int rank = MPI_Rank;
-    if (neighbor != 0 && neighbor != 4) { // if neighbor to the right or left
-        if (rank % 2 == 0) rank++;
-        else rank--;
-    }
-
-    if (neighbor == 7 || neighbor == 0 || neighbor == 1) rank -= 2; // to the top
-    if (neighbor == 5 || neighbor == 4 || neighbor == 3) rank += 2; // to the bottom
-
-    return (rank % NUMBER_OF_MAIMUC_NODES) < 0 ? NUMBER_OF_MAIMUC_NODES + rank : rank % NUMBER_OF_MAIMUC_NODES;
+    // Show the rank of the node in the upper left of the window
+    SDL_Texture *t = Renderer::renderFont(std::to_string(MPI_Rank), 25, {255, 255, 255, 255}, "font.ttf");
+    Renderer::copy(t, 10, 10);
 }
 
 void World::tick() {
-    addFoodEntity(new FoodEntity(rand() % World::width, rand() % World::height, 8 * 60));
+    //TODO the same amount of food is spawned, regardless of the size of the node
+    addFoodEntity(new FoodEntity((rand() % World::width) + World::x, (rand() % World::height) + World::y, 8 * 60));
     for (const auto &e : living) {
         e->tick();
     }
 
-    for (int i = 0; i < NUMBER_OF_NEIGHBORS; i++) {
+    for (int i = 0; i < numOfNeighbors(); i++) {
         int totalSize = 0;
-        for (const auto &e : livingEntitiesToMoveToNeighbors[i]) {
-            totalSize += e->serializedSize();
-        }
+        for (const auto &e : livingEntitiesToMoveToNeighbors)
+            if (e.rank == neighbors[i]) totalSize += e.entity->serializedSize();
 
         void *buffer = malloc(totalSize);
         void *start = buffer;
 
-        for (const auto &e : livingEntitiesToMoveToNeighbors[i]) {
-            e->serialize(buffer);
-            removeLivingEntity(e);
+        for (const auto &e : livingEntitiesToMoveToNeighbors) {
+            if (e.rank == neighbors[i]) {
+                e.entity->serialize(buffer);
+                removeLivingEntity(e.entity);
+            }
         }
-        livingEntitiesToMoveToNeighbors[i].clear();
 
         MPI_Request entityRequest;
-        MPI_Isend(start, totalSize, MPI_BYTE, getNeighborNodeRank(i), 42, MPI_COMM_WORLD, &entityRequest);
+        MPI_Isend(start, totalSize, MPI_BYTE, neighbors[i], 42, MPI_COMM_WORLD, &entityRequest);
     }
 
-    for (int i = 0; i < NUMBER_OF_NEIGHBORS; i++) {
-        void *buffer = malloc(10000);
-        void *start = buffer;
-        MPI_Status stat;
-        MPI_Recv(buffer, 10000, MPI_BYTE, getNeighborNodeRank(i), 42, MPI_COMM_WORLD, &stat);
+    livingEntitiesToMoveToNeighbors.clear();
 
+    for (int i = 0; i < numOfNeighbors(); i++) {
+        // MPI Probe to get information about the message (i.e. length)
         int receivedBytes;
-        MPI_Get_count(&stat, MPI_BYTE, &receivedBytes);
+        MPI_Status probeStat;
+        MPI_Probe(neighbors[i], 42, MPI_COMM_WORLD, &probeStat);
+        MPI_Get_count(&probeStat, MPI_BYTE, &receivedBytes);
+
+        void *buffer = malloc(receivedBytes);
+        void *start = buffer;
+
+        MPI_Status stat;
+        MPI_Recv(buffer, receivedBytes, MPI_BYTE, neighbors[i], 42, MPI_COMM_WORLD, &stat);
 
         while (buffer < (char *) start + receivedBytes) {
             auto *e = new LivingEntity(buffer);
-            e->setEnergy(1000);
-            e->assignNewId();
             addLivingEntity(e);
         }
         free(start);
@@ -374,9 +379,68 @@ WorldDim World::calcWorldDimensions(int rank, int num) {
     return dim;
 }
 
-WorldDim World::getWorldDim() {
-    return {x, y, width, height};
+void World::calcNeighbors() {
+    int start1, end1, start2, end2;
+    for (size_t i = 0; i < worlds.size(); i++) {
+        auto dim = worlds[i];
+
+        // Upper or lower line (of THIS world)?
+        if ((dim.y + dim.h) % overallHeight == y ||
+            (y + height) % overallHeight == dim.y) {
+            // 1st line
+            start1 = x;
+            end1 = x + width;
+
+            // 2nd line
+            start2 = dim.x;
+            end2 = dim.x + dim.w;
+
+            // Do the lines touch each other?
+            if ((start1 <= start2 && start2 <= end1) ||
+                (start1 <= end2 && end2 <= end1) ||
+                (start2 <= start1 && end1 <= end2) ||
+                (start1 == 0 && end2 == overallWidth) ||
+                (end1 == overallWidth && start2 == 0)) {
+                neighbors.push_back(i);
+            }
+        } else if ((x + width) % overallWidth == dim.x ||
+                   (dim.x + dim.w) % overallWidth == x) { // Right or left line (of THIS world)?
+            // 1st line
+            start1 = y;
+            end1 = y + height;
+
+            // 2nd line
+            start2 = dim.y;
+            end2 = dim.y + dim.h;
+
+            // Do the lines touch each other?
+            if ((start1 <= start2 && start2 <= end1) ||
+                (start1 <= end2 && end2 <= end1) ||
+                (start2 <= start1 && end1 <= end2) ||
+                (start1 == 0 && end2 == overallWidth) ||
+                (end1 == overallWidth && start2 == 0)) {
+                neighbors.push_back(i);
+            }
+        }
+    }
 }
+
+WorldDim World::getWorldDim() {
+    return getWorldDimOf(MPI_Rank);
+}
+
+WorldDim World::getWorldDimOf(int rank) {
+    return worlds[rank];
+}
+
+int World::getMPIRank() {
+    return MPI_Rank;
+}
+
+int World::getMPINodes() {
+    return MPI_Nodes;
+}
+
 
 bool World::toRemoveLiving(LivingEntity *e) {
     return std::find(removeLiving.begin(), removeLiving.end(), e) != removeLiving.end();
@@ -394,8 +458,24 @@ bool World::toAddFood(FoodEntity *e) {
     return std::find(addFood.begin(), addFood.end(), e) != addFood.end();
 }
 
-void World::moveToNeighbor(LivingEntity *e, int neighbor) {
-    livingEntitiesToMoveToNeighbors[neighbor].push_back(e);
+void World::moveToNeighbor(LivingEntity *e, int rank) {
+    assert(std::find(neighbors.begin(), neighbors.end(), rank) != neighbors.end() && "Given rank not a neighbor!");
+    livingEntitiesToMoveToNeighbors.push_back({rank, e});
+}
+
+int World::numOfNeighbors() {
+    return neighbors.size();
+}
+
+size_t World::getRankAt(int x, int y) {
+    x = (x + overallWidth) % overallWidth; //TODO could cause overflow for large worlds. Use long instead?
+    y = (y + overallHeight) % overallHeight;
+
+    for (size_t i = 0; i < worlds.size(); i++) {
+        if (worlds[i].x <= x && x < worlds[i].x + worlds[i].w && worlds[i].y <= y && y < worlds[i].y + worlds[i].h)
+            return i;
+    }
+    return -1; // In case there's no matching world
 }
 
 /**
