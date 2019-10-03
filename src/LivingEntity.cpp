@@ -91,9 +91,6 @@ void LivingEntity::render() {
 }
 
 void LivingEntity::tick() {
-    WorldDim dim = World::getWorldDim();
-    assert(x >= dim.x && x < dim.x + dim.w && y >= dim.y && y < dim.y + dim.h && "Coordinates don't match node."); //TODO change or remove with padding (because one entity can be on multiple nodes)
-
     //################################# Breed ################################# at the beginning, so spawning happens before move ->on the right node
     if (cooldown > 0) cooldown--;
     if (cooldown == 0 && energy >= 60 * 2) {
@@ -162,15 +159,6 @@ void LivingEntity::tick() {
     energy -= (thoughts.move ? speed * 8 : 0) + size * 4 + 1;
     assert((((int) (thoughts.move ? speed * 8 : 0) + size * 4 + 1)) > 0 && "Entity not loosing Energy");
     if (energy <= 0) World::removeLivingEntity(this);
-    //########################### Send to other node ##########################
-    if (x >= dim.x + dim.w || x < dim.x || y >= dim.y + dim.h || y < dim.y) {
-        int rank = World::getRankAt(x, y);
-        WorldDim node = World::getWorldDimOf(rank);
-
-        // Other node?
-        if (rank != World::getMPIRank())
-            World::moveToNeighbor(this, rank);
-    }
 }
 
 //TODO consider new properties when added

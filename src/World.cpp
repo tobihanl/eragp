@@ -154,7 +154,15 @@ void World::tick() {
     //TODO the same amount of food is spawned, regardless of the size of the node
     addFoodEntity(new FoodEntity((rand() % World::width) + World::x, (rand() % World::height) + World::y, 8 * 60));
     for (const auto &e : living) {
+        //TODO change or remove with padding (because one entity can be on multiple nodes)
+        assert(e->x >= x && e->x < x + width && e->y >= y && e->y < y + height && "Coordinates don't match node.");
         e->tick();
+
+        // Send to OTHER node?
+        if (e->x >= x + width || e->x < x || e->y >= y + height || e->y < y) {
+            int rank = World::getRankAt(e->x, e->y);
+            if (rank != World::getMPIRank()) World::moveToNeighbor(e, rank);
+        }
     }
 
     for (int i = 0; i < numOfNeighbors(); i++) {
