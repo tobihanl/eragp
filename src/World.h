@@ -2,6 +2,7 @@
 #define ERAGP_MAIMUC_EVO_2019_WORLD_H
 
 #include <vector>
+#include "mpi.h"
 #include "FoodEntity.h"
 #include "LivingEntity.h"
 #include "Tile.h"
@@ -10,7 +11,11 @@
 #define NUMBER_OF_MAIMUC_NODES 10
 #define WORLD_PADDING 50
 
+#define MSGS_PER_NEIGHBOR 3
+
 #define MPI_TAG_LIVING_ENTITY 42
+#define MPI_TAG_FOOD_ENTITY 50
+#define MPI_TAG_REMOVED_FOOD_ENTITY 51
 
 //================================== Structs ==================================
 struct WorldDim {
@@ -50,6 +55,9 @@ private:
     static std::vector<LivingEntity *> addLiving;
 
     static std::vector<MPISendEntity> livingEntitiesToMoveToNeighbors;
+    static std::vector<MPISendEntity> foodToSendToNeighbors;
+    static std::vector<MPISendEntity> removedFoodToSendToNeighbors;
+
     static std::vector<WorldDim> worlds;
     static std::vector<int> neighbors;
 
@@ -118,9 +126,11 @@ private:
 
     static std::vector<size_t> *paddingRanksAt(int x, int y);
 
-    static void moveToNeighbor(LivingEntity *e, int rank);
+    static void *sendEntities(const std::vector<MPISendEntity> &entities, int rank, int tag, MPI_Request *request);
 
-    static void moveToNeighbor(LivingEntity *e);
+    static void receiveEntities(int rank, int tag);
+
+    static void moveToNeighbor(LivingEntity *e, int rank);
 
     static void calcNeighbors();
 

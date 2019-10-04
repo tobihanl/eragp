@@ -1,7 +1,7 @@
-#include <mpi.h>
 #include <algorithm>
 #include <cstdlib>
 #include <cassert>
+#include "mpi.h"
 #include "World.h"
 #include "Renderer.h"
 #include "SimplexNoise/SimplexNoise.h"
@@ -19,6 +19,9 @@ std::vector<LivingEntity *> World::addLiving = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::addFood = std::vector<FoodEntity *>();
 
 std::vector<MPISendEntity> World::livingEntitiesToMoveToNeighbors = std::vector<MPISendEntity>();
+std::vector<MPISendEntity> World::foodToSendToNeighbors = std::vector<MPISendEntity>();
+std::vector<MPISendEntity> World::removedFoodToSendToNeighbors = std::vector<MPISendEntity>();
+
 std::vector<WorldDim> World::worlds = std::vector<WorldDim>();
 std::vector<int> World::neighbors = std::vector<int>();
 
@@ -168,54 +171,42 @@ void World::tick() {
     //=============================================================================
     //                            BEGIN MPI SEND/RECEIVE
     //=============================================================================
-    MPI_Request reqs[numOfNeighbors()];
-    MPI_Status stats[numOfNeighbors()];
-    void *bufferStarts[numOfNeighbors()];
+    MPI_Request reqs[numOfNeighbors() * MSGS_PER_NEIGHBOR];
+    MPI_Status stats[numOfNeighbors() * MSGS_PER_NEIGHBOR];
+    void *buffers[numOfNeighbors() * MSGS_PER_NEIGHBOR];
 
+    //############################# SEND ENTITIES #############################
     for (int i = 0; i < numOfNeighbors(); i++) {
-        int totalSize = 0;
-        for (const auto &e : livingEntitiesToMoveToNeighbors)
-            if (e.rank == neighbors[i]) totalSize += e.entity->serializedSize();
-
-        void *buffer = malloc(totalSize);
-        bufferStarts[i] = buffer;
-
-        for (const auto &e : livingEntitiesToMoveToNeighbors) {
-            if (e.rank == neighbors[i]) {
-                e.entity->serialize(buffer);
-                // Method moveToNeighbor() guarantees that e.entity is of type LivingEntity*!!!
-                removeLivingEntity((LivingEntity *) e.entity);
-            }
-        }
-
-        MPI_Isend(bufferStarts[i], totalSize, MPI_BYTE, neighbors[i], MPI_TAG_LIVING_ENTITY, MPI_COMM_WORLD, &reqs[i]);
+        buffers[MSGS_PER_NEIGHBOR * i] = sendEntities(livingEntitiesToMoveToNeighbors, neighbors[i],
+                                                      MPI_TAG_LIVING_ENTITY,
+                                                      &reqs[MSGS_PER_NEIGHBOR * i]);
+        buffers[MSGS_PER_NEIGHBOR * i + 1] = sendEntities(foodToSendToNeighbors, neighbors[i],
+                                                          MPI_TAG_FOOD_ENTITY,
+                                                          &reqs[MSGS_PER_NEIGHBOR * i + 1]);
+        buffers[MSGS_PER_NEIGHBOR * i + 2] = sendEntities(removedFoodToSendToNeighbors, neighbors[i],
+                                                          MPI_TAG_REMOVED_FOOD_ENTITY,
+                                                          &reqs[MSGS_PER_NEIGHBOR * i + 2]);
     }
 
+    // Method moveToNeighbor() guarantees that e.entity is of type LivingEntity*!!!
+    for (const auto &e : livingEntitiesToMoveToNeighbors)
+        removeLivingEntity((LivingEntity *) e.entity);
+
+    // Clear sending storage
     livingEntitiesToMoveToNeighbors.clear();
+    foodToSendToNeighbors.clear();
+    removedFoodToSendToNeighbors.clear();
 
+    //############################ RECEIVE ENTITIES ###########################
     for (int i = 0; i < numOfNeighbors(); i++) {
-        // MPI Probe to get information about the message (i.e. length)
-        int receivedBytes;
-        MPI_Status probeStat;
-        MPI_Probe(neighbors[i], MPI_TAG_LIVING_ENTITY, MPI_COMM_WORLD, &probeStat);
-        MPI_Get_count(&probeStat, MPI_BYTE, &receivedBytes);
-
-        void *buffer = malloc(receivedBytes);
-        void *start = buffer;
-
-        MPI_Status stat;
-        MPI_Recv(buffer, receivedBytes, MPI_BYTE, neighbors[i], MPI_TAG_LIVING_ENTITY, MPI_COMM_WORLD, &stat);
-
-        while (buffer < (char *) start + receivedBytes) {
-            auto *e = new LivingEntity(buffer);
-            addLivingEntity(e);
-        }
-        free(start);
+        receiveEntities(neighbors[i], MPI_TAG_LIVING_ENTITY);
+        receiveEntities(neighbors[i], MPI_TAG_FOOD_ENTITY);
+        receiveEntities(neighbors[i], MPI_TAG_REMOVED_FOOD_ENTITY);
     }
 
-    // Wait for all sends and afterwards free buffers
-    MPI_Waitall(numOfNeighbors(), reqs, stats);
-    for (void *e : bufferStarts)
+    // Wait for all sends to complete and afterwards free buffers
+    MPI_Waitall(numOfNeighbors() * MSGS_PER_NEIGHBOR, reqs, stats);
+    for (void *e : buffers)
         free(e);
     //=============================================================================
     //                             END MPI SEND/RECEIVE
@@ -235,6 +226,66 @@ void World::tick() {
     removeLiving.clear();
     addFood.clear();
     addLiving.clear();
+}
+
+void *World::sendEntities(const std::vector<MPISendEntity> &entities, int rank, int tag, MPI_Request *request) {
+    int totalSize = 0;
+    for (const auto &e : entities)
+        if (e.rank == rank) totalSize += e.entity->serializedSize();
+
+    void *buffer = malloc(totalSize);
+    void *start = buffer;
+
+    for (const auto &e : entities)
+        if (e.rank == rank)
+            e.entity->serialize(buffer);
+
+    MPI_Isend(start, totalSize, MPI_BYTE, rank, tag, MPI_COMM_WORLD, request);
+    return start;
+}
+
+void World::receiveEntities(int rank, int tag) {
+    int receivedBytes;
+
+    // MPI Probe to get information about the message (i.e. length)
+    MPI_Status probeStat;
+    MPI_Probe(rank, tag, MPI_COMM_WORLD, &probeStat);
+    MPI_Get_count(&probeStat, MPI_BYTE, &receivedBytes);
+
+    void *buffer = malloc(receivedBytes);
+    void *start = buffer;
+
+    MPI_Status stat;
+    MPI_Recv(buffer, receivedBytes, MPI_BYTE, rank, tag, MPI_COMM_WORLD, &stat);
+
+    while (buffer < (char *) start + receivedBytes) {
+        Entity *e;
+        switch (tag) {
+            case MPI_TAG_LIVING_ENTITY:
+                e = new LivingEntity(buffer);
+                addLivingEntity((LivingEntity *) e);
+                break;
+
+            case MPI_TAG_FOOD_ENTITY:
+                e = new FoodEntity(buffer);
+                addFoodEntity((FoodEntity *) e);
+                break;
+
+            case MPI_TAG_REMOVED_FOOD_ENTITY:
+                e = new FoodEntity(buffer);
+                for (const auto &f : food) {
+                    if (e->getId() == f->getId() && !toRemoveFood(f))
+                        removeFoodEntity(f);
+                }
+                free(e);
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    free(start);
 }
 
 FoodEntity *World::findNearestFood(int x, int y) {
@@ -335,8 +386,14 @@ void World::addLivingEntity(LivingEntity *e) {
 }
 
 void World::addFoodEntity(FoodEntity *e) {
-    if (!toAddFood(e))
-        addFood.push_back(e);
+    if (toAddFood(e)) return;
+    addFood.push_back(e);
+
+    // If on THIS node: entity in padding of some neighbors?
+    if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
+        for (int neighbor : *paddingRanksAt(e->x, e->y))
+            foodToSendToNeighbors.push_back({neighbor, e});
+    }
 }
 
 void World::removeLivingEntity(LivingEntity *e) {
@@ -347,6 +404,12 @@ void World::removeLivingEntity(LivingEntity *e) {
 void World::removeFoodEntity(FoodEntity *e) {
     assert(!toRemoveFood(e) && "Tried to remove same FoodEntity multiple times");
     removeFood.push_back(e);
+
+    // If on THIS node: entity in padding of some neighbors?
+    if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
+        for (int neighbor : *paddingRanksAt(e->x, e->y))
+            removedFoodToSendToNeighbors.push_back({neighbor, e});
+    }
 }
 
 /**
