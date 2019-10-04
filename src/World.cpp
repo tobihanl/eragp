@@ -160,7 +160,7 @@ void World::tick() {
 
         // Send to OTHER node?
         if (e->x >= x + width || e->x < x || e->y >= y + height || e->y < y) {
-            int rank = World::getRankAt(e->x, e->y);
+            int rank = World::rankAt(e->x, e->y);
             if (rank != World::getMPIRank()) World::moveToNeighbor(e, rank);
         }
     }
@@ -405,6 +405,7 @@ WorldDim World::calcWorldDimensions(int rank, int num) {
 void World::calcNeighbors() {
     int start1, end1, start2, end2;
     for (size_t i = 0; i < worlds.size(); i++) {
+        if (i == MPI_Rank) continue; // Node doesn't need to know that it's its own neighbor!
         auto dim = worlds[i];
 
         // Upper or lower line (of THIS world)?
@@ -490,7 +491,7 @@ int World::numOfNeighbors() {
     return neighbors.size();
 }
 
-size_t World::getRankAt(int x, int y) {
+size_t World::rankAt(int x, int y) {
     x = (x + overallWidth) % overallWidth; //TODO could cause overflow for large worlds. Use long instead?
     y = (y + overallHeight) % overallHeight;
 
@@ -499,6 +500,50 @@ size_t World::getRankAt(int x, int y) {
             return i;
     }
     return -1; // In case there's no matching world
+}
+
+/**
+ * @return      Ranks having a padding on the given coordinates
+ *
+ * @attention   Only works for (x,y) coordinates on THIS node!
+ */
+std::vector<size_t> *World::paddingRanksAt(int x, int y) {
+    assert(x >= World::x && x < World::x + World::width && y >= World::y && y < World::y + World::height &&
+           "Coordinates NOT on THIS node");
+
+    int shiftedX, shiftedY;
+    auto *ranks = new std::vector<size_t>();
+    for (int neighbor : neighbors) {
+        WorldDim dim = worlds[neighbor];
+        shiftedX = x;
+        shiftedY = y;
+
+        // Shift X coordinate
+        if (dim.x == 0 && x + WORLD_PADDING >= overallWidth)                // Overlap?
+            shiftedX = (x + WORLD_PADDING) % overallWidth;
+        else if (dim.x + dim.w == overallWidth && x - WORLD_PADDING < 0)    // Overlap?
+            shiftedX = (x - WORLD_PADDING + overallWidth) % overallWidth;
+        else if (x < dim.x)
+            shiftedX = (x + WORLD_PADDING) % overallWidth;
+        else if (x >= dim.x + dim.w)
+            shiftedX = (x - WORLD_PADDING + overallWidth) % overallWidth;
+
+        // Shift Y coordinate
+        if (dim.y == 0 && y + WORLD_PADDING >= overallHeight)               // Overlap?
+            shiftedY = (y + WORLD_PADDING) % overallHeight;
+        else if (dim.y + dim.h == overallHeight && y - WORLD_PADDING < 0)   // Overlap?
+            shiftedY = (y - WORLD_PADDING + overallHeight) % overallHeight;
+        else if (y < dim.y)
+            shiftedY = (y + WORLD_PADDING) % overallHeight;
+        else if (y >= dim.y + dim.h)
+            shiftedY = (y - WORLD_PADDING + overallHeight) % overallHeight;
+
+        // Point shifted into the world?
+        if (shiftedX >= dim.x && shiftedX < dim.x + dim.w && shiftedY >= dim.y && shiftedY < dim.y + dim.h)
+            ranks->push_back(neighbor);
+    }
+
+    return ranks;
 }
 
 /**
