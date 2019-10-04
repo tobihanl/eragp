@@ -17,7 +17,7 @@ FoodEntity::FoodEntity(void *&ptr) :
                {255, 0, 0, 255},
                4),
         energy(((int *) ptr)[3]) {
-
+    ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
 }
 
 void FoodEntity::render() {
@@ -35,4 +35,5 @@ void FoodEntity::serialize(void *&ptr) {
     ((int *) ptr)[1] = x;
     ((int *) ptr)[2] = y;
     ((int *) ptr)[3] = energy;
+    ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
 }

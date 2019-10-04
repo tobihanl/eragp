@@ -40,8 +40,11 @@ void renderLoop() {
             std::chrono::system_clock::now().time_since_epoch()).count();
 
     // Debug flags and other stuff
-    bool paused = false, similarityMode = false;
+    bool paused = false, similarityMode = false, borders = false;
     std::vector<LivingEntity *> selectedEntities;
+    WorldDim dim = World::getWorldDim();
+    SDL_Texture *border = Renderer::renderRect(dim.w, dim.h, {255, 0, 0, 255}, false);
+    SDL_Texture *pauseText = Renderer::renderFont("Paused", 25, {0, 0, 0, 255}, "font.ttf");
 
     //=============================================================================
     //                               BEGIN MAIN LOOP
@@ -84,6 +87,11 @@ void renderLoop() {
                             else similarityMode = paused = false;
 
                             selectedEntities.clear();
+                            break;
+
+                            // Show borders of the world
+                        case SDLK_b:
+                            borders = !borders;
                             break;
 
                         default:
@@ -140,8 +148,8 @@ void renderLoop() {
 
             // Render everything
             World::render();
-            if (paused)
-                Renderer::copy(Renderer::renderFont("Paused", 25, {0, 0, 0, 255}, "font.ttf"), 10, 10);
+            if (paused) Renderer::copy(pauseText, 10, 10);
+            if (borders) Renderer::copy(border, 0, 0);
 
             Renderer::present();
         }

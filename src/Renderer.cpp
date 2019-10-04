@@ -132,26 +132,45 @@ void Renderer::copy(SDL_Texture *texture, int x, int y) {
 /**
  * Cleans-up all the textures by destroying them.
  *
- * @param texture The texture to be destroyed
+ * @param   texture The texture to be destroyed
  */
 void Renderer::cleanup(SDL_Texture *texture) {
     Include::cleanup(texture);
 }
 
+/**
+ * Set a new target for the Renderer
+ *
+ * @param   target  The texture to be the new render target.
+ *                  Default target when nullptr.
+ *
+ * @attention   The texture must have an applicable access flag
+ *              (SDL_TEXTUREACCESS_TARGET)!
+ */
 void Renderer::setTarget(SDL_Texture *target) {
     SDL_SetRenderTarget(ren, target);
 }
 
+/**
+ * Creates a tetxure.
+ *
+ * @param   width   Width of the new texture
+ * @param   height  Height of the new texture
+ * @param   access  Access flag for the texture (i.e. important for
+ *                  settings as a render target)
+ *
+ * @return  Pointer to the created SDL_Texture
+ */
 SDL_Texture *Renderer::createTexture(int width, int height, int access) {
     return SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, access, width, height);
 }
 
 /**
- * Renders an image on the window on the given position
+ * Renders an image.
  *
- * @param imagePath Path to the image relative to the resource folder
+ * @param   imagePath   Path to the image relative to the resource folder
  *
- * @return Pointer to the created SDL_Texture
+ * @return  Pointer to the created SDL_Texture
  */
 SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
     std::string file = Include::getResourcePath() + imagePath;
@@ -165,19 +184,18 @@ SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
 }
 
 /**
- * Renders a dot/filled circle on the window on the given (centered!) position
+ * Renders a dot/filled circle
  *
- * @param radius The radius of the circle
- * @param color The color of the circle (SDL_Color structure)
+ * @param   radius  The radius of the circle
+ * @param   color   The color of the circle (SDL_Color structure)
  *
- * @return A pointer to the texture with the specified dot/filled circle
+ * @return  A pointer to the texture with the specified dot/filled circle
  */
 SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
     int squaredRadius = radius * radius, doubledRadius = radius + radius;
 
     // Create Texture and Pixel array
-    SDL_Texture *texture = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC,
-                                             doubledRadius, doubledRadius);
+    SDL_Texture *texture = createTexture(doubledRadius, doubledRadius, SDL_TEXTUREACCESS_STATIC);
     auto *pixels = new Uint32[doubledRadius * doubledRadius];
 
     // Calculate positions of all points needed to draw a filled circle/dot
@@ -197,16 +215,53 @@ SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
     // Draw filled circle/Dot on texture and return it
     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
     SDL_UpdateTexture(texture, nullptr, pixels, doubledRadius * sizeof(Uint32));
+
+    free(pixels);
+    return texture;
+}
+
+/**
+ * Renders a filled or unfilled rectangle
+ *
+ * @param   width   Width of the new rectangle
+ * @param   height  Height of the new rectangle
+ * @param   color   Drawing color for the rectangle
+ * @param   filled  Decides, whether the rectangle will be drawn filled
+ *                  or not (filled area will be transparent)
+ *
+ * @return  Pointer to the texture with the specified rectangle.
+ */
+SDL_Texture *Renderer::renderRect(int width, int height, const SDL_Color &color, bool filled) {
+    SDL_Texture *texture = createTexture(width, height, SDL_TEXTUREACCESS_STATIC);
+    auto *pixels = new Uint32[width * height];
+
+    // Go through every pixel
+    for (int w = 0; w < width; w++) {
+        for (int h = 0; h < height; h++) {
+            // If not filled: not at a border?
+            if (!filled && h > 0 && h < height - 1 && w > 0 && w < width - 1)
+                pixels[h * width + w] = 0; // Transparent
+            else
+                pixels[h * width + w] = (color.a << 24) + (color.r << 16) + (color.g << 8) + color.b;
+        }
+    }
+
+    // Draw rect on texture and return it
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+    SDL_UpdateTexture(texture, nullptr, pixels, width * sizeof(Uint32));
+
+    free(pixels);
     return texture;
 }
 
 /**
  * Renders a text on the window
  *
- * @param text The text to be displayed
- * @param size The font size
- * @param color Text's color
- * @param fontFile Path to the file where the font is stored, relative to resource folder (TTF-File)
+ * @param   text        The text to be displayed
+ * @param   size        The font size
+ * @param   color       Text's color
+ * @param   fontFile    Path to the file where the font is stored,
+ *                      relative to resource folder (TTF-File)
  *
  * @return Pointer to the created SDL_Texture
  */
@@ -238,10 +293,12 @@ SDL_Texture *Renderer::renderFont(const std::string &text, int size, const SDL_C
 }
 
 /**
- * Log an SDL error with some error message to the output stream of our choice
+ * Log an SDL error with some error message to the output stream
+ * of your choice
  *
- * @param os The output stream to write the message to
- * @param msg The error message to write, format will be msg error: SDL_GetError()
+ * @param   os  The output stream to write the message to
+ * @param   msg The error message to write, format will be
+ *              "msg error: SDL_GetError()"
  */
 void Renderer::logSDLError(std::ostream &os, const std::string &msg) {
     os << msg << " error: " << SDL_GetError() << std::endl;
