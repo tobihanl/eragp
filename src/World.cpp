@@ -183,7 +183,8 @@ void World::tick() {
         for (const auto &e : livingEntitiesToMoveToNeighbors) {
             if (e.rank == neighbors[i]) {
                 e.entity->serialize(buffer);
-                removeLivingEntity(e.entity);
+                // Method moveToNeighbor() guarantees that e.entity is of type LivingEntity*!!!
+                removeLivingEntity((LivingEntity *) e.entity);
             }
         }
 

@@ -30,7 +30,8 @@ LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float 
         waterAgility(wa < 0 ? 0 : (wa > 1 ? 1 : wa)),
         brain(b),
         energy(60 * 2),
-        cooldown(60) {
+        cooldown(60),
+        rotation(0.0f) {
 
 }
 

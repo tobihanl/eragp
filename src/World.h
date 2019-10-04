@@ -21,7 +21,7 @@ struct WorldDim {
 
 struct MPISendEntity {
     int rank;
-    LivingEntity *entity;
+    Entity *entity;
 };
 
 //=================================== Class ===================================

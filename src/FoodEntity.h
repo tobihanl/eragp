@@ -12,9 +12,15 @@ public:
 
     FoodEntity(int x, int y, int energy);
 
+    explicit FoodEntity(void *&ptr);
+
     ~FoodEntity() override = default;
     void render() override;
     void tick() override;
+
+    int serializedSize() override;
+
+    void serialize(void *&ptr) override;
 };
 
 

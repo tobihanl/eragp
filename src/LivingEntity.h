@@ -32,7 +32,7 @@ public:
 
     LivingEntity(int x, int y, SDL_Color color, float speed, float size, float waterAgility, Brain *brain);
 
-    LivingEntity(void *&ptr);
+    explicit LivingEntity(void *&ptr);
 
     ~LivingEntity() override;
     void render() override;
@@ -44,8 +44,9 @@ public:
         this->energy = energy;
     }
 
-    int serializedSize();
-    void serialize(void *&ptr);
+    int serializedSize() override;
+
+    void serialize(void *&ptr) override;
 
 };
 
