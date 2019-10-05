@@ -24,6 +24,9 @@ private:
     int energy;
     int cooldown;
 
+    int energyLossWithMove, energyLossWithoutMove;
+    static int energyLossPerTick(bool move, float speed, float size);
+
     friend std::ostream &operator<<(std::ostream &strm, const LivingEntity &e);
 public:
     static SDL_Texture *digits[];

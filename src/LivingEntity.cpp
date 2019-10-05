@@ -29,7 +29,9 @@ LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float 
         waterAgility(wa < 0 ? 0 : (wa > 1 ? 1 : wa)),
         brain(b),
         energy(60 * 2),
-        cooldown(60) {
+        cooldown(60),
+        energyLossWithMove(energyLossPerTick(true, sp, si)),
+        energyLossWithoutMove(energyLossPerTick(false, sp, si)){
 
 }
 
@@ -55,7 +57,9 @@ LivingEntity::LivingEntity(void *&ptr) :
         waterAgility(((float *) ptr)[6]),
         rotation(((float *) ptr)[7]),
         energy(((int *) ptr)[8]),
-        cooldown(((int *) ptr)[9]) {
+        cooldown(((int *) ptr)[9]),
+        energyLossWithMove(energyLossPerTick(true, ((float *) ptr)[4], ((float *) ptr)[5])),
+        energyLossWithoutMove(energyLossPerTick(false, ((float *) ptr)[4], ((float *) ptr)[5])){
     ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
     brain = new Brain(ptr);
 }
@@ -95,7 +99,7 @@ void LivingEntity::tick() {
 
     //################################# Breed ################################# at the beginning, so spawning happens before move ->on the right node
     if (cooldown > 0) cooldown--;
-    if (cooldown == 0 && energy >= 60 * 2) {
+    if (cooldown == 0 && energy >= 60 * energyLossWithMove) {
         //energy -= 60; leaving out might give better results
         Uint8 nr = color.r + std::round(normalDistribution(randomGenerator) * 255);
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
@@ -158,8 +162,8 @@ void LivingEntity::tick() {
         }
     }
     //################################# Energy ################################
-    energy -= (thoughts.move ? speed * 8 : 0) + size * 4 + 1;
-    assert((((int) (thoughts.move ? speed * 8 : 0) + size * 4 + 1)) > 0 && "Entity not loosing Energy");
+    energy -= thoughts.move ? energyLossWithMove : energyLossWithoutMove;
+    assert(thoughts.move ? energyLossWithMove : energyLossWithoutMove > 0 && "Entity not losing Energy");
     if (energy <= 0) World::removeLivingEntity(this);
     //########################### Send to other node ##########################
     if (x >= dim.x + dim.w || x < dim.x || y >= dim.y + dim.h || y < dim.y) {
@@ -170,6 +174,10 @@ void LivingEntity::tick() {
         if (rank != World::getMPIRank())
             World::moveToNeighbor(this, rank);
     }
+}
+
+int LivingEntity::energyLossPerTick(bool move, float speed, float size) {
+    return (int) round((move ? speed * 8 : 0) + size * 4 + 1);
 }
 
 //TODO consider new properties when added
