@@ -8,6 +8,8 @@
 
 #define TILE_SIZE 8
 #define NUMBER_OF_MAIMUC_NODES 10
+#define VIEW_RANGE_SQUARED 25600 //160*160
+#define VIEW_RANGE 160
 
 //================================== Structs ==================================
 struct WorldDim {

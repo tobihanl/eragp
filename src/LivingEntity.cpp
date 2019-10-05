@@ -6,7 +6,6 @@
 #include "FoodEntity.h"
 
 #define PI 3.14159265
-#define BRAIN_NOT_FOUND 1000 //TODO search better dummy value
 #define AMOUNT_OF_PARAMS 10
 
 static std::mt19937 createGenerator() {
@@ -116,10 +115,10 @@ void LivingEntity::tick() {
     LivingEntity *nearestMate = World::findNearestMate(this);
 
     Matrix continuousIn(6, 1, {
-            (float) (nearestFood ? nearestFood->getDistance(x, y) : BRAIN_NOT_FOUND),
-            (float) (nearestEnemy ? nearestEnemy->getDistance(x, y) : BRAIN_NOT_FOUND),
-            (float) (nearestMate ? nearestMate->getDistance(x, y) : BRAIN_NOT_FOUND),
-            (float) energy, (float) (nearestMate ? nearestMate->energy : BRAIN_NOT_FOUND),
+            (float) (nearestFood ? nearestFood->getDistance(x, y) : VIEW_RANGE * 2),
+            (float) (nearestEnemy ? nearestEnemy->getDistance(x, y) : VIEW_RANGE * 2),
+            (float) (nearestMate ? nearestMate->getDistance(x, y) : VIEW_RANGE * 2),
+            (float) energy, (float) (nearestMate ? nearestMate->energy : VIEW_RANGE * 2),
             nearestEnemy ? (float) nearestEnemy->size * 500 : 0.f
     });
     Matrix normalizedIn(4, 1, {
