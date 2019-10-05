@@ -99,38 +99,59 @@ void World::setup(int overallWidth, int overallHeight, bool maimuc) {
 }
 
 void World::generateTerrain() {
-    terrain.reserve((World::height / TILE_SIZE) * (World::width / TILE_SIZE));
+    int heightWithPadding = World::height + (2 * WORLD_PADDING);
+    int widthWithPadding = World::width + (2 * WORLD_PADDING);
 
-    float xOffset = (float) World::x / TILE_SIZE;
-    float yOffset = (float) World::y / TILE_SIZE;
+    terrain.reserve((heightWithPadding / TILE_SIZE) * (widthWithPadding / TILE_SIZE));
 
-    for (int y = 0; y < World::height / TILE_SIZE; y++) {
-        for (int x = 0; x < World::width / TILE_SIZE; x++) {
-            float val = SimplexNoise::noise(((float) x + xOffset) / 36.f, ((float) y + yOffset) / 36.f);
+    int xOffset = World::x - WORLD_PADDING;
+    int yOffset = World::y - WORLD_PADDING;
+    if (xOffset < 0) xOffset += World::overallWidth;
+    if (yOffset < 0) yOffset += World::overallHeight;
+
+    for (int y = 0; y < heightWithPadding / TILE_SIZE; y++) {
+        for (int x = 0; x < widthWithPadding / TILE_SIZE; x++) {
+            int pointX = (x * TILE_SIZE) + xOffset;
+            int pointY = (y * TILE_SIZE) + yOffset;
+
+            // Overlap?
+            if (pointX >= World::overallWidth) pointX -= World::overallWidth;
+            if (pointY >= World::overallHeight) pointY -= World::overallHeight;
+
+            // Noise
+            float val = SimplexNoise::noise((float) pointX / (36.f * TILE_SIZE),
+                                            (float) pointY / (36.f * TILE_SIZE));
 
             if (val < -0.4) {
-                terrain[y * (World::width / TILE_SIZE) + x] = &Tile::WATER;
+                terrain[y * (widthWithPadding / TILE_SIZE) + x] = &Tile::WATER;
             } else if (val < -0.2) {
-                terrain[y * (World::width / TILE_SIZE) + x] = &Tile::SAND;
+                terrain[y * (widthWithPadding / TILE_SIZE) + x] = &Tile::SAND;
             } else if (val < 0.7) {
-                terrain[y * (World::width / TILE_SIZE) + x] = &Tile::GRASS;
+                terrain[y * (widthWithPadding / TILE_SIZE) + x] = &Tile::GRASS;
             } else {
-                terrain[y * (World::width / TILE_SIZE) + x] = &Tile::STONE;
+                terrain[y * (widthWithPadding / TILE_SIZE) + x] = &Tile::STONE;
             }
         }
     }
 }
 
 void World::renderTerrain() {
+    int heightWithPadding = World::height + (2 * WORLD_PADDING);
+    int widthWithPadding = World::width + (2 * WORLD_PADDING);
+
     // Pre-render terrain for faster rendering
-    World::background = Renderer::createTexture(World::width, World::height, SDL_TEXTUREACCESS_TARGET);
+    World::background = Renderer::createTexture(widthWithPadding, heightWithPadding, SDL_TEXTUREACCESS_TARGET);
     Renderer::setTarget(World::background);
     Renderer::clear();
 
     // Copy textures to background
-    for (int y = 0; y < World::height / TILE_SIZE; y++)
-        for (int x = 0; x < World::width / TILE_SIZE; x++)
-            Renderer::copy(terrain[y * (World::width / TILE_SIZE) + x]->texture, x * TILE_SIZE, y * TILE_SIZE);
+    for (int y = 0; y < heightWithPadding / TILE_SIZE; y++) {
+        for (int x = 0; x < widthWithPadding / TILE_SIZE; x++) {
+            Renderer::copy(terrain[y * (widthWithPadding / TILE_SIZE) + x]->texture,
+                           x * TILE_SIZE,
+                           y * TILE_SIZE);
+        }
+    }
 
     // Change render target back to default
     Renderer::present();
@@ -138,8 +159,12 @@ void World::renderTerrain() {
 }
 
 void World::render() {
+    // "TILE_SIZE - (WORLD_PADDING % TILE_SIZE)": shifting, because in padding area a tile mustn't fit perfectly
+    // into it. This shift is the overlap from the padding area.
     if (World::background == nullptr) renderTerrain();
-    Renderer::copy(World::background, 0, 0);
+    Renderer::copy(World::background,
+                   -WORLD_PADDING - (TILE_SIZE - (WORLD_PADDING % TILE_SIZE)),
+                   -WORLD_PADDING - (TILE_SIZE - (WORLD_PADDING % TILE_SIZE)));
 
     for (const auto &f : food) {
         f->render();
@@ -652,8 +677,22 @@ int *splitRect(int num, int width, int height) {
 }
 
 Tile *World::tileAt(int x, int y) {
-    if (x < 0 || x >= width || y < 0 || y >= height) return &Tile::INVALID;
-    return terrain[(y / TILE_SIZE) * (width / TILE_SIZE) + (x / TILE_SIZE)];
+    if (x < World::x - WORLD_PADDING || x >= World::width + WORLD_PADDING ||
+        y < World::y - WORLD_PADDING || y >= World::height + WORLD_PADDING) {
+        return &Tile::INVALID;
+    } else {
+        x = x - World::x + WORLD_PADDING;
+        y = y - World::y + WORLD_PADDING;
+
+        int heightWithPadding = World::height + (2 * WORLD_PADDING);
+        int widthWithPadding = World::width + (2 * WORLD_PADDING);
+
+        // Coordinates at border, where a tile doesn't have enough space?
+        if (x + (WORLD_PADDING % TILE_SIZE) >= widthWithPadding || y + (WORLD_PADDING % TILE_SIZE) >= heightWithPadding)
+            return &Tile::INVALID;
+
+        return terrain[(y / TILE_SIZE) * (widthWithPadding / TILE_SIZE) + (x / TILE_SIZE)];
+    }
 }
 
 //TODO cleanup for destroyed entities
