@@ -182,14 +182,41 @@ void World::tick() {
     //TODO the same amount of food is spawned, regardless of the size of the node
     addFoodEntity(new FoodEntity((rand() % World::width) + World::x, (rand() % World::height) + World::y, 8 * 60));
     for (const auto &e : living) {
-        //TODO change or remove with padding (because one entity can be on multiple nodes)
-        assert(e->x >= x && e->x < x + width && e->y >= y && e->y < y + height && "Coordinates don't match node.");
+        // Before moving: Is entity on THIS node?
+        bool beforeOnThisNode = !(e->x < x || e->x >= x + width || e->y < y || e->y >= y + height);
+
         e->tick();
 
-        // Send to OTHER node?
-        if (e->x >= x + width || e->x < x || e->y >= y + height || e->y < y) {
-            int rank = World::rankAt(e->x, e->y);
-            if (rank != World::getMPIRank()) World::moveToNeighbor(e, rank);
+        // Entity dead?
+        if (toRemoveLiving(e)) continue;
+
+        // TODO: Think about better solution (i.e. update entity accordingly)!
+        // Was entity in padding area? -> Get's overwritten by other node!
+        if (!beforeOnThisNode) {
+            removeLivingEntity(e);
+            continue;
+        }
+
+        // After moving: Entity on THIS node?
+        if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
+            // Send entity if needed
+            auto *ranks = paddingRanksAt(e->x, e->y);
+            for (int neighbor : *ranks)
+                livingEntitiesToMoveToNeighbors.push_back({neighbor, e});
+            delete ranks;
+        } else {
+            // Send entity to other node
+            livingEntitiesToMoveToNeighbors.push_back({static_cast<int>(rankAt(e->x, e->y)), e});
+            removeLivingEntity(e);
+
+            /* TODO: Re-enable! (Right now, a node NOT being a neighbor gets data sent with the code below)
+            // Send entity to nodes having a padding at this position (excluding THIS node!)
+            auto *ranks = paddingRanksAt(e->x, e->y); // TODO: Not working as this only works for coordinates on THIS node!
+            for (int neighbor : *ranks) {
+                if (neighbor != MPI_Rank) livingEntitiesToMoveToNeighbors.push_back({neighbor, e});
+            }
+            delete ranks;
+            */
         }
     }
 
@@ -212,10 +239,6 @@ void World::tick() {
                                                           MPI_TAG_REMOVED_FOOD_ENTITY,
                                                           &reqs[MSGS_PER_NEIGHBOR * i + 2]);
     }
-
-    // Method moveToNeighbor() guarantees that e.entity is of type LivingEntity*!!!
-    for (const auto &e : livingEntitiesToMoveToNeighbors)
-        removeLivingEntity((LivingEntity *) e.entity);
 
     // Clear sending storage
     livingEntitiesToMoveToNeighbors.clear();
@@ -288,7 +311,7 @@ void World::receiveEntities(int rank, int tag) {
         switch (tag) {
             case MPI_TAG_LIVING_ENTITY:
                 e = new LivingEntity(buffer);
-                addLivingEntity((LivingEntity *) e);
+                addLivingEntity((LivingEntity *) e, false);
                 break;
 
             case MPI_TAG_FOOD_ENTITY:
@@ -302,7 +325,7 @@ void World::receiveEntities(int rank, int tag) {
                     if (e->getId() == f->getId() && !toRemoveFood(f))
                         removeFoodEntity(f);
                 }
-                free(e);
+                delete e;
                 break;
 
             default:
@@ -405,9 +428,23 @@ LivingEntity *World::findNearestMate(LivingEntity *le) {
     return n;
 }
 
-void World::addLivingEntity(LivingEntity *e) {
-    if (!toAddLiving(e))
+void World::addLivingEntity(LivingEntity *e, bool spawned) {
+    if (toAddLiving(e)) return;
+
+    // Entity sent to this node?
+    if (!spawned) {
         addLiving.push_back(e);
+        return;
+    }
+
+    // If on THIS node: add entity and send to neighbors with padding area
+    if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
+        addLiving.push_back(e);
+        auto *ranks = paddingRanksAt(e->x, e->y);
+        for (int neighbor : *ranks)
+            livingEntitiesToMoveToNeighbors.push_back({neighbor, e});
+        delete ranks;
+    }
 }
 
 void World::addFoodEntity(FoodEntity *e) {
@@ -416,8 +453,10 @@ void World::addFoodEntity(FoodEntity *e) {
 
     // If on THIS node: entity in padding of some neighbors?
     if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
-        for (int neighbor : *paddingRanksAt(e->x, e->y))
+        auto *ranks = paddingRanksAt(e->x, e->y);
+        for (int neighbor : *ranks)
             foodToSendToNeighbors.push_back({neighbor, e});
+        delete ranks;
     }
 }
 
@@ -432,8 +471,10 @@ void World::removeFoodEntity(FoodEntity *e) {
 
     // If on THIS node: entity in padding of some neighbors?
     if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
-        for (int neighbor : *paddingRanksAt(e->x, e->y))
+        auto *ranks = paddingRanksAt(e->x, e->y);
+        for (int neighbor : *ranks)
             removedFoodToSendToNeighbors.push_back({neighbor, e});
+        delete ranks;
     }
 }
 
@@ -570,11 +611,6 @@ bool World::toAddFood(FoodEntity *e) {
     return std::find(addFood.begin(), addFood.end(), e) != addFood.end();
 }
 
-void World::moveToNeighbor(LivingEntity *e, int rank) {
-    assert(std::find(neighbors.begin(), neighbors.end(), rank) != neighbors.end() && "Given rank not a neighbor!");
-    livingEntitiesToMoveToNeighbors.push_back({rank, e});
-}
-
 int World::numOfNeighbors() {
     return neighbors.size();
 }
@@ -691,7 +727,9 @@ Tile *World::tileAt(int x, int y) {
         if (x + (WORLD_PADDING % TILE_SIZE) >= widthWithPadding || y + (WORLD_PADDING % TILE_SIZE) >= heightWithPadding)
             return &Tile::INVALID;
 
-        return terrain[(y / TILE_SIZE) * (widthWithPadding / TILE_SIZE) + (x / TILE_SIZE)];
+        // TODO: Fix bug that causes a segmentation fault in the line below!
+        //return terrain[(y / TILE_SIZE) * (widthWithPadding / TILE_SIZE) + (x / TILE_SIZE)];
+        return &Tile::INVALID;
     }
 }
 

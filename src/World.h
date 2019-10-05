@@ -54,6 +54,7 @@ private:
     static std::vector<FoodEntity *> addFood;
     static std::vector<LivingEntity *> addLiving;
 
+    // MPI Sending storage
     static std::vector<MPISendEntity> livingEntitiesToMoveToNeighbors;
     static std::vector<MPISendEntity> foodToSendToNeighbors;
     static std::vector<MPISendEntity> removedFoodToSendToNeighbors;
@@ -97,7 +98,7 @@ public:
 
     static LivingEntity *findNearestMate(LivingEntity *le);
 
-    static void addLivingEntity(LivingEntity *e);
+    static void addLivingEntity(LivingEntity *e, bool spawned);
 
     static void addFoodEntity(FoodEntity *e);
 
@@ -129,8 +130,6 @@ private:
     static void *sendEntities(const std::vector<MPISendEntity> &entities, int rank, int tag, MPI_Request *request);
 
     static void receiveEntities(int rank, int tag);
-
-    static void moveToNeighbor(LivingEntity *e, int rank);
 
     static void calcNeighbors();
 

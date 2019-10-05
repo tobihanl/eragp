@@ -1,4 +1,3 @@
-
 #ifndef ERAGP_MAIMUC_EVO_2019_LIVINGENTITY_H
 #define ERAGP_MAIMUC_EVO_2019_LIVINGENTITY_H
 
@@ -39,10 +38,6 @@ public:
     void tick() override;
 
     float difference(const LivingEntity &e);
-
-    void setEnergy(int energy) {
-        this->energy = energy;
-    }
 
     int serializedSize() override;
 

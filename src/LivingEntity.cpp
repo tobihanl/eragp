@@ -105,7 +105,7 @@ void LivingEntity::tick() {
         World::addLivingEntity(new LivingEntity(x, y, {nr, ng, nb, 255}, speed + normalDistribution(randomGenerator),
                                                 size + normalDistribution(randomGenerator),
                                                 waterAgility + normalDistribution(randomGenerator),
-                                                brain->createMutatedCopy()));
+                                                brain->createMutatedCopy()), true);
         cooldown += 60;
     }
     //################################# Think #################################

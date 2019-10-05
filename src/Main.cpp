@@ -233,7 +233,7 @@ int main(int argc, char **argv) {
                                          static_cast<Uint8>(std::rand()), 255},
                                         (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f,
                                         (rand() % 10000) / 10000.0f, brain);
-        World::addLivingEntity(entity);
+        World::addLivingEntity(entity, true);
     }
     for (int i = 0; i < 100; i++) {
         World::addFoodEntity(new FoodEntity((std::rand() % dim.w) + dim.x, (std::rand() % dim.h) + dim.y, 8 * 60));
