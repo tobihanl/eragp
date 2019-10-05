@@ -82,6 +82,11 @@ docker exec -it --user 0 eragp sh -c './utils/build.sh && mpirun ./build/Evoluti
 (Parameters can be specified after ``mpirun``, i.e. ``mpirun -np 4``, and ``./build/Evolution``. See *Commandline
 arguments* for more information)
 
+Without .sh files (execute in ``build`` ):
+```
+cmake --build . --target Evolution && mpirun -n 6 ./Evolution
+```
+
 ### Build the Container
 
 Optionally, you can also build the container yourself
