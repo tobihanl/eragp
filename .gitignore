@@ -206,4 +206,5 @@ $RECYCLE.BIN/
 
 # Generated executable
 build/
+debug/
 Evolution

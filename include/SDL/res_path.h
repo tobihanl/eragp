@@ -18,10 +18,6 @@ namespace Include {
         const char PATH_SEP = '/';
 #endif
 
-        // IMPORTANT:   Change this path according to the location of the binary!
-        //              Otherwise SDL won't be able to find any resources!
-        const std::string PATH_TO_BINARY = "build";
-
         static std::string baseRes;
         if (baseRes.empty()) {
             char *basePath = SDL_GetBasePath();
@@ -33,7 +29,9 @@ namespace Include {
                 return "";
             }
 
-            size_t pos = baseRes.rfind(PATH_TO_BINARY);
+            // Exclude build or debug folder if found
+            size_t pos = baseRes.rfind("build");
+            if (pos == std::string::npos) pos = baseRes.rfind("debug");
             baseRes = baseRes.substr(0, pos) + "res" + PATH_SEP;
         }
 
