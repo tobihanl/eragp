@@ -9,7 +9,7 @@
 
 #define TILE_SIZE 8
 #define NUMBER_OF_MAIMUC_NODES 10
-#define WORLD_PADDING 50
+#define WORLD_PADDING (7 * TILE_SIZE)    // must be a multiple of TILE_SIZE!
 
 #define MSGS_PER_NEIGHBOR 3
 

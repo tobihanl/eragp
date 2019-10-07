@@ -102,8 +102,6 @@ void World::generateTerrain() {
     int heightWithPadding = World::height + (2 * WORLD_PADDING);
     int widthWithPadding = World::width + (2 * WORLD_PADDING);
 
-    terrain.reserve((heightWithPadding / TILE_SIZE) * (widthWithPadding / TILE_SIZE));
-
     int xOffset = World::x - WORLD_PADDING;
     int yOffset = World::y - WORLD_PADDING;
     if (xOffset < 0) xOffset += World::overallWidth;
@@ -123,13 +121,13 @@ void World::generateTerrain() {
                                             (float) pointY / (36.f * TILE_SIZE));
 
             if (val < -0.4) {
-                terrain[y * (widthWithPadding / TILE_SIZE) + x] = &Tile::WATER;
+                terrain.push_back(&Tile::WATER);
             } else if (val < -0.2) {
-                terrain[y * (widthWithPadding / TILE_SIZE) + x] = &Tile::SAND;
+                terrain.push_back(&Tile::SAND);
             } else if (val < 0.7) {
-                terrain[y * (widthWithPadding / TILE_SIZE) + x] = &Tile::GRASS;
+                terrain.push_back(&Tile::GRASS);
             } else {
-                terrain[y * (widthWithPadding / TILE_SIZE) + x] = &Tile::STONE;
+                terrain.push_back(&Tile::STONE);
             }
         }
     }
@@ -159,12 +157,8 @@ void World::renderTerrain() {
 }
 
 void World::render() {
-    // "TILE_SIZE - (WORLD_PADDING % TILE_SIZE)": shifting, because in padding area a tile mustn't fit perfectly
-    // into it. This shift is the overlap from the padding area.
     if (World::background == nullptr) renderTerrain();
-    Renderer::copy(World::background,
-                   -WORLD_PADDING - (TILE_SIZE - (WORLD_PADDING % TILE_SIZE)),
-                   -WORLD_PADDING - (TILE_SIZE - (WORLD_PADDING % TILE_SIZE)));
+    Renderer::copy(World::background, -WORLD_PADDING, -WORLD_PADDING);
 
     for (const auto &f : food) {
         f->render();
@@ -729,23 +723,19 @@ int *splitRect(int num, int width, int height) {
 }
 
 Tile *World::tileAt(int x, int y) {
-    if (x < World::x - WORLD_PADDING || x >= World::width + WORLD_PADDING ||
-        y < World::y - WORLD_PADDING || y >= World::height + WORLD_PADDING) {
+    if (x < World::x - WORLD_PADDING || x >= World::x + World::width + WORLD_PADDING ||
+        y < World::y - WORLD_PADDING || y >= World::y + World::height + WORLD_PADDING) {
         return &Tile::INVALID;
     } else {
-        x = x - World::x + WORLD_PADDING;
-        y = y - World::y + WORLD_PADDING;
+        int xOffset = World::x - WORLD_PADDING;
+        int yOffset = World::y - WORLD_PADDING;
+        if (xOffset < 0) xOffset += World::overallWidth;
+        if (yOffset < 0) yOffset += World::overallHeight;
 
-        int heightWithPadding = World::height + (2 * WORLD_PADDING);
-        int widthWithPadding = World::width + (2 * WORLD_PADDING);
+        x = (x - xOffset + World::overallWidth) % World::overallWidth;
+        y = (y - yOffset + World::overallHeight) % World::overallHeight;
 
-        // Coordinates at border, where a tile doesn't have enough space?
-        if (x + (WORLD_PADDING % TILE_SIZE) >= widthWithPadding || y + (WORLD_PADDING % TILE_SIZE) >= heightWithPadding)
-            return &Tile::INVALID;
-
-        // TODO: Fix bug that causes a segmentation fault in the line below!
-        //return terrain[(y / TILE_SIZE) * (widthWithPadding / TILE_SIZE) + (x / TILE_SIZE)];
-        return &Tile::INVALID;
+        return terrain[(y / TILE_SIZE) * ((World::width + (2 * WORLD_PADDING)) / TILE_SIZE) + (x / TILE_SIZE)];
     }
 }
 
