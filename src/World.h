@@ -98,13 +98,13 @@ public:
 
     static LivingEntity *findNearestMate(LivingEntity *le);
 
-    static void addLivingEntity(LivingEntity *e, bool spawned);
+    static void addLivingEntity(LivingEntity *e, bool received);
 
-    static void addFoodEntity(FoodEntity *e);
+    static void addFoodEntity(FoodEntity *e, bool received);
 
     static void removeLivingEntity(LivingEntity *e);
 
-    static void removeFoodEntity(FoodEntity *e);
+    static void removeFoodEntity(FoodEntity *e, bool received);
 
     static bool toRemoveFood(FoodEntity *e);
 

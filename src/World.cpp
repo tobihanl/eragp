@@ -180,7 +180,8 @@ void World::render() {
 
 void World::tick() {
     //TODO the same amount of food is spawned, regardless of the size of the node
-    addFoodEntity(new FoodEntity((rand() % World::width) + World::x, (rand() % World::height) + World::y, 8 * 60));
+    addFoodEntity(new FoodEntity((rand() % World::width) + World::x, (rand() % World::height) + World::y, 8 * 60),
+                  false);
     for (const auto &e : living) {
         // Before moving: Is entity on THIS node?
         bool beforeOnThisNode = !(e->x < x || e->x >= x + width || e->y < y || e->y >= y + height);
@@ -311,19 +312,19 @@ void World::receiveEntities(int rank, int tag) {
         switch (tag) {
             case MPI_TAG_LIVING_ENTITY:
                 e = new LivingEntity(buffer);
-                addLivingEntity((LivingEntity *) e, false);
+                addLivingEntity((LivingEntity *) e, true);
                 break;
 
             case MPI_TAG_FOOD_ENTITY:
                 e = new FoodEntity(buffer);
-                addFoodEntity((FoodEntity *) e);
+                addFoodEntity((FoodEntity *) e, true);
                 break;
 
             case MPI_TAG_REMOVED_FOOD_ENTITY:
                 e = new FoodEntity(buffer);
                 for (const auto &f : food) {
                     if (e->getId() == f->getId() && !toRemoveFood(f))
-                        removeFoodEntity(f);
+                        removeFoodEntity(f, true);
                 }
                 delete e;
                 break;
@@ -428,18 +429,19 @@ LivingEntity *World::findNearestMate(LivingEntity *le) {
     return n;
 }
 
-void World::addLivingEntity(LivingEntity *e, bool spawned) {
+void World::addLivingEntity(LivingEntity *e, bool received) {
     if (toAddLiving(e)) return;
 
-    // Entity sent to this node?
-    if (!spawned) {
+    // Received via MPI? -> Always add!
+    if (received) {
         addLiving.push_back(e);
         return;
     }
 
-    // If on THIS node: add entity and send to neighbors with padding area
+    // Only add and broadcast to other nodes when laying on THIS node
     if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
         addLiving.push_back(e);
+
         auto *ranks = paddingRanksAt(e->x, e->y);
         for (int neighbor : *ranks)
             livingEntitiesToMoveToNeighbors.push_back({neighbor, e});
@@ -447,12 +449,19 @@ void World::addLivingEntity(LivingEntity *e, bool spawned) {
     }
 }
 
-void World::addFoodEntity(FoodEntity *e) {
+void World::addFoodEntity(FoodEntity *e, bool received) {
     if (toAddFood(e)) return;
-    addFood.push_back(e);
 
-    // If on THIS node: entity in padding of some neighbors?
+    // Received via MPI? -> Always add!
+    if (received) {
+        addFood.push_back(e);
+        return;
+    }
+
+    // Only add and broadcast to other nodes when laying on THIS node
     if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
+        addFood.push_back(e);
+
         auto *ranks = paddingRanksAt(e->x, e->y);
         for (int neighbor : *ranks)
             foodToSendToNeighbors.push_back({neighbor, e});
@@ -465,12 +474,19 @@ void World::removeLivingEntity(LivingEntity *e) {
         removeLiving.push_back(e);
 }
 
-void World::removeFoodEntity(FoodEntity *e) {
+void World::removeFoodEntity(FoodEntity *e, bool received) {
     assert(!toRemoveFood(e) && "Tried to remove same FoodEntity multiple times");
-    removeFood.push_back(e);
 
-    // If on THIS node: entity in padding of some neighbors?
+    // Received via MPI? -> Always remove!
+    if (received) {
+        removeFood.push_back(e);
+        return;
+    }
+
+    // Only remove and broadcast to other nodes when laying on THIS node
     if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
+        removeFood.push_back(e);
+
         auto *ranks = paddingRanksAt(e->x, e->y);
         for (int neighbor : *ranks)
             removedFoodToSendToNeighbors.push_back({neighbor, e});

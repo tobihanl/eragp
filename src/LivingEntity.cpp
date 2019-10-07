@@ -105,7 +105,7 @@ void LivingEntity::tick() {
         World::addLivingEntity(new LivingEntity(x, y, {nr, ng, nb, 255}, speed + normalDistribution(randomGenerator),
                                                 size + normalDistribution(randomGenerator),
                                                 waterAgility + normalDistribution(randomGenerator),
-                                                brain->createMutatedCopy()), true);
+                                                brain->createMutatedCopy()), false);
         cooldown += 60;
     }
     //################################# Think #################################
@@ -146,12 +146,12 @@ void LivingEntity::tick() {
     //################################## Eat ##################################
     if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
         if (!World::toRemoveFood(nearestFood)) {
-            World::removeFoodEntity(nearestFood); //TODO don't forget to synchronize
+            World::removeFoodEntity(nearestFood, false); //TODO don't forget to synchronize
             energy += nearestFood->energy;
         } else {
             nearestFood = World::findNearestSurvivingFood(x, y);
             if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-                World::removeFoodEntity(nearestFood); //TODO don't forget to synchronize
+                World::removeFoodEntity(nearestFood, false); //TODO don't forget to synchronize
                 energy += nearestFood->energy;
             }
         }
