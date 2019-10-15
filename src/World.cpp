@@ -37,6 +37,12 @@ int World::y = 0;
 int World::width = 0;
 int World::height = 0;
 
+int World::ticksPerFoodInterval = 0;
+int World::foodPerFoodInterval = 0;
+int World::intervalTicksLeft = 0;
+int World::intervalFoodLeft = 0;
+int World::foodEveryTick = 0;
+
 bool World::isSetup = false;
 
 SDL_Texture *World::background = nullptr;
@@ -52,7 +58,7 @@ std::vector<Tile *> World::terrain = std::vector<Tile *>();
  * @param   maimuc          Indicates, whether the program is executed on
  *                          MaiMUC or not
  */
-void World::setup(int overallWidth, int overallHeight, bool maimuc) {
+void World::setup(int overallWidth, int overallHeight, bool maimuc, float foodRate) {
     if (isSetup)
         return;
 
@@ -95,6 +101,18 @@ void World::setup(int overallWidth, int overallHeight, bool maimuc) {
 
     generateTerrain();
     calcNeighbors();
+
+    foodRate *= width * height / (2000.f * TILE_SIZE * TILE_SIZE); //spawnRate of Node
+    std::cout << foodRate << std::endl;
+    //convert spawnRate of node to fraction
+    foodEveryTick = (int) foodRate;
+    foodRate -= foodEveryTick; //only consider food that needs to be distributed
+    long greatestCommonDivisor = gcd(round(foodRate * MAX_FOOD_INTERVAL), MAX_FOOD_INTERVAL);
+    ticksPerFoodInterval = MAX_FOOD_INTERVAL / greatestCommonDivisor;
+    foodPerFoodInterval = round(foodRate * MAX_FOOD_INTERVAL) / greatestCommonDivisor;
+
+
+
     isSetup = true;
 }
 
@@ -173,9 +191,24 @@ void World::render() {
 }
 
 void World::tick() {
-    //TODO the same amount of food is spawned, regardless of the size of the node
-    addFoodEntity(new FoodEntity((rand() % World::width) + World::x, (rand() % World::height) + World::y, 8 * 60),
-                  false);
+    if(intervalTicksLeft == 0) {
+        assert(intervalFoodLeft == 0 && "Not enough food spawned!");
+        intervalFoodLeft = foodPerFoodInterval;
+        intervalTicksLeft = ticksPerFoodInterval;
+    }
+    for(int i = 0; i < foodEveryTick; i++) {
+        addFoodEntity(new FoodEntity((rand() % World::width) + World::x, (rand() % World::height) + World::y, 8 * 60),
+                      false);
+    }
+    std::cout << "Tick " << ticksPerFoodInterval - intervalTicksLeft << "/" << ticksPerFoodInterval << ": " << foodEveryTick + (intervalFoodLeft > 0 ? 1 : 0) << " spawned" << std::endl;
+    if(intervalFoodLeft > 0) {
+        intervalFoodLeft--;
+        addFoodEntity(new FoodEntity((rand() % World::width) + World::x, (rand() % World::height) + World::y, 8 * 60),
+                      false);
+    }
+    intervalTicksLeft--;
+
+
     for (const auto &e : living) {
         // Before moving: Is entity on THIS node?
         bool beforeOnThisNode = !(e->x < x || e->x >= x + width || e->y < y || e->y >= y + height);
@@ -724,3 +757,10 @@ Tile *World::tileAt(int x, int y) {
 }
 
 //TODO cleanup for destroyed entities
+
+long World::gcd(long a, long b) {
+    if(a == 0) return b;
+    if(b == 0) return a;
+    if(a < b) return gcd(a, b % a);
+    return gcd(b, a % b);
+}
