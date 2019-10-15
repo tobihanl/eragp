@@ -6,7 +6,6 @@
 #include "FoodEntity.h"
 
 #define PI 3.14159265
-#define BRAIN_NOT_FOUND 1000 //TODO search better dummy value
 #define AMOUNT_OF_PARAMS 10
 
 static std::mt19937 createGenerator() {
@@ -31,7 +30,9 @@ LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float 
         brain(b),
         energy(60 * 2),
         cooldown(60),
-        rotation(0.0f) {
+        rotation(0.0f),
+        energyLossWithMove(energyLossPerTick(true, sp, si)),
+        energyLossWithoutMove(energyLossPerTick(false, sp, si)) {
 
 }
 
@@ -57,7 +58,9 @@ LivingEntity::LivingEntity(void *&ptr) :
         waterAgility(((float *) ptr)[6]),
         rotation(((float *) ptr)[7]),
         energy(((int *) ptr)[8]),
-        cooldown(((int *) ptr)[9]) {
+        cooldown(((int *) ptr)[9]),
+        energyLossWithMove(energyLossPerTick(true, ((float *) ptr)[4], ((float *) ptr)[5])),
+        energyLossWithoutMove(energyLossPerTick(false, ((float *) ptr)[4], ((float *) ptr)[5])){
     ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
     brain = new Brain(ptr);
 }
@@ -94,7 +97,7 @@ void LivingEntity::render() {
 void LivingEntity::tick() {
     //################################# Breed ################################# at the beginning, so spawning happens before move ->on the right node
     if (cooldown > 0) cooldown--;
-    if (cooldown == 0 && energy >= 60 * 2) {
+    if (cooldown == 0 && energy >= 60 * energyLossWithMove) {
         //energy -= 60; leaving out might give better results
         Uint8 nr = color.r + std::round(normalDistribution(randomGenerator) * 255);
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
@@ -114,10 +117,10 @@ void LivingEntity::tick() {
     LivingEntity *nearestMate = World::findNearestMate(this);
 
     Matrix continuousIn(6, 1, {
-            (float) (nearestFood ? nearestFood->getDistance(x, y) : BRAIN_NOT_FOUND),
-            (float) (nearestEnemy ? nearestEnemy->getDistance(x, y) : BRAIN_NOT_FOUND),
-            (float) (nearestMate ? nearestMate->getDistance(x, y) : BRAIN_NOT_FOUND),
-            (float) energy, (float) (nearestMate ? nearestMate->energy : BRAIN_NOT_FOUND),
+            (float) (nearestFood ? nearestFood->getDistance(x, y) : VIEW_RANGE * 2),
+            (float) (nearestEnemy ? nearestEnemy->getDistance(x, y) : VIEW_RANGE * 2),
+            (float) (nearestMate ? nearestMate->getDistance(x, y) : VIEW_RANGE * 2),
+            (float) energy, (float) (nearestMate ? nearestMate->energy : VIEW_RANGE * 2),
             nearestEnemy ? (float) nearestEnemy->size * 500 : 0.f
     });
     Matrix normalizedIn(4, 1, {
@@ -155,9 +158,13 @@ void LivingEntity::tick() {
         }
     }
     //################################# Energy ################################
-    energy -= (thoughts.move ? speed * 8 : 0) + size * 4 + 1;
-    assert((((int) (thoughts.move ? speed * 8 : 0) + size * 4 + 1)) > 0 && "Entity not loosing Energy");
+    energy -= thoughts.move ? energyLossWithMove : energyLossWithoutMove;
+    assert(thoughts.move ? energyLossWithMove : energyLossWithoutMove > 0 && "Entity not losing Energy");
     if (energy <= 0) World::removeLivingEntity(this);
+}
+
+int LivingEntity::energyLossPerTick(bool move, float speed, float size) {
+    return (int) round((move ? speed * 8 : 0) + size * 4 + 1);
 }
 
 //TODO consider new properties when added

@@ -11,6 +11,9 @@
 #define NUMBER_OF_MAIMUC_NODES 10
 #define WORLD_PADDING (7 * TILE_SIZE)    // must be a multiple of TILE_SIZE!
 
+#define VIEW_RANGE_SQUARED 25600 //160*160
+#define VIEW_RANGE 160
+
 #define MSGS_PER_NEIGHBOR 3
 
 #define MPI_TAG_LIVING_ENTITY 42
