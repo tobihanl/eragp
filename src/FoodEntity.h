@@ -8,9 +8,19 @@ class FoodEntity : public Entity {
 private:
 
 public:
-    FoodEntity(int x, int y);
+    int energy;
+
+    FoodEntity(int x, int y, int energy);
+
+    explicit FoodEntity(void *&ptr);
+
+    ~FoodEntity() override = default;
     void render() override;
     void tick() override;
+
+    int serializedSize() override;
+
+    void serialize(void *&ptr) override;
 };
 
 

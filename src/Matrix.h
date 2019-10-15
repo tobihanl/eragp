@@ -8,14 +8,6 @@ typedef float(*MatrixFunction)(float);
 
 class Matrix {
 private:
-    /**
-     * Creates a matrix without data to initialize it later on. Do not use unless necessary
-     */
-    Matrix();
-
-    std::size_t height, width; //size_t is guaranteed to be able to express the maximum size of any object including array
-    std::vector<float> data;
-
     friend std::ostream& operator<<(std::ostream &strm, const Matrix &m);
 
     friend Matrix operator+(Matrix lhs, const Matrix& rhs);
@@ -27,9 +19,26 @@ private:
     friend Matrix operator-(Matrix lhs, float rhs);
     friend Matrix operator*(Matrix lhs, float rhs);
     friend Matrix operator/(Matrix lhs, float rhs);
-    
+
     friend bool operator==(const Matrix &lhs, const Matrix &rhs);
+
+    friend bool operator!=(const Matrix &lhs, const Matrix &rhs);
 public:
+    int height, width;
+
+
+    std::vector<float> data;
+    /**
+     * Copy constructor
+     * @param m pointer to Matrix to copy
+     */
+    Matrix(Matrix *m);
+
+    /**
+    * Creates a matrix without data to initialize it later on. Do not use unless necessary
+    */
+    Matrix();
+
     /**
      * Creates a matrix with all elements having the same value
      *
@@ -37,7 +46,7 @@ public:
      * @param width width of the matrix
      * @param initValue initial value for all elements (defaults to 0)
      */
-    Matrix(std::size_t height, std::size_t width, float initValue = 0);
+    Matrix(int height, int width, float initValue = 0);
 
     /**
      * Creates a matrix with random elements
@@ -47,7 +56,7 @@ public:
      * @param from the minimum value of the random elements
      * @param to the maximum value of the random elements
      */
-    Matrix(std::size_t height, std::size_t width, float from, float to);
+    Matrix(int height, int width, float from, float to);
     /**
      * Creates a Matrix from a vector of elements
      *
@@ -57,12 +66,13 @@ public:
      * The first [width] elements will be the first row and so on.
      * The size has to be [width] * [height]
      */
-    Matrix(std::size_t height, std::size_t width, std::vector<float> data);
+    Matrix(int height, int width, std::vector<float> data);
 
     virtual ~Matrix();
 
-    size_t getWidth();
-    size_t getHeight();
+    int getWidth();
+
+    int getHeight();
     float getMax();
     float getMin();
 
@@ -76,8 +86,9 @@ public:
     Matrix& operator*=(float rhs);
     Matrix& operator/=(float rhs);
 
-    float& operator()(size_t y, size_t x);
-    float operator()(size_t y, size_t x) const;
+    float &operator()(int y, int x);
+
+    float operator()(int y, int x) const;
 
     Matrix dotProduct(const Matrix &other);
     /**
@@ -102,6 +113,8 @@ public:
      * @return itself
      */
     Matrix& transpose();
+
+    int serializedSize();
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_MATRIX_H
