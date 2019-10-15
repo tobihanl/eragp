@@ -106,7 +106,6 @@ void World::setup(int overallWidth, int overallHeight, bool maimuc, float foodRa
     calcNeighbors();
 
     foodRate *= width * height / (2000.f * TILE_SIZE * TILE_SIZE); //spawnRate of Node
-    std::cout << foodRate << std::endl;
     //convert spawnRate of node to fraction
     foodEveryTick = (int) foodRate;
     foodRate -= foodEveryTick; //only consider food that needs to be distributed
@@ -114,8 +113,8 @@ void World::setup(int overallWidth, int overallHeight, bool maimuc, float foodRa
     ticksPerFoodInterval = MAX_FOOD_INTERVAL / greatestCommonDivisor;
     foodPerFoodInterval = round(foodRate * MAX_FOOD_INTERVAL) / greatestCommonDivisor;
 
-    minTicksToSkip = floor((float)(ticksPerFoodInterval - foodPerFoodInterval) / (foodPerFoodInterval - 1));
-    maxTicksToSkip = ceil((float)(ticksPerFoodInterval - foodPerFoodInterval) / (foodPerFoodInterval - 1));
+    minTicksToSkip = floor((float)(ticksPerFoodInterval - foodPerFoodInterval) / (foodPerFoodInterval));
+    maxTicksToSkip = ceil((float)(ticksPerFoodInterval - foodPerFoodInterval) / (foodPerFoodInterval));
 
     isSetup = true;
 }
@@ -207,14 +206,12 @@ void World::tick() {
     }
     intervalTicksLeft--;
     if(ticksToSkip == 0 && intervalFoodLeft > 0) {
-        std::cout << "Tick " << ticksPerFoodInterval - (intervalTicksLeft+1) << "/" << ticksPerFoodInterval << ": " << foodEveryTick + 1 << " spawned" << std::endl;
         intervalFoodLeft--;
         addFoodEntity(new FoodEntity((rand() % World::width) + World::x, (rand() % World::height) + World::y, 8 * 60),
                       false);
         if(intervalTicksLeft != 0) ticksToSkip = ((float) intervalFoodLeft / intervalTicksLeft < (float) foodPerFoodInterval / ticksPerFoodInterval) ? maxTicksToSkip : minTicksToSkip;
     } else {
         ticksToSkip--;
-        std::cout << "Tick " << ticksPerFoodInterval - (intervalTicksLeft+1) << "/" << ticksPerFoodInterval << ": " << foodEveryTick << " spawned" << std::endl;
     }
 
 
