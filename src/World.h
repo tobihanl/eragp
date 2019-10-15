@@ -2,14 +2,23 @@
 #define ERAGP_MAIMUC_EVO_2019_WORLD_H
 
 #include <vector>
+#include "mpi.h"
 #include "FoodEntity.h"
 #include "LivingEntity.h"
 #include "Tile.h"
 
 #define TILE_SIZE 8
 #define NUMBER_OF_MAIMUC_NODES 10
+#define WORLD_PADDING (7 * TILE_SIZE)    // must be a multiple of TILE_SIZE!
+
 #define VIEW_RANGE_SQUARED 25600 //160*160
 #define VIEW_RANGE 160
+
+#define MSGS_PER_NEIGHBOR 3
+
+#define MPI_TAG_LIVING_ENTITY 42
+#define MPI_TAG_FOOD_ENTITY 50
+#define MPI_TAG_REMOVED_FOOD_ENTITY 51
 
 //================================== Structs ==================================
 struct WorldDim {
@@ -21,7 +30,7 @@ struct WorldDim {
 
 struct MPISendEntity {
     int rank;
-    LivingEntity *entity;
+    Entity *entity;
 };
 
 //=================================== Class ===================================
@@ -48,7 +57,11 @@ private:
     static std::vector<FoodEntity *> addFood;
     static std::vector<LivingEntity *> addLiving;
 
+    // MPI Sending storage
     static std::vector<MPISendEntity> livingEntitiesToMoveToNeighbors;
+    static std::vector<MPISendEntity> foodToSendToNeighbors;
+    static std::vector<MPISendEntity> removedFoodToSendToNeighbors;
+
     static std::vector<WorldDim> worlds;
     static std::vector<int> neighbors;
 
@@ -88,28 +101,24 @@ public:
 
     static LivingEntity *findNearestMate(LivingEntity *le);
 
-    static void addLivingEntity(LivingEntity *e);
+    static void addLivingEntity(LivingEntity *e, bool received);
 
-    static void addFoodEntity(FoodEntity *e);
+    static void addFoodEntity(FoodEntity *e, bool received);
 
     static void removeLivingEntity(LivingEntity *e);
 
-    static void removeFoodEntity(FoodEntity *e);
+    static void removeFoodEntity(FoodEntity *e, bool received);
 
     static bool toRemoveFood(FoodEntity *e);
 
     static Tile *tileAt(int x, int y);
 
-    static void moveToNeighbor(LivingEntity *e, int rank);
-
-    static int numOfNeighbors();
-
-    static size_t getRankAt(int x, int y);
-
 private:
     static WorldDim calcWorldDimensions(int rank, int num);
 
     static void generateTerrain();
+
+    static void renderTerrain();
 
     static bool toRemoveLiving(LivingEntity *e);
 
@@ -117,11 +126,17 @@ private:
 
     static bool toAddFood(FoodEntity *e);
 
-    static int getNeighborNodeRank(int neighbor);
+    static size_t rankAt(int x, int y);
 
-    static void renderTerrain();
+    static std::vector<size_t> *paddingRanksAt(int x, int y);
+
+    static void *sendEntities(const std::vector<MPISendEntity> &entities, int rank, int tag, MPI_Request *request);
+
+    static void receiveEntities(int rank, int tag);
 
     static void calcNeighbors();
+
+    static int numOfNeighbors();
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H

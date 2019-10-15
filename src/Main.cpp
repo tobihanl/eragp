@@ -40,8 +40,11 @@ void renderLoop() {
             std::chrono::system_clock::now().time_since_epoch()).count();
 
     // Debug flags and other stuff
-    bool paused = false, similarityMode = false;
+    bool paused = false, similarityMode = false, borders = false;
     std::vector<LivingEntity *> selectedEntities;
+    WorldDim dim = World::getWorldDim();
+    SDL_Texture *border = Renderer::renderRect(dim.w, dim.h, {255, 0, 0, 255}, false);
+    SDL_Texture *pauseText = Renderer::renderFont("Paused", 25, {0, 0, 0, 255}, "font.ttf");
 
     //=============================================================================
     //                               BEGIN MAIN LOOP
@@ -86,6 +89,11 @@ void renderLoop() {
                             selectedEntities.clear();
                             break;
 
+                            // Show borders of the world
+                        case SDLK_b:
+                            borders = !borders;
+                            break;
+
                         default:
                             break;
                     }
@@ -94,7 +102,7 @@ void renderLoop() {
                     // Mouse clicked?
                 case SDL_MOUSEBUTTONDOWN:
                     if (e.button.button == SDL_BUTTON_LEFT) {
-                        LivingEntity *nearest = World::findNearestLiving(e.button.x, e.button.y, -1);
+                        LivingEntity *nearest = World::findNearestLiving(dim.x + e.button.x, dim.y + e.button.y, -1);
 
                         if (similarityMode) {
                             if (nearest) selectedEntities.push_back(nearest);
@@ -140,8 +148,8 @@ void renderLoop() {
 
             // Render everything
             World::render();
-            if (paused)
-                Renderer::copy(Renderer::renderFont("Paused", 25, {0, 0, 0, 255}, "font.ttf"), 10, 10);
+            if (paused) Renderer::copy(pauseText, 10, 10);
+            if (borders) Renderer::copy(border, 0, 0);
 
             Renderer::present();
         }
@@ -225,10 +233,11 @@ int main(int argc, char **argv) {
                                          static_cast<Uint8>(std::rand()), 255},
                                         (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f,
                                         (rand() % 10000) / 10000.0f, brain);
-        World::addLivingEntity(entity);
+        World::addLivingEntity(entity, false);
     }
     for (int i = 0; i < 100; i++) {
-        World::addFoodEntity(new FoodEntity((std::rand() % dim.w) + dim.x, (std::rand() % dim.h) + dim.y, 8 * 60));
+        World::addFoodEntity(new FoodEntity((std::rand() % dim.w) + dim.x, (std::rand() % dim.h) + dim.y, 8 * 60),
+                             false);
     }
     //=========================== END ADD TEST ENTITIES ===========================
 

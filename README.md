@@ -27,6 +27,9 @@ Link to Trello task as first line in commit message.
 similarity of both living entities will be printed into the console. Hitting the key again resumes simulation and
 disables the similarity mode.
 
+- **Draw borders** `B`: Draws the borders of the world onto the window. This can help to easier tell apart two worlds
+next to each other.
+
 - **Quit** `Q`: Stops simulation and quits the application.
 
 - **Left-click**: Get information about the nearest living entity, where the mouse was pressed, printed in the console.

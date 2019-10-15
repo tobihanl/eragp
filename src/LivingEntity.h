@@ -1,4 +1,3 @@
-
 #ifndef ERAGP_MAIMUC_EVO_2019_LIVINGENTITY_H
 #define ERAGP_MAIMUC_EVO_2019_LIVINGENTITY_H
 
@@ -35,7 +34,7 @@ public:
 
     LivingEntity(int x, int y, SDL_Color color, float speed, float size, float waterAgility, Brain *brain);
 
-    LivingEntity(void *&ptr);
+    explicit LivingEntity(void *&ptr);
 
     ~LivingEntity() override;
     void render() override;
@@ -43,12 +42,9 @@ public:
 
     float difference(const LivingEntity &e);
 
-    void setEnergy(int energy) {
-        this->energy = energy;
-    }
+    int serializedSize() override;
 
-    int serializedSize();
-    void serialize(void *&ptr);
+    void serialize(void *&ptr) override;
 
 };
 

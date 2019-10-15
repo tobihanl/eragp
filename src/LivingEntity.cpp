@@ -30,8 +30,9 @@ LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float 
         brain(b),
         energy(60 * 2),
         cooldown(60),
+        rotation(0.0f),
         energyLossWithMove(energyLossPerTick(true, sp, si)),
-        energyLossWithoutMove(energyLossPerTick(false, sp, si)){
+        energyLossWithoutMove(energyLossPerTick(false, sp, si)) {
 
 }
 
@@ -94,9 +95,6 @@ void LivingEntity::render() {
 }
 
 void LivingEntity::tick() {
-    WorldDim dim = World::getWorldDim();
-    assert(x >= dim.x && x < dim.x + dim.w && y >= dim.y && y < dim.y + dim.h && "Coordinates don't match node."); //TODO change or remove with padding (because one entity can be on multiple nodes)
-
     //################################# Breed ################################# at the beginning, so spawning happens before move ->on the right node
     if (cooldown > 0) cooldown--;
     if (cooldown == 0 && energy >= 60 * energyLossWithMove) {
@@ -110,7 +108,7 @@ void LivingEntity::tick() {
         World::addLivingEntity(new LivingEntity(x, y, {nr, ng, nb, 255}, speed + normalDistribution(randomGenerator),
                                                 size + normalDistribution(randomGenerator),
                                                 waterAgility + normalDistribution(randomGenerator),
-                                                brain->createMutatedCopy()));
+                                                brain->createMutatedCopy()), false);
         cooldown += 60;
     }
     //################################# Think #################################
@@ -140,23 +138,21 @@ void LivingEntity::tick() {
         float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
         int xTo = x + (int) std::round(TILE_SIZE * speed * agility * 2 * std::cos(rotation * PI));
         int yTo = y + (int) std::round(TILE_SIZE * speed * agility * 2 * std::sin(rotation * PI));
-        /*if (*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2 TODO reenable
-            || *World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8) {
+        if ((*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2)
+            || (*World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8)) {
             x = (xTo + World::overallWidth) % World::overallWidth;
             y = (yTo + World::overallHeight) % World::overallHeight;
-        }*/
-        x = (xTo + World::overallWidth) % World::overallWidth; //TODO could cause overflow for large worlds. Use long instead?
-        y = (yTo + World::overallHeight) % World::overallHeight;
+        }
     }
     //################################## Eat ##################################
     if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
         if (!World::toRemoveFood(nearestFood)) {
-            World::removeFoodEntity(nearestFood); //TODO don't forget to synchronize
+            World::removeFoodEntity(nearestFood, false); //TODO don't forget to synchronize
             energy += nearestFood->energy;
         } else {
             nearestFood = World::findNearestSurvivingFood(x, y);
             if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-                World::removeFoodEntity(nearestFood); //TODO don't forget to synchronize
+                World::removeFoodEntity(nearestFood, false); //TODO don't forget to synchronize
                 energy += nearestFood->energy;
             }
         }
@@ -165,15 +161,6 @@ void LivingEntity::tick() {
     energy -= thoughts.move ? energyLossWithMove : energyLossWithoutMove;
     assert(thoughts.move ? energyLossWithMove : energyLossWithoutMove > 0 && "Entity not losing Energy");
     if (energy <= 0) World::removeLivingEntity(this);
-    //########################### Send to other node ##########################
-    if (x >= dim.x + dim.w || x < dim.x || y >= dim.y + dim.h || y < dim.y) {
-        int rank = World::getRankAt(x, y);
-        WorldDim node = World::getWorldDimOf(rank);
-
-        // Other node?
-        if (rank != World::getMPIRank())
-            World::moveToNeighbor(this, rank);
-    }
 }
 
 int LivingEntity::energyLossPerTick(bool move, float speed, float size) {

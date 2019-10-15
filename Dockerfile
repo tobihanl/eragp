@@ -6,6 +6,8 @@ RUN apt update && apt install -y \
   wget \
   cmake \
   mpich \
+  gdb \
+  valgrind \
   libsdl2-dev \
   libsdl2-image-dev \
   libsdl2-ttf-dev

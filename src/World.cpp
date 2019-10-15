@@ -1,7 +1,7 @@
-#include <mpi.h>
 #include <algorithm>
 #include <cstdlib>
 #include <cassert>
+#include "mpi.h"
 #include "World.h"
 #include "Renderer.h"
 #include "SimplexNoise/SimplexNoise.h"
@@ -10,8 +10,8 @@ int *splitRect(int num, int width, int height);
 
 // TODO [VERY IMPORTANT!] Implement checking if entity already exists in a vector to prevent duplicates!
 
-std::vector<LivingEntity *> World::living = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::food = std::vector<FoodEntity *>();
+std::vector<LivingEntity *> World::living = std::vector<LivingEntity *>();
 
 std::vector<LivingEntity *> World::removeLiving = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::removeFood = std::vector<FoodEntity *>();
@@ -19,6 +19,9 @@ std::vector<LivingEntity *> World::addLiving = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::addFood = std::vector<FoodEntity *>();
 
 std::vector<MPISendEntity> World::livingEntitiesToMoveToNeighbors = std::vector<MPISendEntity>();
+std::vector<MPISendEntity> World::foodToSendToNeighbors = std::vector<MPISendEntity>();
+std::vector<MPISendEntity> World::removedFoodToSendToNeighbors = std::vector<MPISendEntity>();
+
 std::vector<WorldDim> World::worlds = std::vector<WorldDim>();
 std::vector<int> World::neighbors = std::vector<int>();
 
@@ -96,38 +99,57 @@ void World::setup(int overallWidth, int overallHeight, bool maimuc) {
 }
 
 void World::generateTerrain() {
-    terrain.reserve((World::height / TILE_SIZE) * (World::width / TILE_SIZE));
+    int heightWithPadding = World::height + (2 * WORLD_PADDING);
+    int widthWithPadding = World::width + (2 * WORLD_PADDING);
 
-    float xOffset = (float) World::x / TILE_SIZE;
-    float yOffset = (float) World::y / TILE_SIZE;
+    int xOffset = World::x - WORLD_PADDING;
+    int yOffset = World::y - WORLD_PADDING;
+    if (xOffset < 0) xOffset += World::overallWidth;
+    if (yOffset < 0) yOffset += World::overallHeight;
 
-    for (int y = 0; y < World::height / TILE_SIZE; y++) {
-        for (int x = 0; x < World::width / TILE_SIZE; x++) {
-            float val = SimplexNoise::noise(((float) x + xOffset) / 36.f, ((float) y + yOffset) / 36.f);
+    for (int y = 0; y < heightWithPadding / TILE_SIZE; y++) {
+        for (int x = 0; x < widthWithPadding / TILE_SIZE; x++) {
+            int pointX = (x * TILE_SIZE) + xOffset;
+            int pointY = (y * TILE_SIZE) + yOffset;
+
+            // Overlap?
+            if (pointX >= World::overallWidth) pointX -= World::overallWidth;
+            if (pointY >= World::overallHeight) pointY -= World::overallHeight;
+
+            // Noise
+            float val = SimplexNoise::noise((float) pointX / (36.f * TILE_SIZE),
+                                            (float) pointY / (36.f * TILE_SIZE));
 
             if (val < -0.4) {
-                terrain[y * (World::width / TILE_SIZE) + x] = &Tile::WATER;
+                terrain.push_back(&Tile::WATER);
             } else if (val < -0.2) {
-                terrain[y * (World::width / TILE_SIZE) + x] = &Tile::SAND;
+                terrain.push_back(&Tile::SAND);
             } else if (val < 0.7) {
-                terrain[y * (World::width / TILE_SIZE) + x] = &Tile::GRASS;
+                terrain.push_back(&Tile::GRASS);
             } else {
-                terrain[y * (World::width / TILE_SIZE) + x] = &Tile::STONE;
+                terrain.push_back(&Tile::STONE);
             }
         }
     }
 }
 
 void World::renderTerrain() {
+    int heightWithPadding = World::height + (2 * WORLD_PADDING);
+    int widthWithPadding = World::width + (2 * WORLD_PADDING);
+
     // Pre-render terrain for faster rendering
-    World::background = Renderer::createTexture(World::width, World::height, SDL_TEXTUREACCESS_TARGET);
+    World::background = Renderer::createTexture(widthWithPadding, heightWithPadding, SDL_TEXTUREACCESS_TARGET);
     Renderer::setTarget(World::background);
     Renderer::clear();
 
     // Copy textures to background
-    for (int y = 0; y < World::height / TILE_SIZE; y++)
-        for (int x = 0; x < World::width / TILE_SIZE; x++)
-            Renderer::copy(terrain[y * (World::width / TILE_SIZE) + x]->texture, x * TILE_SIZE, y * TILE_SIZE);
+    for (int y = 0; y < heightWithPadding / TILE_SIZE; y++) {
+        for (int x = 0; x < widthWithPadding / TILE_SIZE; x++) {
+            Renderer::copy(terrain[y * (widthWithPadding / TILE_SIZE) + x]->texture,
+                           x * TILE_SIZE,
+                           y * TILE_SIZE);
+        }
+    }
 
     // Change render target back to default
     Renderer::present();
@@ -136,7 +158,7 @@ void World::renderTerrain() {
 
 void World::render() {
     if (World::background == nullptr) renderTerrain();
-    Renderer::copy(World::background, 0, 0);
+    Renderer::copy(World::background, -WORLD_PADDING, -WORLD_PADDING);
 
     for (const auto &f : food) {
         f->render();
@@ -152,51 +174,86 @@ void World::render() {
 
 void World::tick() {
     //TODO the same amount of food is spawned, regardless of the size of the node
-    addFoodEntity(new FoodEntity((rand() % World::width) + World::x, (rand() % World::height) + World::y, 8 * 60));
+    addFoodEntity(new FoodEntity((rand() % World::width) + World::x, (rand() % World::height) + World::y, 8 * 60),
+                  false);
     for (const auto &e : living) {
+        // Before moving: Is entity on THIS node?
+        bool beforeOnThisNode = !(e->x < x || e->x >= x + width || e->y < y || e->y >= y + height);
+
         e->tick();
-    }
 
-    for (int i = 0; i < numOfNeighbors(); i++) {
-        int totalSize = 0;
-        for (const auto &e : livingEntitiesToMoveToNeighbors)
-            if (e.rank == neighbors[i]) totalSize += e.entity->serializedSize();
+        // Entity dead?
+        if (toRemoveLiving(e)) continue;
 
-        void *buffer = malloc(totalSize);
-        void *start = buffer;
+        // TODO: Think about better solution (i.e. update entity accordingly)!
+        // Was entity in padding area? -> Get's overwritten by other node!
+        if (!beforeOnThisNode) {
+            removeLivingEntity(e);
+            continue;
+        }
 
-        for (const auto &e : livingEntitiesToMoveToNeighbors) {
-            if (e.rank == neighbors[i]) {
-                e.entity->serialize(buffer);
-                removeLivingEntity(e.entity);
+        // After moving: Entity on THIS node?
+        if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
+            // Send entity if needed
+            auto *ranks = paddingRanksAt(e->x, e->y);
+            for (int neighbor : *ranks)
+                livingEntitiesToMoveToNeighbors.push_back({neighbor, e});
+            delete ranks;
+        } else {
+            // Send entity to other node
+            livingEntitiesToMoveToNeighbors.push_back({static_cast<int>(rankAt(e->x, e->y)), e});
+            removeLivingEntity(e);
+
+            /* TODO: Re-enable! (Right now, a node NOT being a neighbor gets data sent with the code below)
+            // Send entity to nodes having a padding at this position (excluding THIS node!)
+            auto *ranks = paddingRanksAt(e->x, e->y); // TODO: Not working as this only works for coordinates on THIS node!
+            for (int neighbor : *ranks) {
+                if (neighbor != MPI_Rank) livingEntitiesToMoveToNeighbors.push_back({neighbor, e});
             }
+            delete ranks;
+            */
         }
-
-        MPI_Request entityRequest;
-        MPI_Isend(start, totalSize, MPI_BYTE, neighbors[i], 42, MPI_COMM_WORLD, &entityRequest);
     }
 
-    livingEntitiesToMoveToNeighbors.clear();
+    //=============================================================================
+    //                            BEGIN MPI SEND/RECEIVE
+    //=============================================================================
+    MPI_Request reqs[numOfNeighbors() * MSGS_PER_NEIGHBOR];
+    MPI_Status stats[numOfNeighbors() * MSGS_PER_NEIGHBOR];
+    void *buffers[numOfNeighbors() * MSGS_PER_NEIGHBOR];
 
+    //############################# SEND ENTITIES #############################
     for (int i = 0; i < numOfNeighbors(); i++) {
-        // MPI Probe to get information about the message (i.e. length)
-        int receivedBytes;
-        MPI_Status probeStat;
-        MPI_Probe(neighbors[i], 42, MPI_COMM_WORLD, &probeStat);
-        MPI_Get_count(&probeStat, MPI_BYTE, &receivedBytes);
-
-        void *buffer = malloc(receivedBytes);
-        void *start = buffer;
-
-        MPI_Status stat;
-        MPI_Recv(buffer, receivedBytes, MPI_BYTE, neighbors[i], 42, MPI_COMM_WORLD, &stat);
-
-        while (buffer < (char *) start + receivedBytes) {
-            auto *e = new LivingEntity(buffer);
-            addLivingEntity(e);
-        }
-        free(start);
+        buffers[MSGS_PER_NEIGHBOR * i] = sendEntities(livingEntitiesToMoveToNeighbors, neighbors[i],
+                                                      MPI_TAG_LIVING_ENTITY,
+                                                      &reqs[MSGS_PER_NEIGHBOR * i]);
+        buffers[MSGS_PER_NEIGHBOR * i + 1] = sendEntities(foodToSendToNeighbors, neighbors[i],
+                                                          MPI_TAG_FOOD_ENTITY,
+                                                          &reqs[MSGS_PER_NEIGHBOR * i + 1]);
+        buffers[MSGS_PER_NEIGHBOR * i + 2] = sendEntities(removedFoodToSendToNeighbors, neighbors[i],
+                                                          MPI_TAG_REMOVED_FOOD_ENTITY,
+                                                          &reqs[MSGS_PER_NEIGHBOR * i + 2]);
     }
+
+    // Clear sending storage
+    livingEntitiesToMoveToNeighbors.clear();
+    foodToSendToNeighbors.clear();
+    removedFoodToSendToNeighbors.clear();
+
+    //############################ RECEIVE ENTITIES ###########################
+    for (int i = 0; i < numOfNeighbors(); i++) {
+        receiveEntities(neighbors[i], MPI_TAG_LIVING_ENTITY);
+        receiveEntities(neighbors[i], MPI_TAG_FOOD_ENTITY);
+        receiveEntities(neighbors[i], MPI_TAG_REMOVED_FOOD_ENTITY);
+    }
+
+    // Wait for all sends to complete and afterwards free buffers
+    MPI_Waitall(numOfNeighbors() * MSGS_PER_NEIGHBOR, reqs, stats);
+    for (void *e : buffers)
+        free(e);
+    //=============================================================================
+    //                             END MPI SEND/RECEIVE
+    //=============================================================================
 
     living.erase(std::remove_if(living.begin(), living.end(), toRemoveLiving), living.end());
     living.insert(living.end(), addLiving.begin(), addLiving.end());
@@ -212,6 +269,66 @@ void World::tick() {
     removeLiving.clear();
     addFood.clear();
     addLiving.clear();
+}
+
+void *World::sendEntities(const std::vector<MPISendEntity> &entities, int rank, int tag, MPI_Request *request) {
+    int totalSize = 0;
+    for (const auto &e : entities)
+        if (e.rank == rank) totalSize += e.entity->serializedSize();
+
+    void *buffer = malloc(totalSize);
+    void *start = buffer;
+
+    for (const auto &e : entities)
+        if (e.rank == rank)
+            e.entity->serialize(buffer);
+
+    MPI_Isend(start, totalSize, MPI_BYTE, rank, tag, MPI_COMM_WORLD, request);
+    return start;
+}
+
+void World::receiveEntities(int rank, int tag) {
+    int receivedBytes;
+
+    // MPI Probe to get information about the message (i.e. length)
+    MPI_Status probeStat;
+    MPI_Probe(rank, tag, MPI_COMM_WORLD, &probeStat);
+    MPI_Get_count(&probeStat, MPI_BYTE, &receivedBytes);
+
+    void *buffer = malloc(receivedBytes);
+    void *start = buffer;
+
+    MPI_Status stat;
+    MPI_Recv(buffer, receivedBytes, MPI_BYTE, rank, tag, MPI_COMM_WORLD, &stat);
+
+    while (buffer < (char *) start + receivedBytes) {
+        Entity *e;
+        switch (tag) {
+            case MPI_TAG_LIVING_ENTITY:
+                e = new LivingEntity(buffer);
+                addLivingEntity((LivingEntity *) e, true);
+                break;
+
+            case MPI_TAG_FOOD_ENTITY:
+                e = new FoodEntity(buffer);
+                addFoodEntity((FoodEntity *) e, true);
+                break;
+
+            case MPI_TAG_REMOVED_FOOD_ENTITY:
+                e = new FoodEntity(buffer);
+                for (const auto &f : food) {
+                    if (e->getId() == f->getId() && !toRemoveFood(f))
+                        removeFoodEntity(f, true);
+                }
+                delete e;
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    free(start);
 }
 
 FoodEntity *World::findNearestFood(int x, int y) {
@@ -290,14 +407,44 @@ LivingEntity *World::findNearestMate(LivingEntity *le) {
     return n;
 }
 
-void World::addLivingEntity(LivingEntity *e) {
-    if (!toAddLiving(e))
+void World::addLivingEntity(LivingEntity *e, bool received) {
+    if (toAddLiving(e)) return;
+
+    // Received via MPI? -> Always add!
+    if (received) {
         addLiving.push_back(e);
+        return;
+    }
+
+    // Only add and broadcast to other nodes when laying on THIS node
+    if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
+        addLiving.push_back(e);
+
+        auto *ranks = paddingRanksAt(e->x, e->y);
+        for (int neighbor : *ranks)
+            livingEntitiesToMoveToNeighbors.push_back({neighbor, e});
+        delete ranks;
+    }
 }
 
-void World::addFoodEntity(FoodEntity *e) {
-    if (!toAddFood(e))
+void World::addFoodEntity(FoodEntity *e, bool received) {
+    if (toAddFood(e)) return;
+
+    // Received via MPI? -> Always add!
+    if (received) {
         addFood.push_back(e);
+        return;
+    }
+
+    // Only add and broadcast to other nodes when laying on THIS node
+    if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
+        addFood.push_back(e);
+
+        auto *ranks = paddingRanksAt(e->x, e->y);
+        for (int neighbor : *ranks)
+            foodToSendToNeighbors.push_back({neighbor, e});
+        delete ranks;
+    }
 }
 
 void World::removeLivingEntity(LivingEntity *e) {
@@ -305,9 +452,24 @@ void World::removeLivingEntity(LivingEntity *e) {
         removeLiving.push_back(e);
 }
 
-void World::removeFoodEntity(FoodEntity *e) {
+void World::removeFoodEntity(FoodEntity *e, bool received) {
     assert(!toRemoveFood(e) && "Tried to remove same FoodEntity multiple times");
-    removeFood.push_back(e);
+
+    // Received via MPI? -> Always remove!
+    if (received) {
+        removeFood.push_back(e);
+        return;
+    }
+
+    // Only remove and broadcast to other nodes when laying on THIS node
+    if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
+        removeFood.push_back(e);
+
+        auto *ranks = paddingRanksAt(e->x, e->y);
+        for (int neighbor : *ranks)
+            removedFoodToSendToNeighbors.push_back({neighbor, e});
+        delete ranks;
+    }
 }
 
 /**
@@ -366,6 +528,7 @@ WorldDim World::calcWorldDimensions(int rank, int num) {
 void World::calcNeighbors() {
     int start1, end1, start2, end2;
     for (size_t i = 0; i < worlds.size(); i++) {
+        if (i == MPI_Rank) continue; // Node doesn't need to know that it's its own neighbor!
         auto dim = worlds[i];
 
         // Upper or lower line (of THIS world)?
@@ -442,16 +605,11 @@ bool World::toAddFood(FoodEntity *e) {
     return std::find(addFood.begin(), addFood.end(), e) != addFood.end();
 }
 
-void World::moveToNeighbor(LivingEntity *e, int rank) {
-    assert(std::find(neighbors.begin(), neighbors.end(), rank) != neighbors.end() && "Given rank not a neighbor!");
-    livingEntitiesToMoveToNeighbors.push_back({rank, e});
-}
-
 int World::numOfNeighbors() {
     return neighbors.size();
 }
 
-size_t World::getRankAt(int x, int y) {
+size_t World::rankAt(int x, int y) {
     x = (x + overallWidth) % overallWidth; //TODO could cause overflow for large worlds. Use long instead?
     y = (y + overallHeight) % overallHeight;
 
@@ -460,6 +618,50 @@ size_t World::getRankAt(int x, int y) {
             return i;
     }
     return -1; // In case there's no matching world
+}
+
+/**
+ * @return      Ranks having a padding on the given coordinates
+ *
+ * @attention   Only works for (x,y) coordinates on THIS node!
+ */
+std::vector<size_t> *World::paddingRanksAt(int x, int y) {
+    assert(x >= World::x && x < World::x + World::width && y >= World::y && y < World::y + World::height &&
+           "Coordinates NOT on THIS node");
+
+    int shiftedX, shiftedY;
+    auto *ranks = new std::vector<size_t>();
+    for (int neighbor : neighbors) {
+        WorldDim dim = worlds[neighbor];
+        shiftedX = x;
+        shiftedY = y;
+
+        // Shift X coordinate
+        if (dim.x == 0 && x + WORLD_PADDING >= overallWidth)                // Overlap?
+            shiftedX = (x + WORLD_PADDING) % overallWidth;
+        else if (dim.x + dim.w == overallWidth && x - WORLD_PADDING < 0)    // Overlap?
+            shiftedX = (x - WORLD_PADDING + overallWidth) % overallWidth;
+        else if (x < dim.x)
+            shiftedX = (x + WORLD_PADDING) % overallWidth;
+        else if (x >= dim.x + dim.w)
+            shiftedX = (x - WORLD_PADDING + overallWidth) % overallWidth;
+
+        // Shift Y coordinate
+        if (dim.y == 0 && y + WORLD_PADDING >= overallHeight)               // Overlap?
+            shiftedY = (y + WORLD_PADDING) % overallHeight;
+        else if (dim.y + dim.h == overallHeight && y - WORLD_PADDING < 0)   // Overlap?
+            shiftedY = (y - WORLD_PADDING + overallHeight) % overallHeight;
+        else if (y < dim.y)
+            shiftedY = (y + WORLD_PADDING) % overallHeight;
+        else if (y >= dim.y + dim.h)
+            shiftedY = (y - WORLD_PADDING + overallHeight) % overallHeight;
+
+        // Point shifted into the world?
+        if (shiftedX >= dim.x && shiftedX < dim.x + dim.w && shiftedY >= dim.y && shiftedY < dim.y + dim.h)
+            ranks->push_back(neighbor);
+    }
+
+    return ranks;
 }
 
 /**
@@ -505,8 +707,20 @@ int *splitRect(int num, int width, int height) {
 }
 
 Tile *World::tileAt(int x, int y) {
-    if (x < 0 || x >= width || y < 0 || y >= height) return &Tile::INVALID;
-    return terrain[(y / TILE_SIZE) * (width / TILE_SIZE) + (x / TILE_SIZE)];
+    if (x < World::x - WORLD_PADDING || x >= World::x + World::width + WORLD_PADDING ||
+        y < World::y - WORLD_PADDING || y >= World::y + World::height + WORLD_PADDING) {
+        return &Tile::INVALID;
+    } else {
+        int xOffset = World::x - WORLD_PADDING;
+        int yOffset = World::y - WORLD_PADDING;
+        if (xOffset < 0) xOffset += World::overallWidth;
+        if (yOffset < 0) yOffset += World::overallHeight;
+
+        x = (x - xOffset + World::overallWidth) % World::overallWidth;
+        y = (y - yOffset + World::overallHeight) % World::overallHeight;
+
+        return terrain[(y / TILE_SIZE) * ((World::width + (2 * WORLD_PADDING)) / TILE_SIZE) + (x / TILE_SIZE)];
+    }
 }
 
 //TODO cleanup for destroyed entities

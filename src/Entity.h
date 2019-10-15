@@ -18,12 +18,17 @@ public:
 
     Entity(int x, int y, const SDL_Color &color, int radius);
 
+    Entity(int id, int x, int y, const SDL_Color &color, int radius);
     Entity(int id, int x, int y, const SDL_Color &color, float size);
 
     virtual ~Entity();
 
     virtual void render() = 0;
     virtual void tick() = 0;
+
+    virtual int serializedSize() = 0;
+
+    virtual void serialize(void *&ptr) = 0;
 
     int getId();
 
