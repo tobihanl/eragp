@@ -42,6 +42,9 @@ int World::foodPerFoodInterval = 0;
 int World::intervalTicksLeft = 0;
 int World::intervalFoodLeft = 0;
 int World::foodEveryTick = 0;
+int World::ticksToSkip = 0;
+int World::minTicksToSkip = 0;
+int World::maxTicksToSkip = 0;
 
 bool World::isSetup = false;
 
@@ -111,7 +114,8 @@ void World::setup(int overallWidth, int overallHeight, bool maimuc, float foodRa
     ticksPerFoodInterval = MAX_FOOD_INTERVAL / greatestCommonDivisor;
     foodPerFoodInterval = round(foodRate * MAX_FOOD_INTERVAL) / greatestCommonDivisor;
 
-
+    minTicksToSkip = floor((float)(ticksPerFoodInterval - foodPerFoodInterval) / (foodPerFoodInterval - 1));
+    maxTicksToSkip = ceil((float)(ticksPerFoodInterval - foodPerFoodInterval) / (foodPerFoodInterval - 1));
 
     isSetup = true;
 }
@@ -195,18 +199,23 @@ void World::tick() {
         assert(intervalFoodLeft == 0 && "Not enough food spawned!");
         intervalFoodLeft = foodPerFoodInterval;
         intervalTicksLeft = ticksPerFoodInterval;
+        ticksToSkip = 0;
     }
     for(int i = 0; i < foodEveryTick; i++) {
         addFoodEntity(new FoodEntity((rand() % World::width) + World::x, (rand() % World::height) + World::y, 8 * 60),
                       false);
     }
-    std::cout << "Tick " << ticksPerFoodInterval - intervalTicksLeft << "/" << ticksPerFoodInterval << ": " << foodEveryTick + (intervalFoodLeft > 0 ? 1 : 0) << " spawned" << std::endl;
-    if(intervalFoodLeft > 0) {
+    intervalTicksLeft--;
+    if(ticksToSkip == 0 && intervalFoodLeft > 0) {
+        std::cout << "Tick " << ticksPerFoodInterval - (intervalTicksLeft+1) << "/" << ticksPerFoodInterval << ": " << foodEveryTick + 1 << " spawned" << std::endl;
         intervalFoodLeft--;
         addFoodEntity(new FoodEntity((rand() % World::width) + World::x, (rand() % World::height) + World::y, 8 * 60),
                       false);
+        if(intervalTicksLeft != 0) ticksToSkip = ((float) intervalFoodLeft / intervalTicksLeft < (float) foodPerFoodInterval / ticksPerFoodInterval) ? maxTicksToSkip : minTicksToSkip;
+    } else {
+        ticksToSkip--;
+        std::cout << "Tick " << ticksPerFoodInterval - (intervalTicksLeft+1) << "/" << ticksPerFoodInterval << ": " << foodEveryTick << " spawned" << std::endl;
     }
-    intervalTicksLeft--;
 
 
     for (const auto &e : living) {

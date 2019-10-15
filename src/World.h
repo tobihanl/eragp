@@ -14,7 +14,7 @@
 #define VIEW_RANGE_SQUARED 25600 //160*160
 #define VIEW_RANGE 160
 
-#define MAX_FOOD_INTERVAL 240 //4 * 60 ticks
+#define MAX_FOOD_INTERVAL 1000000 //Can be much bigger because it is equally distributed
 
 #define MSGS_PER_NEIGHBOR 3
 
@@ -51,6 +51,9 @@ private:
     static int intervalTicksLeft; //remaining ticks in the current interval
     static int intervalFoodLeft; //remaining food to be distributed over the current interval (without the food spawned every tick)
     static int foodEveryTick; //amount of food to spawn every tick (if node spawnRate is bigger than 1)
+    static int ticksToSkip; //ticks to skip until next food (not considering foodEveryTick) is spawned
+    static int minTicksToSkip;
+    static int maxTicksToSkip;
 
     static bool isSetup;
 
