@@ -135,13 +135,11 @@ void LivingEntity::tick() {
         float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
         int xTo = x + (int) std::round(TILE_SIZE * speed * agility * 2 * std::cos(rotation * PI));
         int yTo = y + (int) std::round(TILE_SIZE * speed * agility * 2 * std::sin(rotation * PI));
-        /*if (*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2 TODO reenable
-            || *World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8) {
+        if ((*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2)
+            || (*World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8)) {
             x = (xTo + World::overallWidth) % World::overallWidth;
             y = (yTo + World::overallHeight) % World::overallHeight;
-        }*/
-        x = (xTo + World::overallWidth) % World::overallWidth; //TODO could cause overflow for large worlds. Use long instead?
-        y = (yTo + World::overallHeight) % World::overallHeight;
+        }
     }
     //################################## Eat ##################################
     if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
