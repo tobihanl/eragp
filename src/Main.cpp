@@ -34,11 +34,6 @@ void renderLoop() {
     Tile::SAND.texture = Renderer::renderImage("sand.png");
     Tile::WATER.texture = Renderer::renderImage("water.png");
 
-    bool render;
-    int lag = 0, currentTime, elapsedTime;
-    int previousTime = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count();
-
     // Debug flags and other stuff
     bool paused = false, similarityMode = false, borders = false;
     std::vector<LivingEntity *> selectedEntities;
@@ -50,18 +45,15 @@ void renderLoop() {
     //                               BEGIN MAIN LOOP
     //=============================================================================
     SDL_Event e;
+    int currentTime, elapsedTime, previousTime;
     bool run = true;
     while (true) {
-        render = false;
-
         // Calculate lag between last and current turn
         currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::system_clock::now().time_since_epoch()).count();
-        elapsedTime = (currentTime - previousTime);
         previousTime = currentTime;
-        lag += elapsedTime;
 
-        // Process input
+        //############################# PROCESS INPUT #############################
         while (SDL_PollEvent(&e)) {
             switch (e.type) {
                 // Key pressed?
@@ -70,10 +62,7 @@ void renderLoop() {
                         // Pause/Play
                         case SDLK_p:
                             // Simulation is already paused in similarity mode!
-                            if (!similarityMode) {
-                                paused = !paused;
-                                render = true;
-                            }
+                            if (!similarityMode) paused = !paused;
                             break;
 
                             // QUIT
@@ -83,9 +72,7 @@ void renderLoop() {
 
                             // Similarity mode
                         case SDLK_s:
-                            if (!similarityMode) similarityMode = paused = render = true;
-                            else similarityMode = paused = false;
-
+                            similarityMode = paused = !similarityMode;
                             selectedEntities.clear();
                             break;
 
@@ -130,36 +117,25 @@ void renderLoop() {
             }
         }
 
+        // Quit?
         if (!run) break;
 
-        // Calculate missing ticks
-        while (lag >= MS_PER_TICK) {
-            lag -= MS_PER_TICK;
+        //############################ TICK AND RENDER ############################
+        if (!paused) World::tick();
 
-            if (!paused) {
-                render = true;
-                World::tick();
-            }
-        }
+        // Render everything
+        Renderer::clear();
+        World::render();
+        if (paused) Renderer::copy(pauseText, 10, 10);
+        if (borders) Renderer::copy(border, 0, 0);
+        Renderer::present();
 
-        // Render if needed
-        if (render) {
-            Renderer::clear();
-
-            // Render everything
-            World::render();
-            if (paused) Renderer::copy(pauseText, 10, 10);
-            if (borders) Renderer::copy(border, 0, 0);
-
-            Renderer::present();
-        }
-
-        // Calculate elapsed time of this loop turn
+        //########################### WAIT IF TOO FAST ############################
         currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::system_clock::now().time_since_epoch()).count();
         elapsedTime = (currentTime - previousTime);
 
-        // Wait if loop is too fast
+        // Delay loop turn
         if (elapsedTime <= MS_PER_TICK)
             SDL_Delay(MS_PER_TICK - elapsedTime);
     }
