@@ -35,6 +35,7 @@ void renderLoop() {
     Tile::WATER.texture = Renderer::renderImage("water.png");
 
     // Debug flags and other stuff
+    Uint8 buffer = 0;
     bool paused = false, similarityMode = false, borders = false;
     std::vector<LivingEntity *> selectedEntities;
     WorldDim dim = World::getWorldDim();
@@ -58,6 +59,11 @@ void renderLoop() {
             switch (e.type) {
                 // Key pressed?
                 case SDL_KEYDOWN:
+                    if (World::getMPIRank() != 0) {
+                        std::cerr << "Keyboard input only works on ROOT node (0)!" << std::endl;
+                        break;
+                    }
+
                     switch (e.key.keysym.sym) {
                         // Pause/Play
                         case SDLK_p:
@@ -109,12 +115,29 @@ void renderLoop() {
 
                     // QUIT
                 case SDL_QUIT:
-                    run = false;
+                    if (World::getMPIRank() == 0) run = false;
+                    else std::cerr << "Simulation must be quit on ROOT node (0)!" << std::endl;
                     break;
 
                 default:
                     break;
             }
+        }
+
+        //###################### BROADCAST APPLICATION STATUS #####################
+        buffer = 0;
+        if (World::getMPIRank() == 0) {
+            if (run) buffer |= 0x1u;
+            if (paused) buffer |= 0x2u;
+            if (similarityMode) buffer |= 0x4u;
+            if (borders) buffer |= 0x8u;
+        }
+        MPI_Bcast(&buffer, 1, MPI_UINT8_T, 0, MPI_COMM_WORLD);
+        if (World::getMPIRank() != 0) {
+            run = (buffer & 0x1u) != 0;
+            paused = (buffer & 0x2u) != 0;
+            similarityMode = (buffer & 0x4u) != 0;
+            borders = (buffer & 0x8u) != 0;
         }
 
         // Quit?
