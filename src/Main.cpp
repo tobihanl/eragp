@@ -182,10 +182,11 @@ int main(int argc, char **argv) {
 
     int width = 960, height = 720;
     bool maimuc = false;
+    float foodRate = 1.f;  //food spawned per 2000 tiles per tick
 
     // Scan program arguments
     int c;
-    while ((c = getopt(argc, argv, "h::w::m::")) != -1) {
+    while ((c = getopt(argc, argv, "h::w::m::f::")) != -1) {
         switch (c) {
             // Height
             case 'h':
@@ -202,12 +203,18 @@ int main(int argc, char **argv) {
                 maimuc = true;
                 break;
 
+            case 'f':
+                if(optarg != nullptr) foodRate = atof(optarg);
+                break;
                 // Unknown Option
             case '?':
-                if (optopt == 'h' || optopt == 'w')
+                if (optopt == 'h' || optopt == 'w') {
                     std::cerr << "Option -h and -w require an integer!" << std::endl;
-                else
+                } else if(optopt == 'f') {
+                    std::cerr << "Option -f requires a float indicating the amount of food spawned per 2000 tiles per tick!" << std::endl;
+                } else {
                     std::cerr << "Unknown option character -" << (char) optopt << std::endl;
+                }
 
                 return EXIT_FAILURE;
 
@@ -218,7 +225,7 @@ int main(int argc, char **argv) {
     }
 
     // Init and set-up world & renderer
-    World::setup(width, height, maimuc);
+    World::setup(width, height, maimuc, foodRate);
     WorldDim dim = World::getWorldDim();
     if (maimuc)//TODO change back
         Renderer::setup(0, 0, dim.w, dim.h, true);

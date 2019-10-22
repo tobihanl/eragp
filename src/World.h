@@ -14,6 +14,8 @@
 #define VIEW_RANGE_SQUARED 25600 //160*160
 #define VIEW_RANGE 160
 
+#define MAX_FOOD_INTERVAL 1000000 //Can be much bigger because it is equally distributed
+
 #define MSGS_PER_NEIGHBOR 3
 
 #define MPI_TAG_LIVING_ENTITY 42
@@ -43,6 +45,15 @@ private:
     static int y;
     static int width;
     static int height;
+
+    static int ticksPerFoodInterval; //ticks per interval
+    static int foodPerFoodInterval; //food to distribute over every interval (without the food spawned every tick)
+    static int intervalTicksLeft; //remaining ticks in the current interval
+    static int intervalFoodLeft; //remaining food to be distributed over the current interval (without the food spawned every tick)
+    static int foodEveryTick; //amount of food to spawn every tick (if node spawnRate is bigger than 1)
+    static int ticksToSkip; //ticks to skip until next food (not considering foodEveryTick) is spawned
+    static int minTicksToSkip;
+    static int maxTicksToSkip;
 
     static bool isSetup;
 
@@ -75,7 +86,7 @@ public:
     static int overallWidth;
     static int overallHeight;
 
-    static void setup(int overallWidth, int overallHeight, bool maimuc);
+    static void setup(int overallWidth, int overallHeight, bool maimuc, float foodRate);
 
     static int getMPIRank();
 
@@ -137,6 +148,8 @@ private:
     static void calcNeighbors();
 
     static int numOfNeighbors();
+
+    static long gcd(long a, long b);
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H
