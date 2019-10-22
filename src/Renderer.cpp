@@ -206,7 +206,7 @@ SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
             dy = radius - h;
 
             if ((dx * dx + dy * dy) < squaredRadius)
-                pixels[h * doubledRadius + w] = (color.a << 24) + (color.r << 16) + (color.g << 8) + color.b;
+                pixels[h * doubledRadius + w] = (color.a << 24u) + (color.r << 16u) + (color.g << 8u) + color.b;
             else
                 pixels[h * doubledRadius + w] = 0; // Transparent
         }
@@ -214,7 +214,7 @@ SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
 
     // Draw filled circle/Dot on texture and return it
     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
-    SDL_UpdateTexture(texture, nullptr, pixels, doubledRadius * sizeof(Uint32));
+    SDL_UpdateTexture(texture, nullptr, pixels, doubledRadius * (int) sizeof(Uint32));
 
     free(pixels);
     return texture;
@@ -242,13 +242,13 @@ SDL_Texture *Renderer::renderRect(int width, int height, const SDL_Color &color,
             if (!filled && h > 0 && h < height - 1 && w > 0 && w < width - 1)
                 pixels[h * width + w] = 0; // Transparent
             else
-                pixels[h * width + w] = (color.a << 24) + (color.r << 16) + (color.g << 8) + color.b;
+                pixels[h * width + w] = (color.a << 24u) + (color.r << 16u) + (color.g << 8u) + color.b;
         }
     }
 
     // Draw rect on texture and return it
     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
-    SDL_UpdateTexture(texture, nullptr, pixels, width * sizeof(Uint32));
+    SDL_UpdateTexture(texture, nullptr, pixels, width * (int) sizeof(Uint32));
 
     free(pixels);
     return texture;

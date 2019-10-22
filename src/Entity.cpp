@@ -41,11 +41,11 @@ bool operator!=(const Entity &lhs, const Entity &rhs) {
     return !(lhs == rhs);
 }
 
-int Entity::getSquaredDistance(int x, int y) {
-    return (this->x - x) * (this->x - x) + (this->y - y) * (this->y - y);
+int Entity::getSquaredDistance(int px, int py) {
+    return (x - px) * (x - px) + (y - py) * (y - py);
 }
 
-float Entity::getDistance(int x, int y) {
-    return std::sqrt((this->x - x) * (this->x - x) + (this->y - y) * (this->y - y));
+float Entity::getDistance(int px, int py) {
+    return std::sqrt((x - px) * (x - px) + (y - py) * (y - py));
 }
 

@@ -5,6 +5,7 @@
 #include <SDL.h>
 #include <mpi.h>
 #include <unistd.h>
+#include <random>
 #include "Renderer.h"
 #include "World.h"
 #include "Brain.h"
@@ -189,12 +190,12 @@ int main(int argc, char **argv) {
         switch (c) {
             // Height
             case 'h':
-                if (optarg != nullptr) height = strtol(optarg, nullptr, 10);
+                if (optarg != nullptr) height = (int) strtol(optarg, nullptr, 10);
                 break;
 
                 // Width
             case 'w':
-                if (optarg != nullptr) width = strtol(optarg, nullptr, 10);
+                if (optarg != nullptr) width = (int) strtol(optarg, nullptr, 10);
                 break;
 
                 // MaiMUC
@@ -203,14 +204,16 @@ int main(int argc, char **argv) {
                 break;
 
             case 'f':
-                if(optarg != nullptr) foodRate = atof(optarg);
+                if (optarg != nullptr) foodRate = (float) strtod(optarg, nullptr);
                 break;
                 // Unknown Option
             case '?':
                 if (optopt == 'h' || optopt == 'w') {
                     std::cerr << "Option -h and -w require an integer!" << std::endl;
-                } else if(optopt == 'f') {
-                    std::cerr << "Option -f requires a float indicating the amount of food spawned per 2000 tiles per tick!" << std::endl;
+                } else if (optopt == 'f') {
+                    std::cerr
+                            << "Option -f requires a float indicating the amount of food spawned per 2000 tiles per tick!"
+                            << std::endl;
                 } else {
                     std::cerr << "Unknown option character -" << (char) optopt << std::endl;
                 }
@@ -232,18 +235,32 @@ int main(int argc, char **argv) {
         Renderer::setup(dim.x, dim.y, dim.w, dim.h, false);
 
     //============================= ADD TEST ENTITIES =============================
+    std::random_device rd;
+    std::mt19937 mt(rd());
+    std::uniform_int_distribution<int> distWidth(0, dim.w);
+    std::uniform_int_distribution<int> distHeight(0, dim.h);
+    std::uniform_int_distribution<int> distColor(0, 256);
+    std::uniform_int_distribution<int> dist1000(0, 10000);
     for (int i = 0; i < 10; i++) {
         auto *brain = new Brain(6, 8, 4, 4, 10, 4);
-        auto *entity = new LivingEntity((std::rand() % dim.w) + dim.x, (std::rand() % dim.h) + dim.y,
-                                        {static_cast<Uint8>(std::rand()), static_cast<Uint8>(std::rand()),
-                                         static_cast<Uint8>(std::rand()), 255},
-                                        (rand() % 10000) / 10000.0f, (rand() % 10000) / 10000.0f,
-                                        (rand() % 10000) / 10000.0f, brain);
+        auto *entity = new LivingEntity(
+                distWidth(mt) + dim.x,
+                distHeight(mt) + dim.y,
+                {
+                        static_cast<Uint8>(distColor(mt)),
+                        static_cast<Uint8>(distColor(mt)),
+                        static_cast<Uint8>(distColor(mt)),
+                        255},
+                (float) dist1000(mt) / 10000.0f,
+                (float) dist1000(mt) / 10000.0f,
+                (float) dist1000(mt) / 10000.0f, brain);
+
         World::addLivingEntity(entity, false);
     }
     for (int i = 0; i < 100; i++) {
-        World::addFoodEntity(new FoodEntity((std::rand() % dim.w) + dim.x, (std::rand() % dim.h) + dim.y, 8 * 60),
-                             false);
+        World::addFoodEntity(
+                new FoodEntity(distWidth(mt) + dim.x, distHeight(mt) + dim.y, 8 * 60),
+                false);
     }
     //=========================== END ADD TEST ENTITIES ===========================
 

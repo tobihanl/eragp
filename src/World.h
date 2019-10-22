@@ -86,7 +86,7 @@ public:
     static int overallWidth;
     static int overallHeight;
 
-    static void setup(int overallWidth, int overallHeight, bool maimuc, float foodRate);
+    static void setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate);
 
     static int getMPIRank();
 
@@ -100,13 +100,11 @@ public:
 
     static void tick();
 
-    static FoodEntity *findNearestFood(int x, int y);
+    static FoodEntity *findNearestFood(int px, int py);
 
-    static FoodEntity *findNearestSurvivingFood(int x, int y);
+    static FoodEntity *findNearestSurvivingFood(int px, int py);
 
-    static LivingEntity *findNearestLiving(LivingEntity *le);
-
-    static LivingEntity *findNearestLiving(int x, int y, int id);
+    static LivingEntity *findNearestLiving(int px, int py, int id);
 
     static LivingEntity *findNearestEnemy(LivingEntity *le);
 
@@ -122,7 +120,7 @@ public:
 
     static bool toRemoveFood(FoodEntity *e);
 
-    static Tile *tileAt(int x, int y);
+    static Tile *tileAt(int px, int py);
 
 private:
     static WorldDim calcWorldDimensions(int rank, int num);
@@ -137,9 +135,9 @@ private:
 
     static bool toAddFood(FoodEntity *e);
 
-    static size_t rankAt(int x, int y);
+    static size_t rankAt(int px, int py);
 
-    static std::vector<size_t> *paddingRanksAt(int x, int y);
+    static std::vector<size_t> *paddingRanksAt(int px, int py);
 
     static void *sendEntities(const std::vector<MPISendEntity> &entities, int rank, int tag, MPI_Request *request);
 

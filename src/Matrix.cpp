@@ -1,10 +1,8 @@
 #include "Matrix.h"
 #include <stdexcept>
-#include <math.h>
+#include <cmath>
 #include <random>
 #include <algorithm>
-#include <iterator>
-#include <functional>
 
 Matrix::Matrix(Matrix *m) : height(m->height), width(m->width), data(m->data) {
 
@@ -26,15 +24,13 @@ Matrix::Matrix(int h, int w, float from, float to) : height(h), width(w) {
     generate(data.begin(), data.end(), gen);
 }
 
-Matrix::Matrix(int h, int w, std::vector<float> d) : height(h), width(w), data(d) {
+Matrix::Matrix(int h, int w, const std::vector<float> &d) : height(h), width(w), data(d) {
     if(w * h != d.size()) throw std::invalid_argument("A Matrix of dimensions (" + std::to_string(h) + " x " + std::to_string(w) + ") must have " + std::to_string(w * h) + " instead of " + std::to_string(d.size()) + " arguments.");
 }
 
 Matrix::Matrix() : width(1), height(1), data(1) {}
 
-Matrix::~Matrix(){
-
-}
+Matrix::~Matrix() = default;
 
 int Matrix::getWidth() {
     return width;
@@ -201,7 +197,7 @@ bool operator==(const Matrix &lhs, const Matrix &rhs) {
     if(lhs.width != rhs.width || lhs.height != rhs.height) return false;
     int s = lhs.width * lhs.height;
     for (int i = 0; i < s; i++) {
-        if(!(fabs(lhs.data[i] - rhs.data[i]) < lhs.data[i] * 0.001)) return false;
+        if (fabs(lhs.data[i] - rhs.data[i]) >= lhs.data[i] * 0.001) return false;
     }
     return true;
 }
