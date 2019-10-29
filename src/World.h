@@ -35,6 +35,22 @@ struct MPISendEntity {
     Entity *entity;
 };
 
+struct Point {
+    int x = 0;
+    int y = 0;
+};
+
+struct Rect {
+    struct Point p;
+    int w = 0;
+    int h = 0;
+};
+
+struct PaddingRect {
+    int rank = 0;
+    struct Rect r;
+};
+
 //=================================== Class ===================================
 class World {
 private:
@@ -74,7 +90,8 @@ private:
     static std::vector<MPISendEntity> removedFoodToSendToNeighbors;
 
     static std::vector<WorldDim> worlds;
-    static std::vector<int> neighbors;
+    static std::vector<PaddingRect> paddingRects;
+    static std::vector<int> paddingRanks;
 
     static std::vector<Tile *> terrain;
 
@@ -122,8 +139,12 @@ public:
 
     static Tile *tileAt(int px, int py);
 
+    static std::vector<PaddingRect> *getPaddingRects();
+
 private:
     static WorldDim calcWorldDimensions(int rank, int num);
+
+    static std::vector<PaddingRect> *calcPaddingRects(Rect world, bool onWorld);
 
     static void generateTerrain();
 
@@ -143,11 +164,11 @@ private:
 
     static void receiveEntities(int rank, int tag);
 
-    static void calcNeighbors();
-
-    static int numOfNeighbors();
-
     static long gcd(long a, long b);
+
+    static bool pointInRect(Point p, Rect r);
+
+    static Rect calcIntersection(Rect rect1, Rect rect2);
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H
