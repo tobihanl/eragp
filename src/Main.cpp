@@ -2,6 +2,7 @@
 #include <iostream>
 #include <chrono>
 #include <cstdlib>
+#include <poll.h>
 #include <SDL.h>
 #include <mpi.h>
 #include <unistd.h>
@@ -182,8 +183,51 @@ void renderLoop(long ticks) {
  *                  (-1) = no limitation
  */
 void normalLoop(long ticks) {
+    // Inspired from http://www.coldestgame.com/site/blog/cybertron/non-blocking-reading-stdin-c
+    pollfd cin[1];
+    if (World::getMPIRank() == 0) {
+        cin[0].fd = fileno(stdin);
+        cin[0].events = POLLIN;
+        std::cout << "> ";
+    }
+
+    Uint8 buffer = 0;
     bool run = ticks == -1 || ticks > 0;
     while (run) {
+        //############################# PROCESS INPUT #############################
+        if (World::getMPIRank() == 0 && poll(cin, 1, 1)) {
+            std::string str;
+            std::cin >> str;
+
+            // Switch command
+            switch (str.front()) {
+                // Quit
+                case 'q':
+                case 'Q':
+                    run = false;
+                    break;
+
+                default:
+                    break;
+            }
+
+            if (run) std::cout << "> ";
+        }
+
+        //###################### BROADCAST APPLICATION STATUS #####################
+        buffer = 0;
+        if (World::getMPIRank() == 0) {
+            if (run) buffer |= 0x1u;
+        }
+        MPI_Bcast(&buffer, 1, MPI_UINT8_T, 0, MPI_COMM_WORLD);
+        if (World::getMPIRank() != 0) {
+            run = (buffer & 0x1u) != 0;
+        }
+
+        // Quit?
+        if (!run) break;
+
+        //################################## TICK #################################
         World::tick();
 
         // Set running status for next loop turn
