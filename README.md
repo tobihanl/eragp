@@ -11,8 +11,6 @@ Link to Trello task as first line in commit message.
 
 ## Commandline arguments
 
-*Important*: The value must be written immediately after the argument (i.e. `-w720` and not `-w 720`)!
-
 - **Width** `-w` (optional): Integer value declaring the width (in pixels) of the whole world. Default is 960px.
 
 - **Height** `-h` (optional): Integer value declaring the height (in pixels) of the whole world. Default is 720px.

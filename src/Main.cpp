@@ -181,12 +181,13 @@ int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
 
     int width = 960, height = 720;
-    bool maimuc = false;
+    bool maimuc = false, render = false;
     float foodRate = 1.f;  //food spawned per 2000 tiles per tick
 
     // Scan program arguments
+    opterr = 0;
     int c;
-    while ((c = getopt(argc, argv, "h::w::m::f::")) != -1) {
+    while ((c = getopt(argc, argv, "h:w:m::f:r::")) != -1) {
         switch (c) {
             // Height
             case 'h':
@@ -198,7 +199,7 @@ int main(int argc, char **argv) {
                 if (optarg != nullptr) width = (int) strtol(optarg, nullptr, 10);
                 break;
 
-                // MaiMUC
+                // MaiMUC flag
             case 'm':
                 maimuc = true;
                 break;
@@ -206,6 +207,12 @@ int main(int argc, char **argv) {
             case 'f':
                 if (optarg != nullptr) foodRate = (float) strtod(optarg, nullptr);
                 break;
+
+                // Render flag
+            case 'r':
+                render = true;
+                break;
+
                 // Unknown Option
             case '?':
                 if (optopt == 'h' || optopt == 'w') {
