@@ -189,6 +189,7 @@ void normalLoop(long ticks) {
         cin[0].fd = fileno(stdin);
         cin[0].events = POLLIN;
         std::cout << "> ";
+        std::cout.flush();
     }
 
     Uint8 buffer = 0;
@@ -211,7 +212,10 @@ void normalLoop(long ticks) {
                     break;
             }
 
-            if (run) std::cout << "> ";
+            if (run) {
+                std::cout << "> ";
+                std::cout.flush();
+            }
         }
 
         //###################### BROADCAST APPLICATION STATUS #####################
