@@ -16,9 +16,10 @@
 /**
  * Event Loop that is also rendering and updating the world.
  *
- * @param world The world, which should be updated and rendered
+ * @param   ticks   Amount of ticks to calculate
+ *                  (-1) = no limitation
  */
-void renderLoop() {
+void renderLoop(long ticks) {
     LivingEntity::digits[0] = Renderer::renderFont("0", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
     LivingEntity::digits[1] = Renderer::renderFont("1", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
     LivingEntity::digits[2] = Renderer::renderFont("2", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
@@ -48,8 +49,8 @@ void renderLoop() {
     //=============================================================================
     SDL_Event e;
     int currentTime, elapsedTime, previousTime;
-    bool run = true;
-    while (true) {
+    bool run = ticks == -1 || ticks > 0;
+    while (run) {
         // Calculate lag between last and current turn
         currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::system_clock::now().time_since_epoch()).count();
@@ -162,6 +163,9 @@ void renderLoop() {
         // Delay loop turn
         if (elapsedTime <= MS_PER_TICK)
             SDL_Delay(MS_PER_TICK - elapsedTime);
+
+        // Set running status for next loop turn
+        run = ticks == -1 || (--ticks) > 0;
     }
     //=============================================================================
     //                                END MAIN LOOP
@@ -169,6 +173,22 @@ void renderLoop() {
 
     // Destroy renderer (close window) and exit
     Renderer::destroy();
+}
+
+/*
+ * Normal loop updating the world without rendering it.
+ *
+* @param    ticks   Amount of ticks to calculate
+ *                  (-1) = no limitation
+ */
+void normalLoop(long ticks) {
+    bool run = ticks == -1 || ticks > 0;
+    while (run) {
+        World::tick();
+
+        // Set running status for next loop turn
+        run = ticks == -1 || (--ticks) > 0;
+    }
 }
 
 /**
@@ -183,11 +203,12 @@ int main(int argc, char **argv) {
     int width = 960, height = 720;
     bool maimuc = false, render = false;
     float foodRate = 1.f;  //food spawned per 2000 tiles per tick
+    long ticks = -1;
 
     // Scan program arguments
     opterr = 0;
     int c;
-    while ((c = getopt(argc, argv, "h:w:m::f:r::")) != -1) {
+    while ((c = getopt(argc, argv, "h:w:m::f:r::t:")) != -1) {
         switch (c) {
             // Height
             case 'h':
@@ -213,6 +234,11 @@ int main(int argc, char **argv) {
                 render = true;
                 break;
 
+                // Amount of ticks for simulation
+            case 't':
+                if (optarg != nullptr) ticks = strtol(optarg, nullptr, 10);
+                break;
+
                 // Unknown Option
             case '?':
                 if (optopt == 'h' || optopt == 'w') {
@@ -233,13 +259,17 @@ int main(int argc, char **argv) {
         }
     }
 
-    // Init and set-up world & renderer
+    // Init world
     World::setup(width, height, maimuc, foodRate);
     WorldDim dim = World::getWorldDim();
-    if (maimuc)//TODO change back
-        Renderer::setup(0, 0, dim.w, dim.h, true);
-    else
-        Renderer::setup(dim.x, dim.y, dim.w, dim.h, false);
+
+    // Init renderer
+    if (render) {
+        if (maimuc)
+            Renderer::setup(0, 0, dim.w, dim.h, true);
+        else
+            Renderer::setup(dim.x, dim.y, dim.w, dim.h, false);
+    }
 
     //============================= ADD TEST ENTITIES =============================
     std::random_device rd;
@@ -271,9 +301,15 @@ int main(int argc, char **argv) {
     }
     //=========================== END ADD TEST ENTITIES ===========================
 
+    // Render simulation?
+    if (render)
+        renderLoop(ticks);
+    else
+        normalLoop(ticks);
 
-    // Render-Event Loop
-    renderLoop();
+    // Exit application
+    if (World::getMPIRank() == 0)
+        std::cout << "EXITING..." << std::endl;
 
     // END MPI
     MPI_Finalize();

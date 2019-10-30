@@ -15,9 +15,15 @@ Link to Trello task as first line in commit message.
 
 - **Height** `-h` (optional): Integer value declaring the height (in pixels) of the whole world. Default is 720px.
 
-- **Food Spawn Rate** `-f` (optional): Float value that defines the amount of food spawned per 2000 tiles per tick. Default is 1.
+- **Food Spawn Rate** `-f` (optional): Float value that defines the amount of food spawned per 2000 tiles per tick.
+Default is 1.
 
-- **MaiMUC** `-m` (optional): Run the application with the MaiMUC configuration. No value required.
+- **Ticks** `-t` (optional): Amount of ticks (`long`) to simulate. No limitation with value -1. Default is -1.
+
+- **Render** `-r` (optional): Render the application while running. No value required. Default is **no rendering**.
+
+- **MaiMUC** `-m` (optional): Run the application with the MaiMUC configuration. No value required. Application **must
+be** executed on 10 nodes with this configuration!
 
 ## Using the keyboard and mouse while running the application
 
