@@ -28,7 +28,8 @@ void renderLoop() {
     // Debug flags and other stuff
     Uint8 buffer = 0;
     bool paused = false, similarityMode = false, borders = false, paddings = false;
-    std::vector<LivingEntity *> selectedEntities;
+    int countSelectedEntities = 0;
+    LivingEntity *selectedEntities[2] = {nullptr};
     WorldDim dim = World::getWorldDim();
 
     //=============================================================================
@@ -68,7 +69,8 @@ void renderLoop() {
                             // Similarity mode
                         case SDLK_s:
                             similarityMode = paused = !similarityMode;
-                            selectedEntities.clear();
+                            selectedEntities[0] = selectedEntities[1] = nullptr;
+                            countSelectedEntities = 0;
                             break;
 
                             // Show borders of the world
@@ -89,16 +91,18 @@ void renderLoop() {
                     // Mouse clicked?
                 case SDL_MOUSEBUTTONDOWN:
                     if (e.button.button == SDL_BUTTON_LEFT) {
-                        LivingEntity *nearest = World::findNearestLiving(dim.x + e.button.x, dim.y + e.button.y, -1);
+                        LivingEntity *nearest = World::findNearestLiving(dim.p.x + e.button.x, dim.p.y + e.button.y,
+                                                                         -1);
 
                         if (similarityMode) {
-                            if (nearest) selectedEntities.push_back(nearest);
+                            if (nearest) selectedEntities[countSelectedEntities++] = nearest;
 
                             // Two entities selected?
-                            if (selectedEntities.size() == 2) {
-                                std::cout << "Difference: " << selectedEntities[0]->difference(*selectedEntities[1])
+                            if (countSelectedEntities >= 2) {
+                                std::cout << "Difference: " << (*selectedEntities[0]).difference(*selectedEntities[1])
                                           << std::endl;
-                                selectedEntities.clear();
+                                selectedEntities[0] = selectedEntities[1] = nullptr;
+                                countSelectedEntities = 0;
                             }
                         } else {
                             if (nearest) std::cout << *nearest << std::endl;
@@ -228,7 +232,7 @@ int main(int argc, char **argv) {
     if (maimuc)//TODO change back
         Renderer::setup(0, 0, dim.w, dim.h, true);
     else
-        Renderer::setup(dim.x, dim.y, dim.w, dim.h, false);
+        Renderer::setup(dim.p.x, dim.p.y, dim.w, dim.h, false);
 
     //============================= ADD TEST ENTITIES =============================
     std::random_device rd;
@@ -240,8 +244,8 @@ int main(int argc, char **argv) {
     for (int i = 0; i < 10; i++) {
         auto *brain = new Brain(6, 8, 4, 4, 10, 4);
         auto *entity = new LivingEntity(
-                distWidth(mt) + dim.x,
-                distHeight(mt) + dim.y,
+                distWidth(mt) + dim.p.x,
+                distHeight(mt) + dim.p.y,
                 {
                         static_cast<Uint8>(distColor(mt)),
                         static_cast<Uint8>(distColor(mt)),
@@ -255,7 +259,7 @@ int main(int argc, char **argv) {
     }
     for (int i = 0; i < 100; i++) {
         World::addFoodEntity(
-                new FoodEntity(distWidth(mt) + dim.x, distHeight(mt) + dim.y, 8 * 60),
+                new FoodEntity(distWidth(mt) + dim.p.x, distHeight(mt) + dim.p.y, 8 * 60),
                 false);
     }
     //=========================== END ADD TEST ENTITIES ===========================
@@ -297,9 +301,9 @@ void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padd
     SDL_SetTextureBlendMode(*padding, SDL_BLENDMODE_BLEND);
     Renderer::clear();
     for (const auto &p : *World::getPaddingRects())
-        Renderer::copy(Renderer::renderRect(p.r.w, p.r.h, {0, 0, 255, 255}, false),
-                       p.r.p.x - dim.x,
-                       p.r.p.y - dim.y);
+        Renderer::copy(Renderer::renderRect(p.rect.w, p.rect.h, {0, 0, 255, 255}, false),
+                       p.rect.p.x - dim.p.x,
+                       p.rect.p.y - dim.p.y);
     Renderer::present();
     Renderer::setTarget(nullptr);
 }

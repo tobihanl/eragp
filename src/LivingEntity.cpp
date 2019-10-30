@@ -78,16 +78,16 @@ void LivingEntity::render() {
     WorldDim dim = World::getWorldDim();
     float radius = (1.0f + size) * TILE_SIZE / 2.0f;
     int radiusI = (int) round(radius);
-    Renderer::copy(texture, x - dim.x - radiusI, y - dim.y - radiusI);
+    Renderer::copy(texture, x - dim.p.x - radiusI, y - dim.p.y - radiusI);
     if (energy <= 0) {
-        Renderer::copy(digits[0], x - dim.x - (ENERGY_FONT_SIZE / 2), y - dim.y - 4 - ENERGY_FONT_SIZE);
+        Renderer::copy(digits[0], x - dim.p.x - (ENERGY_FONT_SIZE / 2), y - dim.p.y - 4 - ENERGY_FONT_SIZE);
     } else {//max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
         int numDigits = getNumDigits(energy);
         int energyToDisplay = energy;
-        int baseX = x - dim.x + numDigits * 4 -
+        int baseX = x - dim.p.x + numDigits * 4 -
                     4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
         for (int i = 0; energyToDisplay > 0; i++) {
-            Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, y - dim.y - 4 - ENERGY_FONT_SIZE);
+            Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, y - dim.p.y - 4 - ENERGY_FONT_SIZE);
             energyToDisplay /= 10;
         }
     }

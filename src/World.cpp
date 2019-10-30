@@ -99,15 +99,15 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
     }
 
     // Set dimension for this world
-    x = worlds[MPI_Rank].x;
-    y = worlds[MPI_Rank].y;
+    x = worlds[MPI_Rank].p.x;
+    y = worlds[MPI_Rank].p.y;
     width = worlds[MPI_Rank].w;
     height = worlds[MPI_Rank].h;
 
     generateTerrain();
 
     // Calculate padding area stuff
-    paddingRects = *calcPaddingRects({{x, y}, width, height}, true);
+    calcPaddingRects();
     for (const auto &r : paddingRects)
         if (std::find(paddingRanks.begin(), paddingRanks.end(), r.rank) == paddingRanks.end())
             paddingRanks.push_back(r.rank);
@@ -232,7 +232,7 @@ void World::tick() {
 
     for (const auto &e : living) {
         // Before moving: Is entity on THIS node?
-        bool beforeOnThisNode = !(e->x < x || e->x >= x + width || e->y < y || e->y >= y + height);
+        bool beforeOnThisNode = pointInRect({e->x, e->y}, {{x, y}, width, height});
 
         e->tick();
 
@@ -247,7 +247,7 @@ void World::tick() {
         }
 
         // After moving: Entity on THIS node?
-        if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
+        if (pointInRect({e->x, e->y}, {{x, y}, width, height})) {
             // Send entity if needed
             auto *ranks = paddingRanksAt(e->x, e->y);
             for (int neighbor : *ranks)
@@ -471,7 +471,7 @@ void World::addLivingEntity(LivingEntity *e, bool received) {
     }
 
     // Only add and broadcast to other nodes when laying on THIS node
-    if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
+    if (pointInRect({e->x, e->y}, {{x, y}, width, height})) {
         addLiving.push_back(e);
 
         auto *ranks = paddingRanksAt(e->x, e->y);
@@ -491,7 +491,7 @@ void World::addFoodEntity(FoodEntity *e, bool received) {
     }
 
     // Only add and broadcast to other nodes when laying on THIS node
-    if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
+    if (pointInRect({e->x, e->y}, {{x, y}, width, height})) {
         addFood.push_back(e);
 
         auto *ranks = paddingRanksAt(e->x, e->y);
@@ -516,7 +516,7 @@ void World::removeFoodEntity(FoodEntity *e, bool received) {
     }
 
     // Only remove and broadcast to other nodes when laying on THIS node
-    if (e->x >= x && e->x < x + width && e->y >= y && e->y < y + height) {
+    if (pointInRect({e->x, e->y}, {{x, y}, width, height})) {
         removeFood.push_back(e);
 
         auto *ranks = paddingRanksAt(e->x, e->y);
@@ -546,86 +546,68 @@ WorldDim World::calcWorldDimensions(int rank, int num) {
     // Get Position of the world (and update width and height if needed)
     int overlap;
     for (int i = 1; i <= rank; i++) {
-        dim.x += dim.w;
+        dim.p.x += dim.w;
 
         // Height overlap? -> Last row
-        if ((dim.y + dim.h) > overallHeight) {
-            overlap = (dim.y + dim.h) - overallHeight;
+        if ((dim.p.y + dim.h) > overallHeight) {
+            overlap = (dim.p.y + dim.h) - overallHeight;
             dim.h -= overlap;
             dim.w += (dim.w * overlap) / dim.h;
         }
 
         // Width overlap?
-        if ((dim.x + dim.w) >= overallWidth) {
+        if ((dim.p.x + dim.w) >= overallWidth) {
             if (i == rank) {
-                overlap = (dim.x + dim.w) - overallWidth;
+                overlap = (dim.p.x + dim.w) - overallWidth;
                 if (overlap == dim.w) {
-                    dim.x = 0;
-                    dim.y += dim.h;
+                    dim.p.x = 0;
+                    dim.p.y += dim.h;
                 } else {
                     dim.w -= overlap;
                 }
             } else {
-                dim.x = -dim.w;
-                dim.y += dim.h;
+                dim.p.x = -dim.w;
+                dim.p.y += dim.h;
             }
         }
 
         // Last rectangle?
         if ((i + 1) == num)
-            dim.w = overallWidth - dim.x;
+            dim.w = overallWidth - dim.p.x;
     }
 
     return dim;
 }
 
-/**
- * @param   world       Rectangle as the "center" world
- * @param   onWorld    true  = Padding rects ON world
- *                      false = padding rects OF world ON
- *                              other worlds
- */
-std::vector<PaddingRect> *World::calcPaddingRects(Rect world, bool onWorld) {
-    // Padding OF the world?
-    if (!onWorld) {
-        world.p.x -= WORLD_PADDING;
-        world.p.y -= WORLD_PADDING;
-        world.w += 2 * WORLD_PADDING;
-        world.h += 2 * WORLD_PADDING;
-    }
-
-    auto *rects = new std::vector<PaddingRect>();
+void World::calcPaddingRects() {
+    WorldDim world = getWorldDim();
     for (size_t i = 0; i < worlds.size(); i++) {
         if (i == MPI_Rank) continue;
-        WorldDim dim = worlds[i];
 
-        Rect otherWorld;
-        if (onWorld)
-            otherWorld = {{dim.x - WORLD_PADDING, dim.y - WORLD_PADDING}, dim.w + 2 * WORLD_PADDING,
-                          dim.h + 2 * WORLD_PADDING};
-        else
-            otherWorld = {{dim.x, dim.y}, dim.w, dim.h};
+        WorldDim otherWorld = worlds[i];
+        otherWorld.p.x -= WORLD_PADDING;
+        otherWorld.p.y -= WORLD_PADDING;
+        otherWorld.w += 2 * WORLD_PADDING;
+        otherWorld.h += 2 * WORLD_PADDING;
 
         /*
          * 2 | 3 | 4
          * 1 | 0 | 5
          * 8 | 7 | 6
          */
-        Rect subject = (onWorld) ? otherWorld : world, intersection;
+        Rect intersection;
         for (int j = 0; j < 9; j++) {
-            if (j == 1 || j == 7 || j == 8) subject.p.x -= overallWidth;
-            if (j == 2) subject.p.y -= overallHeight;
-            if (j == 3 || j == 4) subject.p.x += overallWidth;
-            if (j == 5 || j == 6) subject.p.y += overallHeight;
+            if (j == 1 || j == 7 || j == 8) otherWorld.p.x -= overallWidth;
+            if (j == 2) otherWorld.p.y -= overallHeight;
+            if (j == 3 || j == 4) otherWorld.p.x += overallWidth;
+            if (j == 5 || j == 6) otherWorld.p.y += overallHeight;
 
             // Intersection?
-            intersection = calcIntersection((onWorld) ? world : otherWorld, subject);
+            intersection = calcIntersection(world, otherWorld);
             if (intersection.w > 0 && intersection.h > 0)
-                rects->push_back({(int) i, intersection});
+                paddingRects.push_back({(int) i, intersection});
         }
     }
-
-    return rects;
 }
 
 WorldDim World::getWorldDim() {
@@ -662,11 +644,10 @@ bool World::toAddFood(FoodEntity *e) {
 }
 
 size_t World::rankAt(int px, int py) {
-    px = (px + overallWidth) % overallWidth; //TODO could cause overflow for large worlds. Use long instead?
-    py = (py + overallHeight) % overallHeight;
-
+    //TODO could cause overflow for large worlds. Use long instead?
+    Point p = {(px + overallWidth) % overallWidth, (py + overallHeight) % overallHeight};
     for (size_t i = 0; i < worlds.size(); i++) {
-        if (worlds[i].x <= px && px < worlds[i].x + worlds[i].w && worlds[i].y <= py && py < worlds[i].y + worlds[i].h)
+        if (pointInRect(p, worlds[i]))
             return i;
     }
     return -1; // In case there's no matching world
@@ -682,7 +663,7 @@ std::vector<size_t> *World::paddingRanksAt(int px, int py) {
 
     auto *ranks = new std::vector<size_t>();
     for (const auto &p : paddingRects)
-        if (pointInRect({px, py}, p.r))
+        if (pointInRect({px, py}, p.rect))
             ranks->push_back(p.rank);
 
     return ranks;
@@ -756,7 +737,7 @@ long World::gcd(long a, long b) {
     return gcd(b, a % b);
 }
 
-Rect World::calcIntersection(Rect rect1, Rect rect2) {
+Rect World::calcIntersection(const Rect &rect1, const Rect &rect2) {
     int x1 = std::max(rect1.p.x, rect2.p.x);
     int y1 = std::max(rect1.p.y, rect2.p.y);
     int x2 = std::min(rect1.p.x + rect1.w, rect2.p.x + rect2.w);
@@ -765,7 +746,7 @@ Rect World::calcIntersection(Rect rect1, Rect rect2) {
     return {{x1, y1}, x2 - x1, y2 - y1};
 }
 
-bool World::pointInRect(Point p, Rect r) {
+bool World::pointInRect(const Point &p, const Rect &r) {
     return r.p.x <= p.x && p.x < r.p.x + r.w && r.p.y <= p.y && p.y < r.p.y + r.h;
 }
 

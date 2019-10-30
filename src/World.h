@@ -23,13 +23,6 @@
 #define MPI_TAG_REMOVED_FOOD_ENTITY 51
 
 //================================== Structs ==================================
-struct WorldDim {
-    int x = 0;
-    int y = 0;
-    int w = 0;
-    int h = 0;
-};
-
 struct MPISendEntity {
     int rank;
     Entity *entity;
@@ -48,8 +41,10 @@ struct Rect {
 
 struct PaddingRect {
     int rank = 0;
-    struct Rect r;
+    struct Rect rect;
 };
+
+typedef struct Rect WorldDim;
 
 //=================================== Class ===================================
 class World {
@@ -144,7 +139,7 @@ public:
 private:
     static WorldDim calcWorldDimensions(int rank, int num);
 
-    static std::vector<PaddingRect> *calcPaddingRects(Rect world, bool onWorld);
+    static void calcPaddingRects();
 
     static void generateTerrain();
 
@@ -166,9 +161,9 @@ private:
 
     static long gcd(long a, long b);
 
-    static bool pointInRect(Point p, Rect r);
+    static bool pointInRect(const Point &p, const Rect &r);
 
-    static Rect calcIntersection(Rect rect1, Rect rect2);
+    static Rect calcIntersection(const Rect &rect1, const Rect &rect2);
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H
