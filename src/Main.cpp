@@ -253,15 +253,11 @@ int main(int argc, char **argv) {
     opterr = 0;
     int c;
     while ((c = getopt(argc, argv, "h:w:m::f:r::t:")) != -1) {
+        char *ptr = nullptr;
         switch (c) {
-            // Height
-            case 'h':
-                if (optarg != nullptr) height = (int) strtol(optarg, nullptr, 10);
-                break;
-
-                // Width
-            case 'w':
-                if (optarg != nullptr) width = (int) strtol(optarg, nullptr, 10);
+            // Render flag
+            case 'r':
+                render = true;
                 break;
 
                 // MaiMUC flag
@@ -269,28 +265,57 @@ int main(int argc, char **argv) {
                 maimuc = true;
                 break;
 
-            case 'f':
-                if (optarg != nullptr) foodRate = (float) strtod(optarg, nullptr);
+                // Height
+            case 'h':
+                if (optarg) {
+                    height = (int) strtol(optarg, &ptr, 10);
+                    if (*ptr) {
+                        std::cerr << "Option -h requires an integer!" << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                }
                 break;
 
-                // Render flag
-            case 'r':
-                render = true;
+                // Width
+            case 'w':
+                if (optarg) {
+                    width = (int) strtol(optarg, &ptr, 10);
+                    if (*ptr) {
+                        std::cerr << "Option -w requires an integer!" << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                }
                 break;
 
                 // Amount of ticks for simulation
             case 't':
-                if (optarg != nullptr) ticks = strtol(optarg, nullptr, 10);
+                if (optarg) {
+                    ticks = strtol(optarg, &ptr, 10);
+                    if (*ptr) {
+                        std::cerr << "Option -t requires an integer!" << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                }
+                break;
+
+            case 'f':
+                if (optarg) {
+                    foodRate = (float) strtod(optarg, &ptr);
+                    if (*ptr) {
+                        std::cerr << "Option -f requires a float indicating the amount of food spawned per 2000 tiles"
+                                  << "per tick!" << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                }
                 break;
 
                 // Unknown Option
             case '?':
-                if (optopt == 'h' || optopt == 'w') {
-                    std::cerr << "Option -h and -w require an integer!" << std::endl;
+                if (optopt == 'h' || optopt == 'w' || optopt == 't') {
+                    std::cerr << "Option -" << (char) optopt << " requires an integer!" << std::endl;
                 } else if (optopt == 'f') {
-                    std::cerr
-                            << "Option -f requires a float indicating the amount of food spawned per 2000 tiles per tick!"
-                            << std::endl;
+                    std::cerr << "Option -f requires a float indicating the amount of food spawned per 2000 tiles "
+                              << "per tick!" << std::endl;
                 } else {
                     std::cerr << "Unknown option character -" << (char) optopt << std::endl;
                 }
