@@ -4,18 +4,10 @@
 #include "Renderer.h"
 #include "World.h"
 #include "FoodEntity.h"
+#include "Rng.h"
 
 #define PI 3.14159265
 #define AMOUNT_OF_PARAMS 10
-
-static std::mt19937 createGenerator() {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    return gen;
-}
-
-std::mt19937 LivingEntity::randomGenerator = createGenerator();
-std::normal_distribution<float> LivingEntity::normalDistribution(0, 0.01);
 
 SDL_Texture *LivingEntity::digits[10];
 
@@ -99,15 +91,15 @@ void LivingEntity::tick() {
     if (cooldown > 0) cooldown--;
     if (cooldown == 0 && energy >= 60 * energyLossWithMove) {
         //energy -= 60; leaving out might give better results
-        Uint8 nr = color.r + (int) std::round(normalDistribution(randomGenerator) * 255);
+        Uint8 nr = color.r + (int) std::round(getRandomFloatBetween(0, 0.01) * 255);
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
-        Uint8 ng = color.g + (int) std::round(normalDistribution(randomGenerator) * 255);
+        Uint8 ng = color.g + (int) std::round(getRandomFloatBetween(0, 0.01) * 255);
         ng = ng < 0 ? 0 : (ng > 255 ? 255 : ng);
-        Uint8 nb = color.b + (int) std::round(normalDistribution(randomGenerator) * 255);
+        Uint8 nb = color.b + (int) std::round(getRandomFloatBetween(0, 0.01) * 255);
         nb = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
-        World::addLivingEntity(new LivingEntity(x, y, {nr, ng, nb, 255}, speed + normalDistribution(randomGenerator),
-                                                size + normalDistribution(randomGenerator),
-                                                waterAgility + normalDistribution(randomGenerator),
+        World::addLivingEntity(new LivingEntity(x, y, {nr, ng, nb, 255}, speed + getRandomFloatBetween(0, 0.01),
+                                                size + getRandomFloatBetween(0, 0.01),
+                                                waterAgility + getRandomFloatBetween(0, 0.01),
                                                 brain->createMutatedCopy()), false);
         cooldown += 60;
     }

@@ -17,6 +17,8 @@ target_sources(${PROJECT_NAME}
         ${CMAKE_CURRENT_LIST_DIR}/Brain.h
         ${CMAKE_CURRENT_LIST_DIR}/Tile.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Tile.h
+        ${CMAKE_CURRENT_LIST_DIR}/Rng.h
+        ${CMAKE_CURRENT_LIST_DIR}/Rng.cpp
         )
 
 find_package(SDL2 REQUIRED)
