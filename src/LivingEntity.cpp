@@ -160,6 +160,17 @@ void LivingEntity::tick() {
             }
         }
     }
+    //################################## Share ##################################
+    if(thoughts.share && energy > 80 && nearestMate && nearestMate->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
+        if (World::toRemoveLiving(nearestMate)) {
+            LivingEntity* temp = World::findNearestSurvivingMate(this);
+            nearestMate = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp : nullptr; //TODO synchronize from here
+        }
+        if(nearestMate) {
+            nearestMate->energy += 55;
+            energy -= 60;
+        }
+    }
     //################################## Eat ##################################
     if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {//nearest food also needed for input
         if (World::toRemoveFood(nearestFood)) {
