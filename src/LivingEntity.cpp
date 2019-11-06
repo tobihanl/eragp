@@ -193,7 +193,13 @@ int LivingEntity::energyLossPerTick(bool move, float speed, float size) {
     return (int) round((move ? speed * 8 : 0) + size * 4 + 1);
 }
 
-//TODO consider new properties when added
+bool LivingEntity::visibleOn(Tile *tile) {
+    return (color.r - tile->color.r) * (color.r - tile->color.r)
+    + (color.g - tile->color.g) * (color.g - tile->color.g)
+    + (color.b - tile->color.b) * (color.b - tile->color.b) >= 200;
+}
+
+//TODO consider new properties when added, maybe switch to squaredDistance?
 float LivingEntity::difference(const LivingEntity &e) {
     return std::sqrt(((float) (e.color.r - color.r) / 255.f) * ((float) (e.color.r - color.r) / 255.f)
                      + ((float) (e.color.g - color.g) / 255.f) * ((float) (e.color.g - color.g) / 255.f)

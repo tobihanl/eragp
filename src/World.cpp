@@ -429,7 +429,7 @@ LivingEntity *World::findNearestEnemy(LivingEntity *le) {
     LivingEntity *n = nullptr;
     int dist = 0;
     for (const auto &e : living) {
-        if (*e == *le || le->difference(*e) < 0.04) continue;
+        if (*e == *le || le->difference(*e) < 0.04 || !e->visibleOn(tileAt(le->x, le->y))) continue;
         int tempDist = e->getSquaredDistance(le->x, le->y);
         if (tempDist <= VIEW_RANGE_SQUARED && (!n || tempDist < dist)) {
             n = e;
@@ -444,7 +444,7 @@ LivingEntity *World::findNearestSurvivingEnemy(LivingEntity *le) {
     LivingEntity *n = nullptr;
     int dist = 0;
     for (const auto &e : living) {
-        if (toRemoveLiving(e) || *e == *le || le->difference(*e) < 0.04) continue;
+        if (toRemoveLiving(e) || *e == *le || le->difference(*e) < 0.04 || !e->visibleOn(tileAt(le->x, le->y))) continue;
         int tempDist = e->getSquaredDistance(le->x, le->y);
         if (tempDist <= VIEW_RANGE_SQUARED && (!n || tempDist < dist)) {
             n = e;

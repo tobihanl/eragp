@@ -8,6 +8,7 @@
 #include "Brain.h"
 #include <random>
 #include <SDL.h>
+#include "Tile.h"
 
 class LivingEntity : public Entity {
 private:
@@ -40,6 +41,7 @@ public:
     void render() override;
     void tick() override;
 
+    bool visibleOn(Tile *tile);
     float difference(const LivingEntity &e);
 
     int serializedSize() override;
