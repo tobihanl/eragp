@@ -144,19 +144,34 @@ void LivingEntity::tick() {
             y = (yTo + World::overallHeight) % World::overallHeight;
         }
     }
-    //################################## Eat ##################################
-    if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-        if (!World::toRemoveFood(nearestFood)) {
-            World::removeFoodEntity(nearestFood, false); //TODO don't forget to synchronize
-            energy += nearestFood->energy;
-        } else {
-            nearestFood = World::findNearestSurvivingFood(x, y);
-            if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-                World::removeFoodEntity(nearestFood, false); //TODO don't forget to synchronize
-                energy += nearestFood->energy;
+    //################################## Attack ##################################
+    if(thoughts.attack && nearestEnemy && nearestEnemy->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
+        if (World::toRemoveLiving(nearestEnemy)) {
+            LivingEntity* temp = World::findNearestSurvivingEnemy(this);
+            nearestEnemy = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp : nullptr; //TODO synchronize from here
+        }
+        if(nearestEnemy) {
+            if(size > nearestEnemy->size) {
+                World::removeLivingEntity(nearestEnemy); //don't forget to synchronize
+                energy += nearestEnemy->energy;
+            } else {
+                World::removeLivingEntity(this);
+                return;
             }
         }
     }
+    //################################## Eat ##################################
+    if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {//nearest food also needed for input
+        if (World::toRemoveFood(nearestFood)) {
+            FoodEntity* temp = World::findNearestSurvivingFood(x, y);
+            nearestFood = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp : nullptr; //TODO synchronize from here
+        }
+        if(nearestFood) {
+            World::removeFoodEntity(nearestFood, false); //don't forget to synchronize
+            energy += nearestFood->energy;
+        }
+    }
+
     //################################# Energy ################################
     energy -= thoughts.move ? energyLossWithMove : energyLossWithoutMove;
     assert(thoughts.move ? energyLossWithMove : energyLossWithoutMove > 0 && "Entity not losing Energy");
