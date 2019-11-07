@@ -388,6 +388,8 @@ int main(int argc, char **argv) {
     if (World::getMPIRank() == 0)
         std::cout << "EXITING..." << std::endl;
 
+    World::finalize();
+
     // END MPI
     MPI_Finalize();
     return EXIT_SUCCESS;

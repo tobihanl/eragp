@@ -100,6 +100,8 @@ public:
 
     static void setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate);
 
+    static void finalize();
+
     static int getMPIRank();
 
     static int getMPINodes();

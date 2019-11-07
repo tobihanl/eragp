@@ -127,6 +127,14 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
     isSetup = true;
 }
 
+void World::finalize() {
+    for (const auto &e : food) delete e;
+    for (const auto &e : living) delete e;
+
+    food.clear();
+    living.clear();
+}
+
 void World::generateTerrain() {
     int heightWithPadding = height + (2 * WORLD_PADDING);
     int widthWithPadding = width + (2 * WORLD_PADDING);

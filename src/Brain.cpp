@@ -50,6 +50,9 @@ Brain::~Brain() {
         delete weights[i];
         delete biases[i];
     }
+
+    delete[] weights;
+    delete[] biases;
 }
 
 //TODO optimize dotProduct() and usage of Matrix (not that bad, because it only stores pointers to the data), implement normalization

@@ -230,7 +230,7 @@ SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
     SDL_UpdateTexture(texture, nullptr, pixels, doubledRadius * (int) sizeof(Uint32));
 
-    free(pixels);
+    delete[] pixels;
     return texture;
 }
 
@@ -266,7 +266,7 @@ SDL_Texture *Renderer::renderRect(int width, int height, const SDL_Color &color,
     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
     SDL_UpdateTexture(texture, nullptr, pixels, width * (int) sizeof(Uint32));
 
-    free(pixels);
+    delete[] pixels;
     return texture;
 }
 
