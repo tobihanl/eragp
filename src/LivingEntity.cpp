@@ -136,19 +136,45 @@ void LivingEntity::tick() {
             y = (yTo + World::overallHeight) % World::overallHeight;
         }
     }
-    //################################## Eat ##################################
-    if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-        if (!World::toRemoveFood(nearestFood)) {
-            World::removeFoodEntity(nearestFood, false); //TODO don't forget to synchronize
-            energy += nearestFood->energy;
-        } else {
-            nearestFood = World::findNearestSurvivingFood(x, y);
-            if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-                World::removeFoodEntity(nearestFood, false); //TODO don't forget to synchronize
-                energy += nearestFood->energy;
+    //################################## Attack ##################################
+    if(thoughts.attack && nearestEnemy && nearestEnemy->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
+        if (World::toRemoveLiving(nearestEnemy)) {
+            LivingEntity* temp = World::findNearestSurvivingEnemy(this);
+            nearestEnemy = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp : nullptr; //TODO synchronize from here
+        }
+        if(nearestEnemy) {
+            if(size > nearestEnemy->size) {
+                World::removeLivingEntity(nearestEnemy); //don't forget to synchronize
+                energy += nearestEnemy->energy;
+            } else {
+                World::removeLivingEntity(this);
+                return;
             }
         }
     }
+    //################################## Share ##################################
+    if(thoughts.share && energy > 80 && nearestMate && nearestMate->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
+        if (World::toRemoveLiving(nearestMate)) {
+            LivingEntity* temp = World::findNearestSurvivingMate(this);
+            nearestMate = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp : nullptr; //TODO synchronize from here
+        }
+        if(nearestMate) {
+            nearestMate->energy += 55;
+            energy -= 60;
+        }
+    }
+    //################################## Eat ##################################
+    if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {//nearest food also needed for input
+        if (World::toRemoveFood(nearestFood)) {
+            FoodEntity* temp = World::findNearestSurvivingFood(x, y);
+            nearestFood = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp : nullptr; //TODO synchronize from here
+        }
+        if(nearestFood) {
+            World::removeFoodEntity(nearestFood, false); //don't forget to synchronize
+            energy += nearestFood->energy;
+        }
+    }
+
     //################################# Energy ################################
     energy -= thoughts.move ? energyLossWithMove : energyLossWithoutMove;
     assert(thoughts.move ? energyLossWithMove : energyLossWithoutMove > 0 && "Entity not losing Energy");
@@ -159,7 +185,13 @@ int LivingEntity::energyLossPerTick(bool move, float speed, float size) {
     return (int) round((move ? speed * 8 : 0) + size * 4 + 1);
 }
 
-//TODO consider new properties when added
+bool LivingEntity::visibleOn(Tile *tile) {
+    return (color.r - tile->color.r) * (color.r - tile->color.r)
+    + (color.g - tile->color.g) * (color.g - tile->color.g)
+    + (color.b - tile->color.b) * (color.b - tile->color.b) >= 200;
+}
+
+//TODO consider new properties when added, maybe switch to squaredDistance?
 float LivingEntity::difference(const LivingEntity &e) {
     return std::sqrt(((float) (e.color.r - color.r) / 255.f) * ((float) (e.color.r - color.r) / 255.f)
                      + ((float) (e.color.g - color.g) / 255.f) * ((float) (e.color.g - color.g) / 255.f)

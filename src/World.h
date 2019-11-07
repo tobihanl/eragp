@@ -108,7 +108,12 @@ public:
 
     static LivingEntity *findNearestEnemy(LivingEntity *le);
 
+    //non-surviving functions: always base thinking input on last tick, bot some kind of half-tick
+    static LivingEntity *findNearestSurvivingEnemy(LivingEntity *le);
+
     static LivingEntity *findNearestMate(LivingEntity *le);
+
+    static LivingEntity *findNearestSurvivingMate(LivingEntity *le);
 
     static void addLivingEntity(LivingEntity *e, bool received);
 
@@ -120,6 +125,8 @@ public:
 
     static bool toRemoveFood(FoodEntity *e);
 
+    static bool toRemoveLiving(LivingEntity *e);
+
     static Tile *tileAt(int px, int py);
 
 private:
@@ -128,8 +135,6 @@ private:
     static void generateTerrain();
 
     static void renderTerrain();
-
-    static bool toRemoveLiving(LivingEntity *e);
 
     static bool toAddLiving(LivingEntity *e);
 
