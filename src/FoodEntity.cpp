@@ -21,7 +21,7 @@ FoodEntity::FoodEntity(void *&ptr) :
 }
 
 void FoodEntity::render() {
-    Renderer::copy(texture, x - World::getWorldDim().x - 4, y - World::getWorldDim().y - 4);
+    Renderer::copy(texture, x - World::getWorldDim().p.x - 4, y - World::getWorldDim().p.y - 4);
 }
 
 void FoodEntity::tick() {}
