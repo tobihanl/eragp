@@ -23,17 +23,28 @@
 #define MPI_TAG_REMOVED_FOOD_ENTITY 51
 
 //================================== Structs ==================================
-struct WorldDim {
-    int x = 0;
-    int y = 0;
-    int w = 0;
-    int h = 0;
-};
-
 struct MPISendEntity {
     int rank;
     Entity *entity;
 };
+
+struct Point {
+    int x = 0;
+    int y = 0;
+};
+
+struct Rect {
+    struct Point p;
+    int w = 0;
+    int h = 0;
+};
+
+struct PaddingRect {
+    int rank = 0;
+    struct Rect rect;
+};
+
+typedef struct Rect WorldDim;
 
 //=================================== Class ===================================
 class World {
@@ -74,7 +85,8 @@ private:
     static std::vector<MPISendEntity> removedFoodToSendToNeighbors;
 
     static std::vector<WorldDim> worlds;
-    static std::vector<int> neighbors;
+    static std::vector<PaddingRect> paddingRects;
+    static std::vector<int> paddingRanks;
 
     static std::vector<Tile *> terrain;
 
@@ -108,7 +120,12 @@ public:
 
     static LivingEntity *findNearestEnemy(LivingEntity *le);
 
+    //non-surviving functions: always base thinking input on last tick, bot some kind of half-tick
+    static LivingEntity *findNearestSurvivingEnemy(LivingEntity *le);
+
     static LivingEntity *findNearestMate(LivingEntity *le);
+
+    static LivingEntity *findNearestSurvivingMate(LivingEntity *le);
 
     static void addLivingEntity(LivingEntity *e, bool received);
 
@@ -120,16 +137,20 @@ public:
 
     static bool toRemoveFood(FoodEntity *e);
 
+    static bool toRemoveLiving(LivingEntity *e);
+
     static Tile *tileAt(int px, int py);
+
+    static std::vector<PaddingRect> *getPaddingRects();
 
 private:
     static WorldDim calcWorldDimensions(int rank, int num);
 
+    static void calcPaddingRects();
+
     static void generateTerrain();
 
     static void renderTerrain();
-
-    static bool toRemoveLiving(LivingEntity *e);
 
     static bool toAddLiving(LivingEntity *e);
 
@@ -143,11 +164,11 @@ private:
 
     static void receiveEntities(int rank, int tag);
 
-    static void calcNeighbors();
-
-    static int numOfNeighbors();
-
     static long gcd(long a, long b);
+
+    static bool pointInRect(const Point &p, const Rect &r);
+
+    static Rect calcIntersection(const Rect &rect1, const Rect &rect2);
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H

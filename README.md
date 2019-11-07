@@ -25,6 +25,8 @@ Default is 1.
 - **MaiMUC** `-m` (optional): Run the application with the MaiMUC configuration. No value required. Application **must
 be** executed on 10 nodes with this configuration!
 
+- **Random Seed** `-s` (optional): Run application with given seed.
+
 ## Using the keyboard and mouse while running the application
 
 - **Pause/Play** `P`: Pauses simulation for further inspection of entities. Hitting the key again resumes simulation.
@@ -34,7 +36,10 @@ similarity of both living entities will be printed into the console. Hitting the
 disables the similarity mode.
 
 - **Draw borders** `B`: Draws the borders of the world onto the window. This can help to easier tell apart two worlds
-next to each other.
+next to each other. The borders are drawn in red.
+
+- **Draw padding areas** `A`: Draws all padding areas from other nodes on the window of a node. The rectangles are drawn
+in blue.
 
 - **Quit** `Q`: Stops simulation and quits the application.
 

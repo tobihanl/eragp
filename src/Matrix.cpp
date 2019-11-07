@@ -1,8 +1,8 @@
 #include "Matrix.h"
 #include <stdexcept>
 #include <cmath>
-#include <random>
 #include <algorithm>
+#include "Rng.h"
 
 Matrix::Matrix(Matrix *m) : height(m->height), width(m->width), data(m->data) {
 
@@ -13,12 +13,10 @@ Matrix::Matrix(int h, int w, float initValue) : height(h), width(w), data(w * h,
 }
 
 Matrix::Matrix(int h, int w, float from, float to) : height(h), width(w) {
-    static std::random_device rd;
-    static std::mt19937 mt(rd());
     std::uniform_real_distribution<float> dist(from, to);
 
     auto gen = [&dist]() { //lambda expression
-        return dist(mt);
+        return dist(rng);
     };
     data.resize(w * h);
     generate(data.begin(), data.end(), gen);
