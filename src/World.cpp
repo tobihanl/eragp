@@ -1,11 +1,11 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cassert>
-#include <random>
 #include "mpi.h"
 #include "World.h"
 #include "Renderer.h"
 #include "SimplexNoise/SimplexNoise.h"
+#include "Rng.h"
 
 int *splitRect(int num, int width, int height);
 
@@ -195,25 +195,21 @@ void World::render() {
 }
 
 void World::tick() {
-    std::random_device rd;
-    std::mt19937 mt(rd());
-    std::uniform_int_distribution<int> distWidth(0, World::width);
-    std::uniform_int_distribution<int> distHeight(0, World::height);
-    if(intervalTicksLeft == 0) {
+    if (intervalTicksLeft == 0) {
         assert(intervalFoodLeft == 0 && "Not enough food spawned!");
         intervalFoodLeft = foodPerFoodInterval;
         intervalTicksLeft = ticksPerFoodInterval;
         ticksToSkip = 0;
     }
-    for(int i = 0; i < foodEveryTick; i++) {
-        addFoodEntity(new FoodEntity(distWidth(mt) + World::x, distHeight(mt) + World::y, 8 * 60),
-                      false);
+    for (int i = 0; i < foodEveryTick; i++) {
+        addFoodEntity(new FoodEntity(getRandomIntBetween(0, World::width) + World::x,
+                                     getRandomIntBetween(0, World::height) + World::y, 8 * 60), false);
     }
     intervalTicksLeft--;
-    if(ticksToSkip == 0 && intervalFoodLeft > 0) {
+    if (ticksToSkip == 0 && intervalFoodLeft > 0) {
         intervalFoodLeft--;
-        addFoodEntity(new FoodEntity(distWidth(mt) + World::x, distHeight(mt) + World::y, 8 * 60),
-                      false);
+        addFoodEntity(new FoodEntity(getRandomIntBetween(0, World::width) + World::x,
+                                     getRandomIntBetween(0, World::height) + World::y, 8 * 60), false);
         if (intervalTicksLeft != 0)
             ticksToSkip = ((float) intervalFoodLeft / (float) intervalTicksLeft <
                            (float) foodPerFoodInterval / (float) ticksPerFoodInterval) ? maxTicksToSkip
@@ -802,8 +798,8 @@ Tile *World::tileAt(int px, int py) {
 //TODO cleanup for destroyed entities
 
 long World::gcd(long a, long b) {
-    if(a == 0) return b;
-    if(b == 0) return a;
-    if(a < b) return gcd(a, b % a);
+    if (a == 0) return b;
+    if (b == 0) return a;
+    if (a < b) return gcd(a, b % a);
     return gcd(b, a % b);
 }
