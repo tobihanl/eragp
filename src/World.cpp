@@ -1,11 +1,11 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cassert>
-#include <random>
 #include "mpi.h"
 #include "World.h"
 #include "Renderer.h"
 #include "SimplexNoise/SimplexNoise.h"
+#include "Rng.h"
 
 int *splitRect(int num, int width, int height);
 
@@ -202,10 +202,6 @@ void World::render() {
 }
 
 void World::tick() {
-    std::random_device rd;
-    std::mt19937 mt(rd());
-    std::uniform_int_distribution<int> distWidth(0, World::width);
-    std::uniform_int_distribution<int> distHeight(0, World::height);
     if (intervalTicksLeft == 0) {
         assert(intervalFoodLeft == 0 && "Not enough food spawned!");
         intervalFoodLeft = foodPerFoodInterval;
@@ -213,14 +209,14 @@ void World::tick() {
         ticksToSkip = 0;
     }
     for (int i = 0; i < foodEveryTick; i++) {
-        addFoodEntity(new FoodEntity(distWidth(mt) + World::x, distHeight(mt) + World::y, 8 * 60),
-                      false);
+        addFoodEntity(new FoodEntity(getRandomIntBetween(0, World::width) + World::x,
+                                     getRandomIntBetween(0, World::height) + World::y, 8 * 60), false);
     }
     intervalTicksLeft--;
     if (ticksToSkip == 0 && intervalFoodLeft > 0) {
         intervalFoodLeft--;
-        addFoodEntity(new FoodEntity(distWidth(mt) + World::x, distHeight(mt) + World::y, 8 * 60),
-                      false);
+        addFoodEntity(new FoodEntity(getRandomIntBetween(0, World::width) + World::x,
+                                     getRandomIntBetween(0, World::height) + World::y, 8 * 60), false);
         if (intervalTicksLeft != 0)
             ticksToSkip = ((float) intervalFoodLeft / (float) intervalTicksLeft <
                            (float) foodPerFoodInterval / (float) ticksPerFoodInterval) ? maxTicksToSkip
@@ -436,7 +432,22 @@ LivingEntity *World::findNearestEnemy(LivingEntity *le) {
     LivingEntity *n = nullptr;
     int dist = 0;
     for (const auto &e : living) {
-        if (*e == *le || le->difference(*e) < 0.04) continue;
+        if (*e == *le || le->difference(*e) < 0.04 || !e->visibleOn(tileAt(le->x, le->y))) continue;
+        int tempDist = e->getSquaredDistance(le->x, le->y);
+        if (tempDist <= VIEW_RANGE_SQUARED && (!n || tempDist < dist)) {
+            n = e;
+            dist = tempDist;
+        }
+    }
+    return n;
+}
+
+LivingEntity *World::findNearestSurvivingEnemy(LivingEntity *le) {
+    if (living.empty() || living.size() == 1) return nullptr;
+    LivingEntity *n = nullptr;
+    int dist = 0;
+    for (const auto &e : living) {
+        if (toRemoveLiving(e) || *e == *le || le->difference(*e) < 0.04 || !e->visibleOn(tileAt(le->x, le->y))) continue;
         int tempDist = e->getSquaredDistance(le->x, le->y);
         if (tempDist <= VIEW_RANGE_SQUARED && (!n || tempDist < dist)) {
             n = e;
@@ -452,6 +463,21 @@ LivingEntity *World::findNearestMate(LivingEntity *le) {
     int dist = 0;
     for (const auto &e : living) {
         if (*e == *le || le->difference(*e) >= 0.04) continue;
+        int tempDist = e->getSquaredDistance(le->x, le->y);
+        if (tempDist <= VIEW_RANGE_SQUARED && (!n || tempDist < dist)) {
+            n = e;
+            dist = tempDist;
+        }
+    }
+    return n;
+}
+
+LivingEntity *World::findNearestSurvivingMate(LivingEntity *le) {
+    if (living.empty() || living.size() == 1) return nullptr;
+    LivingEntity *n = nullptr;
+    int dist = 0;
+    for (const auto &e : living) {
+        if (toRemoveLiving(e) || *e == *le || le->difference(*e) >= 0.04) continue;
         int tempDist = e->getSquaredDistance(le->x, le->y);
         if (tempDist <= VIEW_RANGE_SQUARED && (!n || tempDist < dist)) {
             n = e;

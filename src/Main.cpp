@@ -5,11 +5,11 @@
 #include <SDL.h>
 #include <mpi.h>
 #include <unistd.h>
-#include <random>
 #include "Renderer.h"
 #include "World.h"
 #include "Brain.h"
 #include "Tile.h"
+#include "Rng.h"
 
 #define MS_PER_TICK 100
 
@@ -183,19 +183,21 @@ int main(int argc, char **argv) {
     int width = 960, height = 720;
     bool maimuc = false;
     float foodRate = 1.f;  //food spawned per 2000 tiles per tick
+    std::random_device rd;
+    unsigned int randomSeed = rd();
 
     // Scan program arguments
     int c;
-    while ((c = getopt(argc, argv, "h::w::m::f::")) != -1) {
+    while ((c = getopt(argc, argv, "h::w::m::f::s::")) != -1) {
         switch (c) {
             // Height
             case 'h':
-                if (optarg != nullptr) height = (int) strtol(optarg, nullptr, 10);
+                if (optarg != nullptr) height = std::stoi(optarg, nullptr);
                 break;
 
                 // Width
             case 'w':
-                if (optarg != nullptr) width = (int) strtol(optarg, nullptr, 10);
+                if (optarg != nullptr) width = std::stoi(optarg, nullptr);
                 break;
 
                 // MaiMUC
@@ -204,9 +206,12 @@ int main(int argc, char **argv) {
                 break;
 
             case 'f':
-                if (optarg != nullptr) foodRate = (float) strtod(optarg, nullptr);
+                if (optarg != nullptr) foodRate = strtod(optarg, nullptr);
                 break;
                 // Unknown Option
+            case 's':
+                if (optarg != nullptr) randomSeed = std::stoi(optarg, nullptr);
+                break;
             case '?':
                 if (optopt == 'h' || optopt == 'w') {
                     std::cerr << "Option -h and -w require an integer!" << std::endl;
@@ -225,6 +230,7 @@ int main(int argc, char **argv) {
                 return EXIT_FAILURE;
         }
     }
+    rng.seed(randomSeed);
 
     // Init and set-up world & renderer
     World::setup(width, height, maimuc, foodRate);
@@ -235,31 +241,25 @@ int main(int argc, char **argv) {
         Renderer::setup(dim.p.x, dim.p.y, dim.w, dim.h, false);
 
     //============================= ADD TEST ENTITIES =============================
-    std::random_device rd;
-    std::mt19937 mt(rd());
-    std::uniform_int_distribution<int> distWidth(0, dim.w);
-    std::uniform_int_distribution<int> distHeight(0, dim.h);
-    std::uniform_int_distribution<int> distColor(0, 256);
-    std::uniform_int_distribution<int> dist1000(0, 10000);
     for (int i = 0; i < 10; i++) {
         auto *brain = new Brain(6, 8, 4, 4, 10, 4);
         auto *entity = new LivingEntity(
-                distWidth(mt) + dim.p.x,
-                distHeight(mt) + dim.p.y,
+                getRandomIntBetween(0, dim.w) + dim.p.x,
+                getRandomIntBetween(0, dim.h) + dim.p.y,
                 {
-                        static_cast<Uint8>(distColor(mt)),
-                        static_cast<Uint8>(distColor(mt)),
-                        static_cast<Uint8>(distColor(mt)),
+                        static_cast<Uint8>(getRandomIntBetween(0, 256)),
+                        static_cast<Uint8>(getRandomIntBetween(0, 256)),
+                        static_cast<Uint8>(getRandomIntBetween(0, 256)),
                         255},
-                (float) dist1000(mt) / 10000.0f,
-                (float) dist1000(mt) / 10000.0f,
-                (float) dist1000(mt) / 10000.0f, brain);
+                (float) getRandomIntBetween(0, 10000) / 10000.0f,
+                (float) getRandomIntBetween(0, 10000) / 10000.0f,
+                (float) getRandomIntBetween(0, 10000) / 10000.0f, brain);
 
         World::addLivingEntity(entity, false);
     }
     for (int i = 0; i < 100; i++) {
         World::addFoodEntity(
-                new FoodEntity(distWidth(mt) + dim.p.x, distHeight(mt) + dim.p.y, 8 * 60),
+                new FoodEntity(getRandomIntBetween(0, dim.w) + dim.p.x, getRandomIntBetween(0, dim.h) + dim.p.y, 8 * 60),
                 false);
     }
     //=========================== END ADD TEST ENTITIES ===========================
