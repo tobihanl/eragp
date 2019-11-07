@@ -22,7 +22,7 @@ void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padd
  * @param   ticks   Amount of ticks to calculate
  *                  (-1) = no limitation
  */
-void renderLoop() {
+void renderLoop(long ticks) {
     // Pre-render Textures for faster copying
     SDL_Texture *border = nullptr, *pauseText = nullptr, *padding = nullptr;
     preRender(&border, &pauseText, &padding);
