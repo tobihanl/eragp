@@ -11,15 +11,19 @@ Link to Trello task as first line in commit message.
 
 ## Commandline arguments
 
-*Important*: The value must be written immediately after the argument (i.e. `-w720` and not `-w 720`)!
-
 - **Width** `-w` (optional): Integer value declaring the width (in pixels) of the whole world. Default is 960px.
 
 - **Height** `-h` (optional): Integer value declaring the height (in pixels) of the whole world. Default is 720px.
 
-- **Food Spawn Rate** `-f` (optional): Float value that defines the amount of food spawned per 2000 tiles per tick. Default is 1.
+- **Food Spawn Rate** `-f` (optional): Float value that defines the amount of food spawned per 2000 tiles per tick.
+Default is 1.
 
-- **MaiMUC** `-m` (optional): Run the application with the MaiMUC configuration. No value required.
+- **Ticks** `-t` (optional): Amount of ticks (`long`) to simulate. No limitation with value -1. Default is -1.
+
+- **Render** `-r` (optional): Render the application while running. No value required. Default is **no rendering**.
+
+- **MaiMUC** `-m` (optional): Run the application with the MaiMUC configuration. No value required. Application **must
+be** executed on 10 nodes with this configuration!
 
 - **Random Seed** `-s` (optional): Run application with given seed.
 
