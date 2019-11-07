@@ -91,11 +91,11 @@ void LivingEntity::tick() {
     if (cooldown > 0) cooldown--;
     if (cooldown == 0 && energy >= 60 * energyLossWithMove) {
         //energy -= 60; leaving out might give better results
-        Uint8 nr = color.r + (int) std::round(getRandomFloatBetween(0, 0.01) * 255);
+        Uint8 nr = color.r + (int) std::round(getRandomFloatBetween(0, 2.55));
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
-        Uint8 ng = color.g + (int) std::round(getRandomFloatBetween(0, 0.01) * 255);
+        Uint8 ng = color.g + (int) std::round(getRandomFloatBetween(0, 2.55));
         ng = ng < 0 ? 0 : (ng > 255 ? 255 : ng);
-        Uint8 nb = color.b + (int) std::round(getRandomFloatBetween(0, 0.01) * 255);
+        Uint8 nb = color.b + (int) std::round(getRandomFloatBetween(0, 2.55));
         nb = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
         World::addLivingEntity(new LivingEntity(x, y, {nr, ng, nb, 255}, speed + getRandomFloatBetween(0, 0.01),
                                                 size + getRandomFloatBetween(0, 0.01),

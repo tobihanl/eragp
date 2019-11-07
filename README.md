@@ -21,6 +21,8 @@ Link to Trello task as first line in commit message.
 
 - **MaiMUC** `-m` (optional): Run the application with the MaiMUC configuration. No value required.
 
+- **Random Seed** `-s` (optional): Run application with given seed.
+
 ## Using the keyboard and mouse while running the application
 
 - **Pause/Play** `P`: Pauses simulation for further inspection of entities. Hitting the key again resumes simulation.
