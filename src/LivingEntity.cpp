@@ -4,18 +4,10 @@
 #include "Renderer.h"
 #include "World.h"
 #include "FoodEntity.h"
+#include "Rng.h"
 
 #define PI 3.14159265
 #define AMOUNT_OF_PARAMS 10
-
-static std::mt19937 createGenerator() {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    return gen;
-}
-
-std::mt19937 LivingEntity::randomGenerator = createGenerator();
-std::normal_distribution<float> LivingEntity::normalDistribution(0, 0.01);
 
 SDL_Texture *LivingEntity::digits[10];
 
@@ -41,17 +33,17 @@ LivingEntity::LivingEntity(void *&ptr) :
                ((int *) ptr)[1],
                ((int *) ptr)[2],
                {
-                       (Uint8) (((int *) ptr)[3] >> 24),
-                       (Uint8) (((int *) ptr)[3] >> 16),
-                       (Uint8) (((int *) ptr)[3] >> 8),
-                       (Uint8) ((int *) ptr)[3]
+                       (Uint8) (((Uint32 *) ptr)[3] >> 24u),
+                       (Uint8) (((Uint32 *) ptr)[3] >> 16u),
+                       (Uint8) (((Uint32 *) ptr)[3] >> 8u),
+                       (Uint8) ((Uint32 *) ptr)[3]
                },
                ((float *) ptr)[5]),
         color({
-                      (Uint8) (((int *) ptr)[3] >> 24),
-                      (Uint8) (((int *) ptr)[3] >> 16),
-                      (Uint8) (((int *) ptr)[3] >> 8),
-                      (Uint8) ((int *) ptr)[3]
+                      (Uint8) (((Uint32 *) ptr)[3] >> 24u),
+                      (Uint8) (((Uint32 *) ptr)[3] >> 16u),
+                      (Uint8) (((Uint32 *) ptr)[3] >> 8u),
+                      (Uint8) ((Uint32 *) ptr)[3]
               }),
         speed(((float *) ptr)[4]),
         size(((float *) ptr)[5]),
@@ -60,7 +52,7 @@ LivingEntity::LivingEntity(void *&ptr) :
         energy(((int *) ptr)[8]),
         cooldown(((int *) ptr)[9]),
         energyLossWithMove(energyLossPerTick(true, ((float *) ptr)[4], ((float *) ptr)[5])),
-        energyLossWithoutMove(energyLossPerTick(false, ((float *) ptr)[4], ((float *) ptr)[5])){
+        energyLossWithoutMove(energyLossPerTick(false, ((float *) ptr)[4], ((float *) ptr)[5])) {
     ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
     brain = new Brain(ptr);
 }
@@ -77,17 +69,17 @@ static int getNumDigits(int x) {
 void LivingEntity::render() {
     WorldDim dim = World::getWorldDim();
     float radius = (1.0f + size) * TILE_SIZE / 2.0f;
-    int radiusI = round(radius);
-    Renderer::copy(texture, x - dim.x - radiusI, y - dim.y - radiusI);
+    int radiusI = (int) round(radius);
+    Renderer::copy(texture, x - dim.p.x - radiusI, y - dim.p.y - radiusI);
     if (energy <= 0) {
-        Renderer::copy(digits[0], x - dim.x - (ENERGY_FONT_SIZE / 2), y - dim.y - 4 - ENERGY_FONT_SIZE);
+        Renderer::copy(digits[0], x - dim.p.x - (ENERGY_FONT_SIZE / 2), y - dim.p.y - 4 - ENERGY_FONT_SIZE);
     } else {//max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
         int numDigits = getNumDigits(energy);
         int energyToDisplay = energy;
-        int baseX = x - dim.x + numDigits * 4 -
+        int baseX = x - dim.p.x + numDigits * 4 -
                     4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
         for (int i = 0; energyToDisplay > 0; i++) {
-            Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, y - dim.y - 4 - ENERGY_FONT_SIZE);
+            Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, y - dim.p.y - 4 - ENERGY_FONT_SIZE);
             energyToDisplay /= 10;
         }
     }
@@ -99,15 +91,15 @@ void LivingEntity::tick() {
     if (cooldown > 0) cooldown--;
     if (cooldown == 0 && energy >= 60 * energyLossWithMove) {
         //energy -= 60; leaving out might give better results
-        Uint8 nr = color.r + std::round(normalDistribution(randomGenerator) * 255);
+        Uint8 nr = color.r + (int) std::round(getRandomFloatBetween(0, 2.55));
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
-        Uint8 ng = color.g + std::round(normalDistribution(randomGenerator) * 255);
+        Uint8 ng = color.g + (int) std::round(getRandomFloatBetween(0, 2.55));
         ng = ng < 0 ? 0 : (ng > 255 ? 255 : ng);
-        Uint8 nb = color.b + std::round(normalDistribution(randomGenerator) * 255);
+        Uint8 nb = color.b + (int) std::round(getRandomFloatBetween(0, 2.55));
         nb = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
-        World::addLivingEntity(new LivingEntity(x, y, {nr, ng, nb, 255}, speed + normalDistribution(randomGenerator),
-                                                size + normalDistribution(randomGenerator),
-                                                waterAgility + normalDistribution(randomGenerator),
+        World::addLivingEntity(new LivingEntity(x, y, {nr, ng, nb, 255}, speed + getRandomFloatBetween(0, 0.01),
+                                                size + getRandomFloatBetween(0, 0.01),
+                                                waterAgility + getRandomFloatBetween(0, 0.01),
                                                 brain->createMutatedCopy()), false);
         cooldown += 60;
     }
@@ -127,8 +119,8 @@ void LivingEntity::tick() {
             (float) (nearestFood ? std::atan2(nearestFood->x - x, nearestFood->y - y) / PI : rotation),
             (float) (nearestEnemy ? std::atan2(nearestEnemy->x - x, nearestEnemy->y - y) / PI : rotation),
             (float) (nearestMate ? std::atan2(nearestMate->x - x, nearestMate->y - y) / PI : rotation),
-            *World::tileAt(x + std::round(std::cos(rotation * PI) * TILE_SIZE),
-                           y + std::round(std::sin(rotation * PI) * TILE_SIZE)) == Tile::WATER ? -1.f : 1.f
+            *World::tileAt(x + (int) std::round(std::cos(rotation * PI) * TILE_SIZE),
+                           y + (int) std::round(std::sin(rotation * PI) * TILE_SIZE)) == Tile::WATER ? -1.f : 1.f
     });
     //std::cout << continuousIn << normalizedIn << std::endl;
     ThinkResult thoughts = brain->think(continuousIn, normalizedIn);
@@ -144,19 +136,45 @@ void LivingEntity::tick() {
             y = (yTo + World::overallHeight) % World::overallHeight;
         }
     }
-    //################################## Eat ##################################
-    if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-        if (!World::toRemoveFood(nearestFood)) {
-            World::removeFoodEntity(nearestFood, false); //TODO don't forget to synchronize
-            energy += nearestFood->energy;
-        } else {
-            nearestFood = World::findNearestSurvivingFood(x, y);
-            if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-                World::removeFoodEntity(nearestFood, false); //TODO don't forget to synchronize
-                energy += nearestFood->energy;
+    //################################## Attack ##################################
+    if(thoughts.attack && nearestEnemy && nearestEnemy->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
+        if (World::toRemoveLiving(nearestEnemy)) {
+            LivingEntity* temp = World::findNearestSurvivingEnemy(this);
+            nearestEnemy = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp : nullptr; //TODO synchronize from here
+        }
+        if(nearestEnemy) {
+            if(size > nearestEnemy->size) {
+                World::removeLivingEntity(nearestEnemy); //don't forget to synchronize
+                energy += nearestEnemy->energy;
+            } else {
+                World::removeLivingEntity(this);
+                return;
             }
         }
     }
+    //################################## Share ##################################
+    if(thoughts.share && energy > 80 && nearestMate && nearestMate->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
+        if (World::toRemoveLiving(nearestMate)) {
+            LivingEntity* temp = World::findNearestSurvivingMate(this);
+            nearestMate = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp : nullptr; //TODO synchronize from here
+        }
+        if(nearestMate) {
+            nearestMate->energy += 55;
+            energy -= 60;
+        }
+    }
+    //################################## Eat ##################################
+    if (nearestFood && nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {//nearest food also needed for input
+        if (World::toRemoveFood(nearestFood)) {
+            FoodEntity* temp = World::findNearestSurvivingFood(x, y);
+            nearestFood = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp : nullptr; //TODO synchronize from here
+        }
+        if(nearestFood) {
+            World::removeFoodEntity(nearestFood, false); //don't forget to synchronize
+            energy += nearestFood->energy;
+        }
+    }
+
     //################################# Energy ################################
     energy -= thoughts.move ? energyLossWithMove : energyLossWithoutMove;
     assert(thoughts.move ? energyLossWithMove : energyLossWithoutMove > 0 && "Entity not losing Energy");
@@ -167,11 +185,17 @@ int LivingEntity::energyLossPerTick(bool move, float speed, float size) {
     return (int) round((move ? speed * 8 : 0) + size * 4 + 1);
 }
 
-//TODO consider new properties when added
+bool LivingEntity::visibleOn(Tile *tile) {
+    return (color.r - tile->color.r) * (color.r - tile->color.r)
+    + (color.g - tile->color.g) * (color.g - tile->color.g)
+    + (color.b - tile->color.b) * (color.b - tile->color.b) >= 200;
+}
+
+//TODO consider new properties when added, maybe switch to squaredDistance?
 float LivingEntity::difference(const LivingEntity &e) {
-    return std::sqrt(((e.color.r - color.r) / 255.f) * ((e.color.r - color.r) / 255.f)
-                     + ((e.color.g - color.g) / 255.f) * ((e.color.g - color.g) / 255.f)
-                     + ((e.color.b - color.b) / 255.f) * ((e.color.b - color.b) / 255.f)
+    return std::sqrt(((float) (e.color.r - color.r) / 255.f) * ((float) (e.color.r - color.r) / 255.f)
+                     + ((float) (e.color.g - color.g) / 255.f) * ((float) (e.color.g - color.g) / 255.f)
+                     + ((float) (e.color.b - color.b) / 255.f) * ((float) (e.color.b - color.b) / 255.f)
                      + (e.speed - speed) * (e.speed - speed)
                      + (e.size - size) * (e.size - size)
                      + (e.waterAgility - waterAgility) * (e.waterAgility - waterAgility));//TODO consider brain
@@ -191,7 +215,8 @@ void LivingEntity::serialize(void *&ptr) {
     ((int *) ptr)[0] = id;
     ((int *) ptr)[1] = x;
     ((int *) ptr)[2] = y;
-    ((int *) ptr)[3] = ((int) color.r << 24) | ((int) color.g << 16) | ((int) color.b << 8) | color.a;
+    ((Uint32 *) ptr)[3] =
+            ((Uint32) color.r) << 24u | ((Uint32) color.g) << 16u | ((Uint32) color.b) << 8u | ((Uint32) color.a);
     ((float *) ptr)[4] = speed;
     ((float *) ptr)[5] = size;
     ((float *) ptr)[6] = waterAgility;

@@ -14,6 +14,8 @@
 #define VIEW_RANGE_SQUARED 25600 //160*160
 #define VIEW_RANGE 160
 
+#define MAX_FOOD_INTERVAL 1000000 //Can be much bigger because it is equally distributed
+
 #define MSGS_PER_NEIGHBOR 3
 
 #define MPI_TAG_LIVING_ENTITY 42
@@ -21,17 +23,28 @@
 #define MPI_TAG_REMOVED_FOOD_ENTITY 51
 
 //================================== Structs ==================================
-struct WorldDim {
-    int x = 0;
-    int y = 0;
-    int w = 0;
-    int h = 0;
-};
-
 struct MPISendEntity {
     int rank;
     Entity *entity;
 };
+
+struct Point {
+    int x = 0;
+    int y = 0;
+};
+
+struct Rect {
+    struct Point p;
+    int w = 0;
+    int h = 0;
+};
+
+struct PaddingRect {
+    int rank = 0;
+    struct Rect rect;
+};
+
+typedef struct Rect WorldDim;
 
 //=================================== Class ===================================
 class World {
@@ -43,6 +56,15 @@ private:
     static int y;
     static int width;
     static int height;
+
+    static int ticksPerFoodInterval; //ticks per interval
+    static int foodPerFoodInterval; //food to distribute over every interval (without the food spawned every tick)
+    static int intervalTicksLeft; //remaining ticks in the current interval
+    static int intervalFoodLeft; //remaining food to be distributed over the current interval (without the food spawned every tick)
+    static int foodEveryTick; //amount of food to spawn every tick (if node spawnRate is bigger than 1)
+    static int ticksToSkip; //ticks to skip until next food (not considering foodEveryTick) is spawned
+    static int minTicksToSkip;
+    static int maxTicksToSkip;
 
     static bool isSetup;
 
@@ -63,7 +85,8 @@ private:
     static std::vector<MPISendEntity> removedFoodToSendToNeighbors;
 
     static std::vector<WorldDim> worlds;
-    static std::vector<int> neighbors;
+    static std::vector<PaddingRect> paddingRects;
+    static std::vector<int> paddingRanks;
 
     static std::vector<Tile *> terrain;
 
@@ -75,7 +98,7 @@ public:
     static int overallWidth;
     static int overallHeight;
 
-    static void setup(int overallWidth, int overallHeight, bool maimuc);
+    static void setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate);
 
     static int getMPIRank();
 
@@ -89,17 +112,20 @@ public:
 
     static void tick();
 
-    static FoodEntity *findNearestFood(int x, int y);
+    static FoodEntity *findNearestFood(int px, int py);
 
-    static FoodEntity *findNearestSurvivingFood(int x, int y);
+    static FoodEntity *findNearestSurvivingFood(int px, int py);
 
-    static LivingEntity *findNearestLiving(LivingEntity *le);
-
-    static LivingEntity *findNearestLiving(int x, int y, int id);
+    static LivingEntity *findNearestLiving(int px, int py, int id);
 
     static LivingEntity *findNearestEnemy(LivingEntity *le);
 
+    //non-surviving functions: always base thinking input on last tick, bot some kind of half-tick
+    static LivingEntity *findNearestSurvivingEnemy(LivingEntity *le);
+
     static LivingEntity *findNearestMate(LivingEntity *le);
+
+    static LivingEntity *findNearestSurvivingMate(LivingEntity *le);
 
     static void addLivingEntity(LivingEntity *e, bool received);
 
@@ -111,32 +137,38 @@ public:
 
     static bool toRemoveFood(FoodEntity *e);
 
-    static Tile *tileAt(int x, int y);
+    static bool toRemoveLiving(LivingEntity *e);
+
+    static Tile *tileAt(int px, int py);
+
+    static std::vector<PaddingRect> *getPaddingRects();
 
 private:
     static WorldDim calcWorldDimensions(int rank, int num);
+
+    static void calcPaddingRects();
 
     static void generateTerrain();
 
     static void renderTerrain();
 
-    static bool toRemoveLiving(LivingEntity *e);
-
     static bool toAddLiving(LivingEntity *e);
 
     static bool toAddFood(FoodEntity *e);
 
-    static size_t rankAt(int x, int y);
+    static size_t rankAt(int px, int py);
 
-    static std::vector<size_t> *paddingRanksAt(int x, int y);
+    static std::vector<size_t> *paddingRanksAt(int px, int py);
 
     static void *sendEntities(const std::vector<MPISendEntity> &entities, int rank, int tag, MPI_Request *request);
 
     static void receiveEntities(int rank, int tag);
 
-    static void calcNeighbors();
+    static long gcd(long a, long b);
 
-    static int numOfNeighbors();
+    static bool pointInRect(const Point &p, const Rect &r);
+
+    static Rect calcIntersection(const Rect &rect1, const Rect &rect2);
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H

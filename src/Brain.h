@@ -19,7 +19,7 @@ private:
     /**
      * Copy constructor
      */
-    Brain(Brain *b);
+    explicit Brain(Brain *b);
 
     friend std::ostream &operator<<(std::ostream &strm, const Brain &b);
 public:
@@ -40,7 +40,7 @@ public:
      * Deserialization
      * @param ptr first byte to deserialize. Points to next free byte after execution.
      */
-    Brain(void *&ptr);
+    explicit Brain(void *&ptr);
 
     virtual ~Brain();
 

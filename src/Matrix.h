@@ -32,7 +32,7 @@ public:
      * Copy constructor
      * @param m pointer to Matrix to copy
      */
-    Matrix(Matrix *m);
+    explicit Matrix(Matrix *m);
 
     /**
     * Creates a matrix without data to initialize it later on. Do not use unless necessary
@@ -66,7 +66,7 @@ public:
      * The first [width] elements will be the first row and so on.
      * The size has to be [width] * [height]
      */
-    Matrix(int height, int width, std::vector<float> data);
+    Matrix(int height, int width, const std::vector<float> &data);
 
     virtual ~Matrix();
 

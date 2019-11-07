@@ -3,7 +3,6 @@
 
 #include <SDL.h>
 
-
 class Tile {
 private:
     Tile(int id, SDL_Color color);

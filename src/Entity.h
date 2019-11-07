@@ -34,21 +34,21 @@ public:
 
     /**
      * Calculates distance to a given position
-     * @param x the x coordinate of the position
-     * @param y the y coordinate of the position
+     * @param px the x coordinate of the position
+     * @param py the y coordinate of the position
      * @return the distance
      */
-    float getDistance(int x, int y);
+    float getDistance(int px, int py);
 
     /**
      * Calculates the squared distance to a given position.
      * Might be used when for example only comparing two distances is important.
      * More efficient because no sqrt() and no conversion to float is required.
-     * @param x the x coordinate of the position
-     * @param y the y coordinate of the position
+     * @param px the x coordinate of the position
+     * @param py the y coordinate of the position
      * @return the squared distance
      */
-    int getSquaredDistance(int x, int y);
+    int getSquaredDistance(int px, int py);
 };
 
 

@@ -75,6 +75,8 @@ int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
  * quitting SDL
  */
 void Renderer::destroy() {
+    if (!isSetup) return;
+
     Include::cleanup(ren, win);
     SDL_Quit();
 
@@ -85,6 +87,7 @@ void Renderer::destroy() {
  * Clears the SDL renderer
  */
 void Renderer::clear() {
+    if (!isSetup) return;
     SDL_RenderClear(ren);
 }
 
@@ -92,6 +95,7 @@ void Renderer::clear() {
  * Shows all components on the window
  */
 void Renderer::present() {
+    if (!isSetup) return;
     SDL_RenderPresent(ren);
 }
 
@@ -106,6 +110,7 @@ void Renderer::present() {
  *                  to be drawn
  */
 void Renderer::copy(SDL_Texture *texture, const SDL_Rect *dst) {
+    if (!isSetup) return;
     SDL_RenderCopy(ren, texture, nullptr, dst);
 }
 
@@ -121,6 +126,8 @@ void Renderer::copy(SDL_Texture *texture, const SDL_Rect *dst) {
  * @param   y       The y position of the texture on the renderer
  */
 void Renderer::copy(SDL_Texture *texture, int x, int y) {
+    if (!isSetup) return;
+
     SDL_Rect dst;
     dst.x = x;
     dst.y = y;
@@ -135,6 +142,7 @@ void Renderer::copy(SDL_Texture *texture, int x, int y) {
  * @param   texture The texture to be destroyed
  */
 void Renderer::cleanup(SDL_Texture *texture) {
+    if (!isSetup) return;
     Include::cleanup(texture);
 }
 
@@ -148,6 +156,7 @@ void Renderer::cleanup(SDL_Texture *texture) {
  *              (SDL_TEXTUREACCESS_TARGET)!
  */
 void Renderer::setTarget(SDL_Texture *target) {
+    if (!isSetup) return;
     SDL_SetRenderTarget(ren, target);
 }
 
@@ -162,6 +171,7 @@ void Renderer::setTarget(SDL_Texture *target) {
  * @return  Pointer to the created SDL_Texture
  */
 SDL_Texture *Renderer::createTexture(int width, int height, int access) {
+    if (!isSetup) return nullptr;
     return SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, access, width, height);
 }
 
@@ -173,6 +183,8 @@ SDL_Texture *Renderer::createTexture(int width, int height, int access) {
  * @return  Pointer to the created SDL_Texture
  */
 SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
+    if (!isSetup) return nullptr;
+
     std::string file = Include::getResourcePath() + imagePath;
     SDL_Texture *tex = IMG_LoadTexture(ren, file.c_str());
     if (tex == nullptr) {
@@ -192,6 +204,8 @@ SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
  * @return  A pointer to the texture with the specified dot/filled circle
  */
 SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
+    if (!isSetup) return nullptr;
+
     int squaredRadius = radius * radius, doubledRadius = radius + radius;
 
     // Create Texture and Pixel array
@@ -206,7 +220,7 @@ SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
             dy = radius - h;
 
             if ((dx * dx + dy * dy) < squaredRadius)
-                pixels[h * doubledRadius + w] = (color.a << 24) + (color.r << 16) + (color.g << 8) + color.b;
+                pixels[h * doubledRadius + w] = (color.a << 24u) + (color.r << 16u) + (color.g << 8u) + color.b;
             else
                 pixels[h * doubledRadius + w] = 0; // Transparent
         }
@@ -214,7 +228,7 @@ SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
 
     // Draw filled circle/Dot on texture and return it
     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
-    SDL_UpdateTexture(texture, nullptr, pixels, doubledRadius * sizeof(Uint32));
+    SDL_UpdateTexture(texture, nullptr, pixels, doubledRadius * (int) sizeof(Uint32));
 
     free(pixels);
     return texture;
@@ -232,6 +246,8 @@ SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
  * @return  Pointer to the texture with the specified rectangle.
  */
 SDL_Texture *Renderer::renderRect(int width, int height, const SDL_Color &color, bool filled) {
+    if (!isSetup) return nullptr;
+
     SDL_Texture *texture = createTexture(width, height, SDL_TEXTUREACCESS_STATIC);
     auto *pixels = new Uint32[width * height];
 
@@ -242,13 +258,13 @@ SDL_Texture *Renderer::renderRect(int width, int height, const SDL_Color &color,
             if (!filled && h > 0 && h < height - 1 && w > 0 && w < width - 1)
                 pixels[h * width + w] = 0; // Transparent
             else
-                pixels[h * width + w] = (color.a << 24) + (color.r << 16) + (color.g << 8) + color.b;
+                pixels[h * width + w] = (color.a << 24u) + (color.r << 16u) + (color.g << 8u) + color.b;
         }
     }
 
     // Draw rect on texture and return it
     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
-    SDL_UpdateTexture(texture, nullptr, pixels, width * sizeof(Uint32));
+    SDL_UpdateTexture(texture, nullptr, pixels, width * (int) sizeof(Uint32));
 
     free(pixels);
     return texture;
@@ -267,6 +283,8 @@ SDL_Texture *Renderer::renderRect(int width, int height, const SDL_Color &color,
  */
 SDL_Texture *Renderer::renderFont(const std::string &text, int size, const SDL_Color &color,
                                   const std::string &fontFile) {
+    if (!isSetup) return nullptr;
+
     std::string file = Include::getResourcePath() + fontFile;
     TTF_Font *font = TTF_OpenFont(file.c_str(), size);
     if (font == nullptr) {
