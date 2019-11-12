@@ -152,7 +152,7 @@ private:
 
     static void generateTerrain();
 
-    static void renderTerrain();
+    static void renderBackground();
 
     static bool toAddLiving(LivingEntity *e);
 

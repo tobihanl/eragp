@@ -195,7 +195,15 @@ void renderLoop(long ticks) {
     //                                END MAIN LOOP
     //=============================================================================
 
+    // Cleanup digits
+    for (int i = 0; i < 10; i++)
+        Renderer::cleanup(LivingEntity::digits[i]);
+
     // Destroy renderer (close window) and exit
+    Renderer::cleanup(Tile::GRASS.texture);
+    Renderer::cleanup(Tile::STONE.texture);
+    Renderer::cleanup(Tile::SAND.texture);
+    Renderer::cleanup(Tile::WATER.texture);
     Renderer::cleanup(border);
     Renderer::cleanup(padding);
     Renderer::cleanup(pauseText);

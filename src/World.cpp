@@ -133,6 +133,8 @@ void World::finalize() {
 
     food.clear();
     living.clear();
+
+    Renderer::cleanup(background);
 }
 
 void World::generateTerrain() {
@@ -170,7 +172,7 @@ void World::generateTerrain() {
     }
 }
 
-void World::renderTerrain() {
+void World::renderBackground() {
     int heightWithPadding = height + (2 * WORLD_PADDING);
     int widthWithPadding = width + (2 * WORLD_PADDING);
 
@@ -188,13 +190,18 @@ void World::renderTerrain() {
         }
     }
 
+    // Show the rank of the node in the upper left on the background
+    SDL_Texture *t = Renderer::renderFont(std::to_string(MPI_Rank), 25, {255, 255, 255, 255}, "font.ttf");
+    Renderer::copy(t, WORLD_PADDING + 10, WORLD_PADDING + 10);
+    Renderer::cleanup(t);
+
     // Change render target back to default
     Renderer::present();
     Renderer::setTarget(nullptr);
 }
 
 void World::render() {
-    if (World::background == nullptr) renderTerrain();
+    if (World::background == nullptr) renderBackground();
     Renderer::copy(World::background, -WORLD_PADDING, -WORLD_PADDING);
 
     for (const auto &f : food) {
@@ -203,10 +210,6 @@ void World::render() {
     for (const auto &e : living) {
         e->render();
     }
-
-    // Show the rank of the node in the upper left of the window
-    SDL_Texture *t = Renderer::renderFont(std::to_string(MPI_Rank), 25, {255, 255, 255, 255}, "font.ttf");
-    Renderer::copy(t, 10, 10);
 }
 
 void World::tick() {
@@ -455,7 +458,8 @@ LivingEntity *World::findNearestSurvivingEnemy(LivingEntity *le) {
     LivingEntity *n = nullptr;
     int dist = 0;
     for (const auto &e : living) {
-        if (toRemoveLiving(e) || *e == *le || le->difference(*e) < 0.04 || !e->visibleOn(tileAt(le->x, le->y))) continue;
+        if (toRemoveLiving(e) || *e == *le || le->difference(*e) < 0.04 || !e->visibleOn(tileAt(le->x, le->y)))
+            continue;
         int tempDist = e->getSquaredDistance(le->x, le->y);
         if (tempDist <= VIEW_RANGE_SQUARED && (!n || tempDist < dist)) {
             n = e;
