@@ -137,6 +137,18 @@ void Renderer::copy(SDL_Texture *texture, int x, int y) {
 }
 
 /**
+ * Query a texture for its width and height. Result will be writen
+ * in the SDL_Rect argument.
+ *
+ * @param   texture Texture to be queried
+ * @param   rect    Rectangle to write the resulting width and
+ *                  height into
+ */
+void Renderer::query(SDL_Texture *texture, SDL_Rect *rect) {
+    SDL_QueryTexture(texture, nullptr, nullptr, &rect->w, &rect->h);
+}
+
+/**
  * Cleans-up all the textures by destroying them.
  *
  * @param   texture The texture to be destroyed

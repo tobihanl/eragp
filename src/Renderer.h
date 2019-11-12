@@ -27,6 +27,8 @@ public:
 
     static void copy(SDL_Texture *texture, int x, int y);
 
+    static void query(SDL_Texture *texture, SDL_Rect *rect);
+
     static void cleanup(SDL_Texture *texture);
 
     static void setTarget(SDL_Texture *texture);

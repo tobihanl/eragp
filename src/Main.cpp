@@ -34,16 +34,24 @@ void renderLoop(long ticks) {
     LivingEntity *selectedEntities[2] = {nullptr};
     WorldDim dim = World::getWorldDim();
 
+    // Frame rate
+    SDL_Texture *fps = nullptr;
+    SDL_Rect fpsRect = {0, 10, 0, 0}; // Always 10px padding to the top
+    int frameTime = 0, frames = 0;
+
     //=============================================================================
     //                               BEGIN MAIN LOOP
     //=============================================================================
     SDL_Event e;
-    int currentTime, elapsedTime, previousTime;
+    int currentTime, elapsedTime;
+    int previousTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
     bool run = ticks == -1 || ticks > 0;
     while (run) {
         // Calculate lag between last and current turn
         currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::system_clock::now().time_since_epoch()).count();
+        frameTime += currentTime - previousTime;
         previousTime = currentTime;
 
         //############################# PROCESS INPUT #############################
@@ -145,6 +153,19 @@ void renderLoop(long ticks) {
         // Quit?
         if (!run) break;
 
+        // Calc FPS
+        if (frameTime >= 1000) {
+            Renderer::cleanup(fps);
+
+            frameTime = 0;
+            fps = Renderer::renderFont(std::to_string(frames), 25, {255, 255, 255, 255}, "font.ttf");
+            frames = 0;
+
+            // 10px padding to the right
+            Renderer::query(fps, &fpsRect);
+            fpsRect.x = dim.w - fpsRect.w - 10;
+        }
+
         //############################ TICK AND RENDER ############################
         if (!paused) World::tick();
 
@@ -154,7 +175,9 @@ void renderLoop(long ticks) {
         if (paddings) Renderer::copy(padding, 0, 0);
         if (borders) Renderer::copy(border, 0, 0);
         if (paused) Renderer::copy(pauseText, 10, 10);
+        Renderer::copy(fps, &fpsRect);
         Renderer::present();
+        frames++;
 
         //########################### WAIT IF TOO FAST ############################
         currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -173,6 +196,10 @@ void renderLoop(long ticks) {
     //=============================================================================
 
     // Destroy renderer (close window) and exit
+    Renderer::cleanup(border);
+    Renderer::cleanup(padding);
+    Renderer::cleanup(pauseText);
+    Renderer::cleanup(fps);
     Renderer::destroy();
 }
 
@@ -373,7 +400,10 @@ int main(int argc, char **argv) {
     }
     for (int i = 0; i < 100; i++) {
         World::addFoodEntity(
-                new FoodEntity(getRandomIntBetween(0, dim.w) + dim.p.x, getRandomIntBetween(0, dim.h) + dim.p.y, 8 * 60),
+                new FoodEntity(
+                        getRandomIntBetween(0, dim.w) + dim.p.x,
+                        getRandomIntBetween(0, dim.h) + dim.p.y,
+                        8 * 60),
                 false);
     }
     //=========================== END ADD TEST ENTITIES ===========================
