@@ -102,7 +102,7 @@ void renderLoop(long ticks) {
                 case SDL_MOUSEBUTTONDOWN:
                     if (e.button.button == SDL_BUTTON_LEFT) {
                         LivingEntity *nearest = World::findNearestLiving(dim.p.x + e.button.x, dim.p.y + e.button.y,
-                                                                         -1);
+                                                                         -1, false);
 
                         if (similarityMode) {
                             if (nearest) selectedEntities[countSelectedEntities++] = nearest;

@@ -107,9 +107,9 @@ void LivingEntity::tick() {
         cooldown += 60;
     }
     //################################# Think #################################
-    FoodEntity *nearestFood = World::findNearestFood(x, y);
-    LivingEntity *nearestEnemy = World::findNearestEnemy(this);
-    LivingEntity *nearestMate = World::findNearestMate(this);
+    FoodEntity *nearestFood = World::findNearestFood(x, y, false);
+    LivingEntity *nearestEnemy = World::findNearestEnemy(this, false);
+    LivingEntity *nearestMate = World::findNearestMate(this, false);
 
     Matrix continuousIn(6, 1, {
             (float) (nearestFood ? nearestFood->getDistance(x, y) : VIEW_RANGE * 2),
@@ -142,7 +142,7 @@ void LivingEntity::tick() {
     //################################## Attack ##################################
     if (thoughts.attack && nearestEnemy && nearestEnemy->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
         if (World::toRemoveLiving(nearestEnemy)) {
-            LivingEntity *temp = World::findNearestSurvivingEnemy(this);
+            LivingEntity *temp = World::findNearestEnemy(this, true);
             nearestEnemy = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp
                                                                                             : nullptr; //TODO synchronize from here
         }
@@ -159,7 +159,7 @@ void LivingEntity::tick() {
     //################################## Share ##################################
     if (thoughts.share && energy > 80 && nearestMate && nearestMate->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
         if (World::toRemoveLiving(nearestMate)) {
-            LivingEntity *temp = World::findNearestSurvivingMate(this);
+            LivingEntity *temp = World::findNearestMate(this, true);
             nearestMate = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp
                                                                                            : nullptr; //TODO synchronize from here
         }
@@ -172,7 +172,7 @@ void LivingEntity::tick() {
     if (nearestFood &&
         nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {//nearest food also needed for input
         if (World::toRemoveFood(nearestFood)) {
-            FoodEntity *temp = World::findNearestSurvivingFood(x, y);
+            FoodEntity *temp = World::findNearestFood(x, y, true);
             nearestFood = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp
                                                                                            : nullptr; //TODO synchronize from here
         }

@@ -381,11 +381,11 @@ void World::receiveEntities(int rank, int tag) {
     free(start);
 }
 
-FoodEntity *World::findNearestFood(int px, int py) {
-    if (food.empty()) return nullptr;
+FoodEntity *World::findNearestFood(int px, int py, bool surviving) {
     FoodEntity *f = nullptr;
     int dist = 0;
     for (const auto &e : food) {
+        if (surviving && toRemoveFood(e)) continue;
         int tempDist = e->getSquaredDistance(px, py);
         if (tempDist <= VIEW_RANGE_SQUARED && (!f || tempDist < dist)) {
             f = e;
@@ -395,24 +395,11 @@ FoodEntity *World::findNearestFood(int px, int py) {
     return f;
 }
 
-FoodEntity *World::findNearestSurvivingFood(int px, int py) {
-    FoodEntity *f = nullptr;
-    int dist = 0;
-    for (const auto &e : food) {
-        if (toRemoveFood(e)) continue;
-        int tempDist = e->getSquaredDistance(px, py);
-        if (tempDist <= VIEW_RANGE_SQUARED && (!f || tempDist < dist)) {
-            f = e;
-            dist = tempDist;
-        }
-    }
-    return f;
-}
-
-LivingEntity *World::findNearestLiving(int px, int py, int id) {
+LivingEntity *World::findNearestLiving(int px, int py, int id, bool surviving) {
     LivingEntity *n = nullptr;
     int dist = 0;
     for (const auto &e : living) {
+        if (surviving && toRemoveLiving(e)) continue;
         if (e->getId() == id) continue;
         int tempDist = e->getSquaredDistance(px, py);
         if (tempDist <= VIEW_RANGE_SQUARED && (!n || tempDist < dist)) {
@@ -423,11 +410,12 @@ LivingEntity *World::findNearestLiving(int px, int py, int id) {
     return n;
 }
 
-LivingEntity *World::findNearestEnemy(LivingEntity *le) {
+LivingEntity *World::findNearestEnemy(LivingEntity *le, bool surviving) {
     if (living.empty() || living.size() == 1) return nullptr;
     LivingEntity *n = nullptr;
     int dist = 0;
     for (const auto &e : living) {
+        if (surviving && toRemoveLiving(e)) continue;
         if (*e == *le || le->difference(*e) < 0.04 || !e->visibleOn(tileAt(le->x, le->y))) continue;
         int tempDist = e->getSquaredDistance(le->x, le->y);
         if (tempDist <= VIEW_RANGE_SQUARED && (!n || tempDist < dist)) {
@@ -438,43 +426,13 @@ LivingEntity *World::findNearestEnemy(LivingEntity *le) {
     return n;
 }
 
-LivingEntity *World::findNearestSurvivingEnemy(LivingEntity *le) {
+LivingEntity *World::findNearestMate(LivingEntity *le, bool surviving) {
     if (living.empty() || living.size() == 1) return nullptr;
     LivingEntity *n = nullptr;
     int dist = 0;
     for (const auto &e : living) {
-        if (toRemoveLiving(e) || *e == *le || le->difference(*e) < 0.04 || !e->visibleOn(tileAt(le->x, le->y)))
-            continue;
-        int tempDist = e->getSquaredDistance(le->x, le->y);
-        if (tempDist <= VIEW_RANGE_SQUARED && (!n || tempDist < dist)) {
-            n = e;
-            dist = tempDist;
-        }
-    }
-    return n;
-}
-
-LivingEntity *World::findNearestMate(LivingEntity *le) {
-    if (living.empty() || living.size() == 1) return nullptr;
-    LivingEntity *n = nullptr;
-    int dist = 0;
-    for (const auto &e : living) {
+        if (surviving && toRemoveLiving(e)) continue;
         if (*e == *le || le->difference(*e) >= 0.04) continue;
-        int tempDist = e->getSquaredDistance(le->x, le->y);
-        if (tempDist <= VIEW_RANGE_SQUARED && (!n || tempDist < dist)) {
-            n = e;
-            dist = tempDist;
-        }
-    }
-    return n;
-}
-
-LivingEntity *World::findNearestSurvivingMate(LivingEntity *le) {
-    if (living.empty() || living.size() == 1) return nullptr;
-    LivingEntity *n = nullptr;
-    int dist = 0;
-    for (const auto &e : living) {
-        if (toRemoveLiving(e) || *e == *le || le->difference(*e) >= 0.04) continue;
         int tempDist = e->getSquaredDistance(le->x, le->y);
         if (tempDist <= VIEW_RANGE_SQUARED && (!n || tempDist < dist)) {
             n = e;

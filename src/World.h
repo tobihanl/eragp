@@ -124,24 +124,18 @@ public:
 
     static void tick();
 
-    static FoodEntity *findNearestFood(int px, int py);
-
-    static FoodEntity *findNearestSurvivingFood(int px, int py);
+    //non-surviving functions: always base thinking input on last tick, bot some kind of half-tick
+    static FoodEntity *findNearestFood(int px, int py, bool surviving);
 
     /**
      * @param id    ID of the LivingEntity, which will be excluded for the
      *              search of the nearest LivingEntity
      */
-    static LivingEntity *findNearestLiving(int px, int py, int id);
+    static LivingEntity *findNearestLiving(int px, int py, int id, bool surviving);
 
-    static LivingEntity *findNearestEnemy(LivingEntity *le);
+    static LivingEntity *findNearestEnemy(LivingEntity *le, bool surviving);
 
-    //non-surviving functions: always base thinking input on last tick, bot some kind of half-tick
-    static LivingEntity *findNearestSurvivingEnemy(LivingEntity *le);
-
-    static LivingEntity *findNearestMate(LivingEntity *le);
-
-    static LivingEntity *findNearestSurvivingMate(LivingEntity *le);
+    static LivingEntity *findNearestMate(LivingEntity *le, bool surviving);
 
     static bool addLivingEntity(LivingEntity *e, bool received);
 
