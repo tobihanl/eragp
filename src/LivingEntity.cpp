@@ -7,7 +7,6 @@
 #include "Rng.h"
 
 #define PI 3.14159265
-#define AMOUNT_OF_PARAMS 10
 
 SDL_Texture *LivingEntity::digits[10];
 
@@ -53,7 +52,7 @@ LivingEntity::LivingEntity(void *&ptr) :
         cooldown(((int *) ptr)[9]),
         energyLossWithMove(energyLossPerTick(true, ((float *) ptr)[4], ((float *) ptr)[5])),
         energyLossWithoutMove(energyLossPerTick(false, ((float *) ptr)[4], ((float *) ptr)[5])) {
-    ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
+    ptr = static_cast<int *>(ptr) + AMOUNT_OF_LIVING_PARAMS;
     brain = new Brain(ptr);
 }
 
@@ -189,16 +188,6 @@ void LivingEntity::tick() {
     if (energy <= 0) World::removeLivingEntity(this);
 }
 
-int LivingEntity::energyLossPerTick(bool move, float speed, float size) {
-    return (int) round((move ? speed * 8 : 0) + size * 4 + 1);
-}
-
-bool LivingEntity::visibleOn(Tile *tile) {
-    return (color.r - tile->color.r) * (color.r - tile->color.r)
-           + (color.g - tile->color.g) * (color.g - tile->color.g)
-           + (color.b - tile->color.b) * (color.b - tile->color.b) >= 200;
-}
-
 //TODO consider new properties when added, maybe switch to squaredDistance?
 float LivingEntity::difference(const LivingEntity &e) {
     return std::sqrt(((float) (e.color.r - color.r) / 255.f) * ((float) (e.color.r - color.r) / 255.f)
@@ -207,10 +196,6 @@ float LivingEntity::difference(const LivingEntity &e) {
                      + (e.speed - speed) * (e.speed - speed)
                      + (e.size - size) * (e.size - size)
                      + (e.waterAgility - waterAgility) * (e.waterAgility - waterAgility));//TODO consider brain
-}
-
-int LivingEntity::serializedSize() {
-    return AMOUNT_OF_PARAMS * 4 + brain->serializedSized();
 }
 
 /**
@@ -231,7 +216,7 @@ void LivingEntity::serialize(void *&ptr) {
     ((float *) ptr)[7] = rotation;
     ((int *) ptr)[8] = energy;
     ((int *) ptr)[9] = cooldown;
-    ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
+    ptr = static_cast<int *>(ptr) + AMOUNT_OF_LIVING_PARAMS;
     brain->serialize(ptr);
 }
 

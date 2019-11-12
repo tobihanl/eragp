@@ -1,5 +1,4 @@
 #include "Entity.h"
-#include <cmath>
 #include "Renderer.h"
 #include "World.h"
 
@@ -28,24 +27,3 @@ Entity::Entity(int i, int ix, int iy, const SDL_Color &color, float size) :
 Entity::~Entity() {
     Renderer::cleanup(texture);
 }
-
-int Entity::getId() {
-    return id;
-}
-
-bool operator==(const Entity &lhs, const Entity &rhs) {
-    return lhs.id == rhs.id;
-}
-
-bool operator!=(const Entity &lhs, const Entity &rhs) {
-    return !(lhs == rhs);
-}
-
-int Entity::getSquaredDistance(int px, int py) {
-    return (x - px) * (x - px) + (y - py) * (y - py);
-}
-
-float Entity::getDistance(int px, int py) {
-    return std::sqrt((x - px) * (x - px) + (y - py) * (y - py));
-}
-

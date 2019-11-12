@@ -1,8 +1,9 @@
 #ifndef ERAGP_MAIMUC_EVO_2019_WORLD_H
 #define ERAGP_MAIMUC_EVO_2019_WORLD_H
 
+#include <algorithm>
 #include <vector>
-#include "mpi.h"
+#include <mpi.h>
 #include "FoodEntity.h"
 #include "LivingEntity.h"
 #include "Tile.h"
@@ -98,17 +99,26 @@ public:
     static int overallWidth;
     static int overallHeight;
 
+    /**
+     * Initialize the world, which is part of the overall world and set
+     * it up.
+     *
+     * @param   newOverallWidth     Width of the overall world
+     * @param   newOverallHeight    Height of the overall world
+     * @param   maimuc              Indicates, whether the program is executed
+     *                              on MaiMUC or not
+     */
     static void setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate);
 
     static void finalize();
 
-    static int getMPIRank();
+    static int getMPIRank() { return MPI_Rank; }
 
-    static int getMPINodes();
+    static int getMPINodes() { return MPI_Nodes; }
 
-    static WorldDim getWorldDim();
+    static WorldDim getWorldDim() { return getWorldDimOf(MPI_Rank); }
 
-    static WorldDim getWorldDimOf(int rank);
+    static WorldDim getWorldDimOf(int rank) { return worlds[rank]; }
 
     static void render();
 
@@ -118,6 +128,10 @@ public:
 
     static FoodEntity *findNearestSurvivingFood(int px, int py);
 
+    /**
+     * @param id    ID of the LivingEntity, which will be excluded for the
+     *              search of the nearest LivingEntity
+     */
     static LivingEntity *findNearestLiving(int px, int py, int id);
 
     static LivingEntity *findNearestEnemy(LivingEntity *le);
@@ -137,15 +151,28 @@ public:
 
     static bool removeFoodEntity(FoodEntity *e, bool received);
 
-    static bool toRemoveFood(FoodEntity *e);
+    static bool toRemoveFood(FoodEntity *e) {
+        return std::find(removeFood.begin(), removeFood.end(), e) != removeFood.end();
+    }
 
-    static bool toRemoveLiving(LivingEntity *e);
+    static bool toRemoveLiving(LivingEntity *e) {
+        return std::find(removeLiving.begin(), removeLiving.end(), e) != removeLiving.end();
+    }
 
     static Tile *tileAt(int px, int py);
 
-    static std::vector<PaddingRect> *getPaddingRects();
+    static std::vector<PaddingRect> *getPaddingRects() { return &paddingRects; }
 
 private:
+    /**
+     * Calculate dimensions (x & y position, width, height) of a world laying
+     * on the node with the given MPI rank.
+     *
+     * @param rank Rank of the node, which world should be calculated
+     * @param num Number of nodes in the MPI_COMM_WORLD
+     *
+     * @return dimensions of the world on the node with the given MPI rank
+     */
     static WorldDim calcWorldDimensions(int rank, int num);
 
     static void calcPaddingRects();
@@ -154,23 +181,46 @@ private:
 
     static void renderBackground();
 
-    static bool toAddLiving(LivingEntity *e);
+    static bool toAddLiving(LivingEntity *e) {
+        return std::find(addLiving.begin(), addLiving.end(), e) != addLiving.end();
+    }
 
-    static bool toAddFood(FoodEntity *e);
+    static bool toAddFood(FoodEntity *e) {
+        return std::find(addFood.begin(), addFood.end(), e) != addFood.end();
+    }
 
     static size_t rankAt(int px, int py);
 
+    /**
+     * @return      Ranks having a padding on the given coordinates
+     *
+     * @attention   Only works for (x,y) coordinates on THIS node!
+     */
     static std::vector<size_t> *paddingRanksAt(int px, int py);
 
     static void *sendEntities(const std::vector<MPISendEntity> &entities, int rank, int tag, MPI_Request *request);
 
     static void receiveEntities(int rank, int tag);
 
-    static long gcd(long a, long b);
+    static long gcd(long a, long b) {
+        if (a == 0) return b;
+        if (b == 0) return a;
+        if (a < b) return gcd(a, b % a);
+        return gcd(b, a % b);
+    }
 
-    static bool pointInRect(const Point &p, const Rect &r);
+    static bool pointInRect(const Point &p, const Rect &r) {
+        return r.p.x <= p.x && p.x < r.p.x + r.w && r.p.y <= p.y && p.y < r.p.y + r.h;
+    }
 
-    static Rect calcIntersection(const Rect &rect1, const Rect &rect2);
+    static Rect calcIntersection(const Rect &rect1, const Rect &rect2) {
+        int x1 = std::max(rect1.p.x, rect2.p.x);
+        int y1 = std::max(rect1.p.y, rect2.p.y);
+        int x2 = std::min(rect1.p.x + rect1.w, rect2.p.x + rect2.w);
+        int y2 = std::min(rect1.p.y + rect1.h, rect2.p.y + rect2.h);
+
+        return {{x1, y1}, x2 - x1, y2 - y1};
+    }
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H

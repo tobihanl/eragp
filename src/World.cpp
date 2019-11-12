@@ -1,10 +1,8 @@
-#include <algorithm>
 #include <cstdlib>
 #include <cassert>
-#include "mpi.h"
+#include "SimplexNoise/SimplexNoise.h"
 #include "World.h"
 #include "Renderer.h"
-#include "SimplexNoise/SimplexNoise.h"
 #include "Rng.h"
 
 int *splitRect(int num, int width, int height);
@@ -54,15 +52,6 @@ SDL_Texture *World::background = nullptr;
 
 std::vector<Tile *> World::terrain = std::vector<Tile *>();
 
-/**
- * Initialize the world, which is part of the overall world and set
- * it up.
- *
- * @param   newOverallWidth     Width of the overall world
- * @param   newOverallHeight    Height of the overall world
- * @param   maimuc              Indicates, whether the program is executed
- *                              on MaiMUC or not
- */
 void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate) {
     if (isSetup)
         return;
@@ -420,10 +409,6 @@ FoodEntity *World::findNearestSurvivingFood(int px, int py) {
     return f;
 }
 
-/**
- * @param id    ID of the LivingEntity, which will be excluded for the
- *              search of the nearest LivingEntity
- */
 LivingEntity *World::findNearestLiving(int px, int py, int id) {
     LivingEntity *n = nullptr;
     int dist = 0;
@@ -580,15 +565,6 @@ bool World::removeFoodEntity(FoodEntity *e, bool received) {
     return false;
 }
 
-/**
- * Calculate dimensions (x & y position, width, height) of a world laying
- * on the node with the given MPI rank.
- *
- * @param rank Rank of the node, which world should be calculated
- * @param num Number of nodes in the MPI_COMM_WORLD
- *
- * @return dimensions of the world on the node with the given MPI rank
- */
 WorldDim World::calcWorldDimensions(int rank, int num) {
     WorldDim dim;
 
@@ -664,39 +640,6 @@ void World::calcPaddingRects() {
     }
 }
 
-WorldDim World::getWorldDim() {
-    return getWorldDimOf(MPI_Rank);
-}
-
-WorldDim World::getWorldDimOf(int rank) {
-    return worlds[rank];
-}
-
-int World::getMPIRank() {
-    return MPI_Rank;
-}
-
-int World::getMPINodes() {
-    return MPI_Nodes;
-}
-
-
-bool World::toRemoveLiving(LivingEntity *e) {
-    return std::find(removeLiving.begin(), removeLiving.end(), e) != removeLiving.end();
-}
-
-bool World::toAddLiving(LivingEntity *e) {
-    return std::find(addLiving.begin(), addLiving.end(), e) != addLiving.end();
-}
-
-bool World::toRemoveFood(FoodEntity *e) {
-    return std::find(removeFood.begin(), removeFood.end(), e) != removeFood.end();
-}
-
-bool World::toAddFood(FoodEntity *e) {
-    return std::find(addFood.begin(), addFood.end(), e) != addFood.end();
-}
-
 size_t World::rankAt(int px, int py) {
     //TODO could cause overflow for large worlds. Use long instead?
     Point p = {(px + overallWidth) % overallWidth, (py + overallHeight) % overallHeight};
@@ -707,11 +650,6 @@ size_t World::rankAt(int px, int py) {
     return -1; // In case there's no matching world
 }
 
-/**
- * @return      Ranks having a padding on the given coordinates
- *
- * @attention   Only works for (x,y) coordinates on THIS node!
- */
 std::vector<size_t> *World::paddingRanksAt(int px, int py) {
     assert(px >= x && px < x + width && py >= y && py < y + height && "Coordinates NOT on THIS node");
 
@@ -780,30 +718,4 @@ Tile *World::tileAt(int px, int py) {
 
         return terrain[(py / TILE_SIZE) * ((width + (2 * WORLD_PADDING)) / TILE_SIZE) + (px / TILE_SIZE)];
     }
-}
-
-//TODO cleanup for destroyed entities
-
-long World::gcd(long a, long b) {
-    if (a == 0) return b;
-    if (b == 0) return a;
-    if (a < b) return gcd(a, b % a);
-    return gcd(b, a % b);
-}
-
-Rect World::calcIntersection(const Rect &rect1, const Rect &rect2) {
-    int x1 = std::max(rect1.p.x, rect2.p.x);
-    int y1 = std::max(rect1.p.y, rect2.p.y);
-    int x2 = std::min(rect1.p.x + rect1.w, rect2.p.x + rect2.w);
-    int y2 = std::min(rect1.p.y + rect1.h, rect2.p.y + rect2.h);
-
-    return {{x1, y1}, x2 - x1, y2 - y1};
-}
-
-bool World::pointInRect(const Point &p, const Rect &r) {
-    return r.p.x <= p.x && p.x < r.p.x + r.w && r.p.y <= p.y && p.y < r.p.y + r.h;
-}
-
-std::vector<PaddingRect> *World::getPaddingRects() {
-    return &paddingRects;
 }
