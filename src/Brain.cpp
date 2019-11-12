@@ -89,8 +89,8 @@ ThinkResult Brain::think(Matrix input, Matrix normalizedInput) {
 Brain *Brain::createMutatedCopy() {
     auto *copy = new Brain(this);
     for (int i = 0; i < numLayers - 1; i++) {
-        *(copy->weights[i]) += (Matrix) new Matrix(weights[i]->getHeight(), weights[i]->getWidth(), -0.01, 0.01);
-        *(copy->biases[i]) += (Matrix) new Matrix(biases[i]->getHeight(), 1, -0.01, 0.01);
+        *(copy->weights[i]) += Matrix(weights[i]->getHeight(), weights[i]->getWidth(), -0.01, 0.01);
+        *(copy->biases[i]) += Matrix(biases[i]->getHeight(), 1, -0.01, 0.01);
     }
     return copy;
 }

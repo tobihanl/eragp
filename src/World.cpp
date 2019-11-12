@@ -495,13 +495,13 @@ LivingEntity *World::findNearestSurvivingMate(LivingEntity *le) {
     return n;
 }
 
-void World::addLivingEntity(LivingEntity *e, bool received) {
-    if (toAddLiving(e)) return;
+bool World::addLivingEntity(LivingEntity *e, bool received) {
+    if (toAddLiving(e)) return false;
 
     // Received via MPI? -> Always add!
     if (received) {
         addLiving.push_back(e);
-        return;
+        return true;
     }
 
     // Only add and broadcast to other nodes when laying on THIS node
@@ -512,16 +512,20 @@ void World::addLivingEntity(LivingEntity *e, bool received) {
         for (int neighbor : *ranks)
             livingEntitiesToMoveToNeighbors.push_back({neighbor, e});
         delete ranks;
+
+        return true;
     }
+
+    return false;
 }
 
-void World::addFoodEntity(FoodEntity *e, bool received) {
-    if (toAddFood(e)) return;
+bool World::addFoodEntity(FoodEntity *e, bool received) {
+    if (toAddFood(e)) return false;
 
     // Received via MPI? -> Always add!
     if (received) {
         addFood.push_back(e);
-        return;
+        return true;
     }
 
     // Only add and broadcast to other nodes when laying on THIS node
@@ -532,21 +536,29 @@ void World::addFoodEntity(FoodEntity *e, bool received) {
         for (int neighbor : *ranks)
             foodToSendToNeighbors.push_back({neighbor, e});
         delete ranks;
+
+        return true;
     }
+
+    return false;
 }
 
-void World::removeLivingEntity(LivingEntity *e) {
-    if (!toRemoveLiving(e))
+bool World::removeLivingEntity(LivingEntity *e) {
+    if (!toRemoveLiving(e)) {
         removeLiving.push_back(e);
+        return true;
+    }
+
+    return false;
 }
 
-void World::removeFoodEntity(FoodEntity *e, bool received) {
+bool World::removeFoodEntity(FoodEntity *e, bool received) {
     assert(!toRemoveFood(e) && "Tried to remove same FoodEntity multiple times");
 
     // Received via MPI? -> Always remove!
     if (received) {
         removeFood.push_back(e);
-        return;
+        return true;
     }
 
     // Only remove and broadcast to other nodes when laying on THIS node
@@ -557,7 +569,11 @@ void World::removeFoodEntity(FoodEntity *e, bool received) {
         for (int neighbor : *ranks)
             removedFoodToSendToNeighbors.push_back({neighbor, e});
         delete ranks;
+
+        return true;
     }
+
+    return false;
 }
 
 /**
