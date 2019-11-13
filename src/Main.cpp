@@ -1,6 +1,5 @@
 //TODO to disable asserts in release: #define NDEBUG
 #include <iostream>
-#include <chrono>
 #include <cstdlib>
 #include <poll.h>
 #include <SDL.h>
@@ -10,6 +9,7 @@
 #include "World.h"
 #include "Brain.h"
 #include "Tile.h"
+#include "Log.h"
 #include "Rng.h"
 
 #define MS_PER_TICK 100
@@ -44,13 +44,10 @@ void renderLoop(long ticks) {
     //=============================================================================
     SDL_Event e;
     int currentTime, elapsedTime;
-    int previousTime = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count();
+    int previousTime = Log::currentTime();
     bool run = ticks == -1 || ticks > 0;
     while (run) {
-        // Calculate lag between last and current turn
-        currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::system_clock::now().time_since_epoch()).count();
+        currentTime = Log::currentTime();
         frameTime += currentTime - previousTime;
         previousTime = currentTime;
 
@@ -180,8 +177,7 @@ void renderLoop(long ticks) {
         frames++;
 
         //########################### WAIT IF TOO FAST ############################
-        currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::system_clock::now().time_since_epoch()).count();
+        currentTime = Log::currentTime();
         elapsedTime = (currentTime - previousTime);
 
         // Delay loop turn
@@ -294,7 +290,7 @@ int main(int argc, char **argv) {
     // Scan program arguments
     opterr = 0;
     int c;
-    while ((c = getopt(argc, argv, "h:w:m::f:r::t:s:")) != -1) {
+    while ((c = getopt(argc, argv, "h:w:m::f:r::t:s:l:")) != -1) {
         char *ptr = nullptr;
         switch (c) {
             // Render flag
@@ -354,16 +350,32 @@ int main(int argc, char **argv) {
                 }
                 break;
 
-                // Unknown Option
             case 's':
                 if (optarg != nullptr) randomSeed = std::stoi(optarg, nullptr);
                 break;
+
+                // Log to file
+            case 'l':
+                if (optarg != nullptr) {
+                    if (optarg[0] == '-') {
+                        std::cerr << "Option -l requires a string (path to file) specifying the logging location!"
+                                  << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                    Log::startLogging(optarg);
+                }
+                break;
+
+                // Unknown Option
             case '?':
                 if (optopt == 'h' || optopt == 'w' || optopt == 't') {
                     std::cerr << "Option -" << (char) optopt << " requires an integer!" << std::endl;
                 } else if (optopt == 'f') {
                     std::cerr << "Option -f requires a float indicating the amount of food spawned per 2000 tiles "
                               << "per tick!" << std::endl;
+                } else if (optopt == 'l') {
+                    std::cerr << "Option -l requires a string (path to file) specifying the logging location!"
+                              << std::endl;
                 } else {
                     std::cerr << "Unknown option character -" << (char) optopt << std::endl;
                 }
@@ -427,6 +439,7 @@ int main(int argc, char **argv) {
         std::cout << "EXITING..." << std::endl;
 
     World::finalize();
+    Log::endLogging();
 
     // END MPI
     MPI_Finalize();

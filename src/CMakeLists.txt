@@ -8,6 +8,7 @@ target_sources(${PROJECT_NAME}
         ${CMAKE_CURRENT_LIST_DIR}/FoodEntity.h
         ${CMAKE_CURRENT_LIST_DIR}/LivingEntity.cpp
         ${CMAKE_CURRENT_LIST_DIR}/LivingEntity.h
+        ${CMAKE_CURRENT_LIST_DIR}/Log.h
         ${CMAKE_CURRENT_LIST_DIR}/Main.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Matrix.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Matrix.h
