@@ -41,6 +41,7 @@ public:
         logFile = fopen(file.c_str(), "a");
         if (logFile) {
             logging = true;
+            writeLine("sep=,"); // Specify separator
             writeLine("Turn,Food,Livings,MPI,Tick,Render,Delay,Overall");
         }
     }
