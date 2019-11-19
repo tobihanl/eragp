@@ -4,6 +4,7 @@
 #include "World.h"
 #include "Renderer.h"
 #include "Rng.h"
+#include "Log.h"
 
 int *splitRect(int num, int width, int height);
 
@@ -268,6 +269,7 @@ void World::tick() {
     //=============================================================================
     //                            BEGIN MPI SEND/RECEIVE
     //=============================================================================
+    int mpiTime = Log::currentTime();
     MPI_Request reqs[paddingRanks.size() * MSGS_PER_NEIGHBOR];
     MPI_Status stats[paddingRanks.size() * MSGS_PER_NEIGHBOR];
     void *buffers[paddingRanks.size() * MSGS_PER_NEIGHBOR];
@@ -301,6 +303,8 @@ void World::tick() {
     MPI_Waitall((int) paddingRanks.size() * MSGS_PER_NEIGHBOR, reqs, stats);
     for (void *e : buffers)
         free(e);
+
+    Log::data.mpi = Log::endTime(mpiTime);
     //=============================================================================
     //                             END MPI SEND/RECEIVE
     //=============================================================================

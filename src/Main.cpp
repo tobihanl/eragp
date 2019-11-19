@@ -14,6 +14,11 @@
 
 #define MS_PER_TICK 100
 
+// Init class Log attributes
+bool Log::logging = false;
+FILE *Log::logFile = nullptr;
+LogData Log::data = {};
+
 void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padding);
 
 /**
@@ -46,10 +51,16 @@ void renderLoop(long ticks) {
     int currentTime, elapsedTime;
     int previousTime = Log::currentTime();
     bool run = ticks == -1 || ticks > 0;
+    int counter = 0;
     while (run) {
         currentTime = Log::currentTime();
         frameTime += currentTime - previousTime;
         previousTime = currentTime;
+
+        // Log new tick
+        Log::data.turn = counter++;
+        Log::data.food = World::getAmountOfFood();
+        Log::data.livings = World::getAmountOfLivings();
 
         //############################# PROCESS INPUT #############################
         while (SDL_PollEvent(&e)) {
@@ -164,9 +175,14 @@ void renderLoop(long ticks) {
         }
 
         //############################ TICK AND RENDER ############################
-        if (!paused) World::tick();
+        if (!paused) {
+            int tickTime = Log::currentTime();
+            World::tick();
+            Log::data.tick = Log::endTime(tickTime);
+        }
 
         // Render everything
+        int renderTime = Log::currentTime();
         Renderer::clear();
         World::render();
         if (paddings) Renderer::copy(padding, 0, 0);
@@ -175,17 +191,23 @@ void renderLoop(long ticks) {
         Renderer::copy(fps, &fpsRect);
         Renderer::present();
         frames++;
+        Log::data.render = Log::endTime(renderTime);
 
         //########################### WAIT IF TOO FAST ############################
         currentTime = Log::currentTime();
         elapsedTime = (currentTime - previousTime);
 
         // Delay loop turn
-        if (elapsedTime <= MS_PER_TICK)
+        if (elapsedTime <= MS_PER_TICK) {
             SDL_Delay(MS_PER_TICK - elapsedTime);
+            Log::data.delay = MS_PER_TICK - elapsedTime;
+        }
 
         // Set running status for next loop turn
         run = ticks == -1 || (--ticks) > 0;
+
+        Log::data.overall = Log::endTime(previousTime);
+        Log::writeLogData();
     }
     //=============================================================================
     //                                END MAIN LOOP
@@ -225,7 +247,14 @@ void normalLoop(long ticks) {
 
     Uint8 buffer = 0;
     bool run = ticks == -1 || ticks > 0;
+    int counter = 0;
     while (run) {
+        // Log new tick
+        int loopTime = Log::currentTime();
+        Log::data.turn = counter++;
+        Log::data.food = World::getAmountOfFood();
+        Log::data.livings = World::getAmountOfLivings();
+
         //############################# PROCESS INPUT #############################
         if (World::getMPIRank() == 0 && poll(cin, 1, 1)) {
             std::string str;
@@ -263,10 +292,15 @@ void normalLoop(long ticks) {
         if (!run) break;
 
         //################################## TICK #################################
+        int tickTime = Log::currentTime();
         World::tick();
+        Log::data.tick = Log::endTime(tickTime);
 
         // Set running status for next loop turn
         run = ticks == -1 || (--ticks) > 0;
+
+        Log::data.overall = Log::endTime(loopTime);
+        Log::writeLogData();
     }
 }
 
@@ -394,7 +428,7 @@ int main(int argc, char **argv) {
     World::setup(width, height, maimuc, foodRate);
     WorldDim dim = World::getWorldDim();
     if (!filename.empty())
-        Log::startLogging(filename + "-" + std::to_string(World::getMPIRank()) + ".log");
+        Log::startLogging(filename + "-" + std::to_string(World::getMPIRank()) + ".csv");
 
     // Init renderer
     if (render) {

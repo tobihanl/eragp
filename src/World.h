@@ -157,6 +157,10 @@ public:
 
     static std::vector<PaddingRect> *getPaddingRects() { return &paddingRects; }
 
+    static int getAmountOfLivings() { return living.size(); }
+
+    static int getAmountOfFood() { return food.size(); }
+
 private:
     /**
      * Calculate dimensions (x & y position, width, height) of a world laying
