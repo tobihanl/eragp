@@ -28,7 +28,7 @@ be** executed on 10 nodes with this configuration!
 - **Random Seed** `-s` (optional): Run application with given seed.
 
 - **Log File** `-l` (optional): Log/verbose information about application (i.e. for debugging, performance) into the
-specified file.
+specified file. The following will be appended to the filename: `-{MPI_Rank}.log`.
 
 ## Using the keyboard and mouse while running the application
 

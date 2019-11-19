@@ -283,6 +283,7 @@ int main(int argc, char **argv) {
     bool maimuc = false, render = false;
     float foodRate = 1.f;  //food spawned per 2000 tiles per tick
     long ticks = -1;
+    std::string filename;
 
     std::random_device rd;
     unsigned int randomSeed = rd();
@@ -362,7 +363,7 @@ int main(int argc, char **argv) {
                                   << std::endl;
                         return EXIT_FAILURE;
                     }
-                    Log::startLogging(optarg);
+                    filename = optarg;
                 }
                 break;
 
@@ -392,6 +393,8 @@ int main(int argc, char **argv) {
     // Init world
     World::setup(width, height, maimuc, foodRate);
     WorldDim dim = World::getWorldDim();
+    if (!filename.empty())
+        Log::startLogging(filename + "-" + std::to_string(World::getMPIRank()) + ".log");
 
     // Init renderer
     if (render) {
