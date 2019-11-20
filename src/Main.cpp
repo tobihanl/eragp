@@ -471,7 +471,9 @@ int main(int argc, char **argv) {
     }
 
     //============================= ADD TEST ENTITIES =============================
-    for (long i = 0; i < (livings / World::getMPINodes()); i++) {
+    long max = livings / World::getMPINodes();
+    if (World::getMPIRank() >= World::getMPINodes() - livings % World::getMPINodes()) max++;
+    for (long i = 0; i < max; i++) {
         auto *brain = new Brain(6, 8, 4, 4, 10, 4);
         auto *entity = new LivingEntity(
                 getRandomIntBetween(0, dim.w) + dim.p.x,
@@ -487,7 +489,9 @@ int main(int argc, char **argv) {
 
         World::addLivingEntity(entity, false);
     }
-    for (long i = 0; i < (food / World::getMPINodes()); i++) {
+    max = food / World::getMPINodes();
+    if (World::getMPIRank() >= World::getMPINodes() - food % World::getMPINodes()) max++;
+    for (long i = 0; i < max; i++) {
         World::addFoodEntity(
                 new FoodEntity(
                         getRandomIntBetween(0, dim.w) + dim.p.x,
