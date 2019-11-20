@@ -136,43 +136,33 @@ void World::finalize() {
 }
 
 void World::generateTerrain() {
-    int heightWithPadding = height + (2 * WORLD_PADDING);
-    int widthWithPadding = width + (2 * WORLD_PADDING);
+    int heightWithPadding = height + (2 * WORLD_PADDING) + (y % TILE_SIZE) + (TILE_SIZE - (y + height) % TILE_SIZE);
+    int widthWithPadding = width + (2 * WORLD_PADDING) + (x % TILE_SIZE) + (TILE_SIZE - (x + width) % TILE_SIZE);
 
-    int xOffset = x - WORLD_PADDING;
-    int yOffset = y - WORLD_PADDING;
-    if (xOffset < 0) xOffset += overallWidth;
-    if (yOffset < 0) yOffset += overallHeight;
+    int xOffset = x - WORLD_PADDING - (x % TILE_SIZE);
+    int yOffset = y - WORLD_PADDING - (y % TILE_SIZE);
 
     for (int py = 0; py < heightWithPadding / TILE_SIZE; py++) {
         for (int px = 0; px < widthWithPadding / TILE_SIZE; px++) {
-            int pointX = (px * TILE_SIZE) + xOffset;
-            int pointY = (py * TILE_SIZE) + yOffset;
-
-            // Overlap?
-            if (pointX >= overallWidth) pointX -= overallWidth;
-            if (pointY >= overallHeight) pointY -= overallHeight;
-
             // Noise
-            float val = SimplexNoise::noise((float) pointX / (36.f * TILE_SIZE),
-                                            (float) pointY / (36.f * TILE_SIZE));
+            float val = SimplexNoise::noise((float) ((px * TILE_SIZE) + xOffset) / (36.f * TILE_SIZE),
+                                            (float) ((py * TILE_SIZE) + yOffset) / (36.f * TILE_SIZE));
 
-            if (val < -0.4) {
+            if (val < -0.4)
                 terrain.push_back(&Tile::WATER);
-            } else if (val < -0.2) {
+            else if (val < -0.2)
                 terrain.push_back(&Tile::SAND);
-            } else if (val < 0.7) {
+            else if (val < 0.7)
                 terrain.push_back(&Tile::GRASS);
-            } else {
+            else
                 terrain.push_back(&Tile::STONE);
-            }
         }
     }
 }
 
 void World::renderTerrain() {
-    int heightWithPadding = height + (2 * WORLD_PADDING);
-    int widthWithPadding = width + (2 * WORLD_PADDING);
+    int heightWithPadding = height + (2 * WORLD_PADDING) + (y % TILE_SIZE) + (TILE_SIZE - (y + height) % TILE_SIZE);
+    int widthWithPadding = width + (2 * WORLD_PADDING) + (x % TILE_SIZE) + (TILE_SIZE - (x + width) % TILE_SIZE);
 
     // Pre-render terrain for faster rendering
     background = Renderer::createTexture(widthWithPadding, heightWithPadding, SDL_TEXTUREACCESS_TARGET);
@@ -195,7 +185,7 @@ void World::renderTerrain() {
 
 void World::render() {
     if (World::background == nullptr) renderTerrain();
-    Renderer::copy(World::background, -WORLD_PADDING, -WORLD_PADDING);
+    Renderer::copy(World::background, -(WORLD_PADDING + (x % TILE_SIZE)), -(WORLD_PADDING + (y % TILE_SIZE)));
 
     for (const auto &f : food) {
         f->render();
@@ -455,7 +445,8 @@ LivingEntity *World::findNearestSurvivingEnemy(LivingEntity *le) {
     LivingEntity *n = nullptr;
     int dist = 0;
     for (const auto &e : living) {
-        if (toRemoveLiving(e) || *e == *le || le->difference(*e) < 0.04 || !e->visibleOn(tileAt(le->x, le->y))) continue;
+        if (toRemoveLiving(e) || *e == *le || le->difference(*e) < 0.04 || !e->visibleOn(tileAt(le->x, le->y)))
+            continue;
         int tempDist = e->getSquaredDistance(le->x, le->y);
         if (tempDist <= VIEW_RANGE_SQUARED && (!n || tempDist < dist)) {
             n = e;
@@ -640,23 +631,9 @@ void World::calcPaddingRects() {
         otherWorld.w += 2 * WORLD_PADDING;
         otherWorld.h += 2 * WORLD_PADDING;
 
-        /*
-         * 2 | 3 | 4
-         * 1 | 0 | 5
-         * 8 | 7 | 6
-         */
-        Rect intersection;
-        for (int j = 0; j < 9; j++) {
-            if (j == 1 || j == 7 || j == 8) otherWorld.p.x -= overallWidth;
-            if (j == 2) otherWorld.p.y -= overallHeight;
-            if (j == 3 || j == 4) otherWorld.p.x += overallWidth;
-            if (j == 5 || j == 6) otherWorld.p.y += overallHeight;
-
-            // Intersection?
-            intersection = calcIntersection(world, otherWorld);
-            if (intersection.w > 0 && intersection.h > 0)
-                paddingRects.push_back({(int) i, intersection});
-        }
+        Rect intersection = calcIntersection(world, otherWorld);
+        if (intersection.w > 0 && intersection.h > 0)
+            paddingRects.push_back({(int) i, intersection});
     }
 }
 
@@ -763,19 +740,14 @@ int *splitRect(int num, int width, int height) {
 
 Tile *World::tileAt(int px, int py) {
     if (px < x - WORLD_PADDING || px >= x + width + WORLD_PADDING ||
-        py < y - WORLD_PADDING || py >= y + height + WORLD_PADDING) {
+        py < y - WORLD_PADDING || py >= y + height + WORLD_PADDING)
         return &Tile::INVALID;
-    } else {
-        int xOffset = x - WORLD_PADDING;
-        int yOffset = y - WORLD_PADDING;
-        if (xOffset < 0) xOffset += overallWidth;
-        if (yOffset < 0) yOffset += overallHeight;
 
-        px = (px - xOffset + overallWidth) % overallWidth;
-        py = (py - yOffset + overallHeight) % overallHeight;
+    int xOffset = x - WORLD_PADDING - (x % TILE_SIZE);
+    int yOffset = y - WORLD_PADDING - (y % TILE_SIZE);
+    int widthWithPadding = width + (2 * WORLD_PADDING) + (x % TILE_SIZE) + (TILE_SIZE - (x + width) % TILE_SIZE);
 
-        return terrain[(py / TILE_SIZE) * ((width + (2 * WORLD_PADDING)) / TILE_SIZE) + (px / TILE_SIZE)];
-    }
+    return terrain[((py - yOffset) / TILE_SIZE) * (widthWithPadding / TILE_SIZE) + ((px - xOffset) / TILE_SIZE)];
 }
 
 //TODO cleanup for destroyed entities
