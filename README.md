@@ -27,6 +27,10 @@ be** executed on 10 nodes with this configuration!
 
 - **Random Seed** `-s` (optional): Run application with given seed.
 
+- **Amount of entities** `e` (optional): Specify the amount of entities to spawn at start-up on the **entire** world.
+Entities will be distributed equally to all ranks. Format for argument: `{AMOUNT_LIVINGS},{AMOUNT_FOOD}`. Default is
+`50,100`.
+
 - **Log File** `-l` (optional): Log data about application into a `.csv` file. Filename has to be specified within this
 option. The following will be appended to the filename: `-{MPI_Rank}.csv`.
 

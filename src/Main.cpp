@@ -1,4 +1,5 @@
 //TODO to disable asserts in release: #define NDEBUG
+#include <sstream>
 #include <iostream>
 #include <cstdlib>
 #include <poll.h>
@@ -317,6 +318,7 @@ int main(int argc, char **argv) {
     bool maimuc = false, render = false;
     float foodRate = 1.f;  //food spawned per 2000 tiles per tick
     long ticks = -1;
+    long livings = 50, food = 100;
     std::string filename;
 
     std::random_device rd;
@@ -325,7 +327,7 @@ int main(int argc, char **argv) {
     // Scan program arguments
     opterr = 0;
     int c;
-    while ((c = getopt(argc, argv, "h:w:m::f:r::t:s:l:")) != -1) {
+    while ((c = getopt(argc, argv, "h:w:m::f:r::t:s:l:e:")) != -1) {
         char *ptr = nullptr;
         switch (c) {
             // Render flag
@@ -401,6 +403,32 @@ int main(int argc, char **argv) {
                 }
                 break;
 
+                // Amount of entities
+            case 'e':
+                if (optarg != nullptr) {
+                    if (optarg[0] == '-') {
+                        std::cerr
+                                << "Option -e requires a string specifying the amount of livings and food to spawn on the"
+                                << "entire world. Format: {Livings},{Food}" << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                    std::istringstream opts(optarg);
+                    std::string l, f;
+                    getline(opts, l, ',');
+                    getline(opts, f, ',');
+                    livings = strtol(l.c_str(), &ptr, 10);
+                    if (*ptr) {
+                        std::cerr << "Option -e requires two integers delimited by a comma!" << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                    food = strtol(f.c_str(), &ptr, 10);
+                    if (*ptr) {
+                        std::cerr << "Option -e requires two integers delimited by a comma!" << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                }
+                break;
+
                 // Unknown Option
             case '?':
                 if (optopt == 'h' || optopt == 'w' || optopt == 't') {
@@ -411,6 +439,10 @@ int main(int argc, char **argv) {
                 } else if (optopt == 'l') {
                     std::cerr << "Option -l requires a string (path to file) specifying the logging location!"
                               << std::endl;
+                } else if (optopt == 'e') {
+                    std::cerr << "Option -e requires a string specifying the amount of livings and food to spawn on the"
+                              << "entire world. Format: {Livings},{Food}" << std::endl;
+
                 } else {
                     std::cerr << "Unknown option character -" << (char) optopt << std::endl;
                 }
@@ -439,7 +471,7 @@ int main(int argc, char **argv) {
     }
 
     //============================= ADD TEST ENTITIES =============================
-    for (int i = 0; i < 10; i++) {
+    for (long i = 0; i < (livings / World::getMPINodes()); i++) {
         auto *brain = new Brain(6, 8, 4, 4, 10, 4);
         auto *entity = new LivingEntity(
                 getRandomIntBetween(0, dim.w) + dim.p.x,
@@ -455,7 +487,7 @@ int main(int argc, char **argv) {
 
         World::addLivingEntity(entity, false);
     }
-    for (int i = 0; i < 100; i++) {
+    for (long i = 0; i < (food / World::getMPINodes()); i++) {
         World::addFoodEntity(
                 new FoodEntity(
                         getRandomIntBetween(0, dim.w) + dim.p.x,
