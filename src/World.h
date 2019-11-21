@@ -84,7 +84,7 @@ private:
     static std::vector<MPISendEntity> foodToSendToNeighbors;
     static std::vector<MPISendEntity> removedFoodToSendToNeighbors;
 
-    static std::vector<WorldDim> worlds;
+    static WorldDim *worlds;
     static std::vector<PaddingRect> paddingRects;
     static std::vector<int> paddingRanks;
 
@@ -146,7 +146,7 @@ public:
     static std::vector<PaddingRect> *getPaddingRects();
 
 private:
-    static WorldDim calcWorldDimensions(int rank, int num);
+    static void calcWorldDimensions(WorldDim *dims, int left, int right, int px, int py, int w, int h);
 
     static void calcPaddingRects();
 
