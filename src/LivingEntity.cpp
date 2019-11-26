@@ -134,6 +134,10 @@ void LivingEntity::tick() {
         float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
         int xTo = x + (int) std::round(TILE_SIZE * speed * agility * 2 * std::cos(rotation * PI));
         int yTo = y + (int) std::round(TILE_SIZE * speed * agility * 2 * std::sin(rotation * PI));
+        if (xTo < 0) xTo = 0;
+        if (yTo < 0) yTo = 0;
+        if (xTo >= World::overallWidth) xTo = World::overallWidth - 1;
+        if (yTo >= World::overallHeight) yTo = World::overallHeight - 1;
         if ((*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2)
             || (*World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8)) {
             x = (xTo + World::overallWidth) % World::overallWidth;
