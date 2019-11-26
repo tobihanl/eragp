@@ -45,6 +45,11 @@ struct PaddingRect {
     struct Rect rect;
 };
 
+struct NearestLiving {
+    LivingEntity *mate;
+    LivingEntity *enemy;
+};
+
 typedef struct Rect WorldDim;
 
 //=================================== Class ===================================
@@ -127,15 +132,9 @@ public:
     //non-surviving functions: always base thinking input on last tick, bot some kind of half-tick
     static FoodEntity *findNearestFood(int px, int py, bool surviving);
 
-    /**
-     * @param id    ID of the LivingEntity, which will be excluded for the
-     *              search of the nearest LivingEntity
-     */
-    static LivingEntity *findNearestLiving(int px, int py, int id, bool surviving);
+    static NearestLiving findNearestLiving(LivingEntity *le, bool surviving);
 
-    static LivingEntity *findNearestEnemy(LivingEntity *le, bool surviving);
-
-    static LivingEntity *findNearestMate(LivingEntity *le, bool surviving);
+    static LivingEntity *findNearestLivingToPoint(int px, int py);
 
     static bool addLivingEntity(LivingEntity *e, bool received);
 
