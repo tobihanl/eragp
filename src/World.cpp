@@ -49,6 +49,7 @@ int World::maxTicksToSkip = 0;
 bool World::isSetup = false;
 
 SDL_Texture *World::background = nullptr;
+SDL_Texture *World::entities = nullptr;
 
 std::vector<Tile *> World::terrain = std::vector<Tile *>();
 
@@ -128,6 +129,9 @@ void World::finalize() {
     food.clear();
     living.clear();
 
+    Renderer::cleanup(background);
+    Renderer::cleanup(entities);
+
     delete[] worlds;
 }
 
@@ -166,13 +170,13 @@ void World::generateTerrain() {
     }
 }
 
-void World::renderTerrain() {
+SDL_Texture *World::renderTerrain() {
     int heightWithPadding = height + (2 * WORLD_PADDING);
     int widthWithPadding = width + (2 * WORLD_PADDING);
 
     // Pre-render terrain for faster rendering
-    background = Renderer::createTexture(widthWithPadding, heightWithPadding, SDL_TEXTUREACCESS_TARGET);
-    Renderer::setTarget(background);
+    SDL_Texture *tex = Renderer::createTexture(widthWithPadding, heightWithPadding, SDL_TEXTUREACCESS_TARGET);
+    Renderer::setTarget(tex);
     Renderer::clear();
 
     // Copy textures to background
@@ -185,20 +189,23 @@ void World::renderTerrain() {
     }
 
     // Change render target back to default
-    Renderer::present();
     Renderer::setTarget(nullptr);
+    return tex;
 }
 
 void World::render() {
-    if (World::background == nullptr) renderTerrain();
-    Renderer::copy(World::background, -WORLD_PADDING, -WORLD_PADDING);
+    Renderer::copy(background, -WORLD_PADDING, -WORLD_PADDING);
 
+    // Render entities
+    Renderer::setTarget(entities);
     for (const auto &f : food) {
         f->render();
     }
     for (const auto &e : living) {
         e->render();
     }
+    Renderer::setTarget(nullptr);
+    Renderer::copy(entities, 0, 0);
 
     // Show the rank of the node in the upper left of the window
     SDL_Texture *t = Renderer::renderFont(std::to_string(MPI_Rank), 25, {255, 255, 255, 255}, "font.ttf");
@@ -257,6 +264,9 @@ void World::tick() {
             // Send entity to other node
             livingEntitiesToMoveToNeighbors.push_back({static_cast<int>(rankAt(e->x, e->y)), e});
             removeLivingEntity(e);
+
+            // Render entity as it will be deleted before world will be rendered!
+            if (Renderer::getIsSetup()) e->render();
 
             /* TODO: Re-enable! (Right now, a node NOT being a neighbor gets data sent with the code below)
             // Send entity to nodes having a padding at this position (excluding THIS node!)

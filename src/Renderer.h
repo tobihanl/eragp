@@ -42,6 +42,8 @@ public:
     static SDL_Texture *
     renderFont(const std::string &text, int size, const SDL_Color &color, const std::string &fontFile);
 
+    static bool getIsSetup() { return isSetup; }
+
 private:
     static void logSDLError(std::ostream &, const std::string &);
 };
