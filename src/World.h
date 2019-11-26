@@ -68,8 +68,6 @@ private:
 
     static bool isSetup;
 
-    static SDL_Texture *background;
-
     //TODO change list implementation and handle shared data
     static std::vector<FoodEntity *> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
     static std::vector<LivingEntity *> living;
@@ -84,7 +82,7 @@ private:
     static std::vector<MPISendEntity> foodToSendToNeighbors;
     static std::vector<MPISendEntity> removedFoodToSendToNeighbors;
 
-    static std::vector<WorldDim> worlds;
+    static WorldDim *worlds;
     static std::vector<PaddingRect> paddingRects;
     static std::vector<int> paddingRanks;
 
@@ -98,6 +96,9 @@ public:
     static int overallWidth;
     static int overallHeight;
 
+    static SDL_Texture *background;
+    static SDL_Texture *entities;
+
     static void setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate);
 
     static void finalize();
@@ -109,6 +110,8 @@ public:
     static WorldDim getWorldDim();
 
     static WorldDim getWorldDimOf(int rank);
+
+    static SDL_Texture *renderTerrain();
 
     static void render();
 
@@ -146,13 +149,11 @@ public:
     static std::vector<PaddingRect> *getPaddingRects();
 
 private:
-    static WorldDim calcWorldDimensions(int rank, int num);
+    static void calcWorldDimensions(WorldDim *dims, int rankStart, int rankEnd, int px, int py, int w, int h);
 
     static void calcPaddingRects();
 
     static void generateTerrain();
-
-    static void renderTerrain();
 
     static bool toAddLiving(LivingEntity *e);
 
