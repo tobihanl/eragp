@@ -149,7 +149,7 @@ public:
     static std::vector<PaddingRect> *getPaddingRects();
 
 private:
-    static void calcWorldDimensions(WorldDim *dims, int left, int right, int px, int py, int w, int h);
+    static void calcWorldDimensions(WorldDim *dims, int rankStart, int rankEnd, int px, int py, int w, int h);
 
     static void calcPaddingRects();
 

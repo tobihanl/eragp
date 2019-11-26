@@ -582,8 +582,8 @@ bool World::removeFoodEntity(FoodEntity *e, bool received) {
     return false;
 }
 
-void World::calcWorldDimensions(WorldDim *dims, int left, int right, int px, int py, int w, int h) {
-    int n = right - left + 1;
+void World::calcWorldDimensions(WorldDim *dims, int rankStart, int rankEnd, int px, int py, int w, int h) {
+    int n = rankEnd - rankStart + 1;
 
     // No split?
     if (n < 1) return;
@@ -598,36 +598,36 @@ void World::calcWorldDimensions(WorldDim *dims, int left, int right, int px, int
     if (n == 3) {
         if (w > h) {
             int newW = w / 3;
-            dims[left] = {{px, py}, newW, h};
-            dims[left + 1] = {{px + newW, py}, newW, h};
-            dims[left + 2] = {{px + 2 * newW, py}, newW + (w % 3), h};
+            dims[rankStart] = {{px, py}, newW, h};
+            dims[rankStart + 1] = {{px + newW, py}, newW, h};
+            dims[rankStart + 2] = {{px + 2 * newW, py}, newW + (w % 3), h};
         } else {
             int newH = h / 3;
-            dims[left] = {{px, py}, w, newH};
-            dims[left + 1] = {{px, py + newH}, w, newH};
-            dims[left + 2] = {{px, py + 2 * newH}, w, newH + (h % 3)};
+            dims[rankStart] = {{px, py}, w, newH};
+            dims[rankStart + 1] = {{px, py + newH}, w, newH};
+            dims[rankStart + 2] = {{px, py + 2 * newH}, w, newH + (h % 3)};
         }
         return;
     }
 
-    int middle = (left + right) / 2;
+    int middle = (rankStart + rankEnd) / 2;
     if (w > h) {
         int newW = w / 2;
         if (n == 2) {
-            dims[left] = {{px, py}, newW, h};
-            dims[left + 1] = {{px + newW, py}, newW + (w % 2), h};
+            dims[rankStart] = {{px, py}, newW, h};
+            dims[rankStart + 1] = {{px + newW, py}, newW + (w % 2), h};
         } else {
-            calcWorldDimensions(dims, left, middle, px, py, newW, h);
-            calcWorldDimensions(dims, middle + 1, right, px + newW, py, newW + (w % 2), h);
+            calcWorldDimensions(dims, rankStart, middle, px, py, newW, h);
+            calcWorldDimensions(dims, middle + 1, rankEnd, px + newW, py, newW + (w % 2), h);
         }
     } else {
         int newH = h / 2;
         if (n == 2) {
-            dims[left] = {{px, py}, w, newH};
-            dims[left + 1] = {{px, py + newH}, w, newH + (h % 2)};
+            dims[rankStart] = {{px, py}, w, newH};
+            dims[rankStart + 1] = {{px, py + newH}, w, newH + (h % 2)};
         } else {
-            calcWorldDimensions(dims, left, middle, px, py, w, newH);
-            calcWorldDimensions(dims, middle + 1, right, px, py + newH, w, newH + (h % 2));
+            calcWorldDimensions(dims, rankStart, middle, px, py, w, newH);
+            calcWorldDimensions(dims, middle + 1, rankEnd, px, py + newH, w, newH + (h % 2));
         }
     }
 }
