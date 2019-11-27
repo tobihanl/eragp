@@ -106,6 +106,7 @@ public:
 
     static SDL_Texture *background;
     static SDL_Texture *entities;
+    static SDL_Texture *rankTexture;
 
     /**
      * Initialize the world, which is part of the overall world and set

@@ -560,4 +560,6 @@ void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padd
     World::background = World::renderTerrain();
     World::entities = Renderer::createTexture(dim.w, dim.h, SDL_TEXTUREACCESS_TARGET);
     SDL_SetTextureBlendMode(World::entities, SDL_BLENDMODE_BLEND);
+    World::rankTexture = Renderer::renderFont(std::to_string(World::getMPIRank()), 25, {255, 255, 255, 255},
+                                              "font.ttf");
 }

@@ -49,6 +49,7 @@ bool World::isSetup = false;
 
 SDL_Texture *World::background = nullptr;
 SDL_Texture *World::entities = nullptr;
+SDL_Texture *World::rankTexture = nullptr;
 
 std::vector<Tile *> World::terrain = std::vector<Tile *>();
 
@@ -121,6 +122,7 @@ void World::finalize() {
 
     Renderer::cleanup(background);
     Renderer::cleanup(entities);
+    Renderer::cleanup(rankTexture);
 
     delete[] worlds;
 }
@@ -168,11 +170,6 @@ SDL_Texture *World::renderTerrain() {
         }
     }
 
-    // Show the rank of the node in the upper left on the background
-    SDL_Texture *t = Renderer::renderFont(std::to_string(MPI_Rank), 25, {255, 255, 255, 255}, "font.ttf");
-    Renderer::copy(t, WORLD_PADDING + 10, WORLD_PADDING + 10);
-    Renderer::cleanup(t);
-
     // Change render target back to default
     Renderer::setTarget(nullptr);
     return tex;
@@ -193,8 +190,7 @@ void World::render() {
     Renderer::copy(entities, 0, 0);
 
     // Show the rank of the node in the upper left of the window
-    SDL_Texture *t = Renderer::renderFont(std::to_string(MPI_Rank), 25, {255, 255, 255, 255}, "font.ttf");
-    Renderer::copy(t, 10, 10);
+    Renderer::copy(rankTexture, 10, 10);
 }
 
 void World::tick() {
