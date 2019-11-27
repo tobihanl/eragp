@@ -7,7 +7,8 @@
 #include "Rng.h"
 
 #define PI 3.14159265
-#define AMOUNT_OF_PARAMS 10
+#define AMOUNT_OF_PARAMS 10 //TODO problem with same macro name?
+#define MAX_ENERGY 9999
 
 SDL_Texture *LivingEntity::digits[10];
 
@@ -62,7 +63,7 @@ static int getNumDigits(int x) {
     else if (x < 100) return 2;
     else if (x < 1000) return 3;
     else if (x < 10000) return 4;
-    else if (x < 100000) return 5;
+    //else if (x < 100000) return 5;
     assert(false && "Too much energy");
 }
 
@@ -88,6 +89,7 @@ void LivingEntity::render() {
 
 void LivingEntity::tick() {
     //################################# Breed ################################# at the beginning, so spawning happens before move ->on the right node
+    int energy = this->energy;
     if (cooldown > 0) cooldown--;
     if (cooldown == 0 && energy >= 60 * energyLossWithMove) {
         //energy -= 60; leaving out might give better results
@@ -113,11 +115,12 @@ void LivingEntity::tick() {
     LivingEntity *nearestMate = World::findNearestMate(this);
 
     Matrix continuousIn(6, 1, {
-            (float) (nearestFood ? nearestFood->getDistance(x, y) : VIEW_RANGE * 2),
-            (float) (nearestEnemy ? nearestEnemy->getDistance(x, y) : VIEW_RANGE * 2),
-            (float) (nearestMate ? nearestMate->getDistance(x, y) : VIEW_RANGE * 2),
-            (float) energy, (float) (nearestMate ? nearestMate->energy : VIEW_RANGE * 2),
-            nearestEnemy ? (float) nearestEnemy->size * 500 : 0.f
+            (nearestFood ? nearestFood->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
+            (nearestEnemy ? nearestEnemy->getDistance(x, y) / VIEW_RANGE * 0.8f: 1.f),
+            (nearestMate ? nearestMate->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
+            (float) energy / MAX_ENERGY,
+            (nearestMate ? nearestMate->energy / MAX_ENERGY * 0.8f: 1.f),//TODO be careful with synchronization. Could become nondeterministic if it is unspecified whether mate energy changes before or after access
+            nearestEnemy ? nearestEnemy->size : 0.f
     });
     Matrix normalizedIn(4, 1, {
             (float) (nearestFood ? std::atan2(nearestFood->x - x, nearestFood->y - y) / PI : rotation),
@@ -134,6 +137,7 @@ void LivingEntity::tick() {
         float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
         int xTo = x + (int) std::round(TILE_SIZE * speed * agility * 2 * std::cos(rotation * PI));
         int yTo = y + (int) std::round(TILE_SIZE * speed * agility * 2 * std::sin(rotation * PI));
+        if(brain->printThink) std::cout << "xDif: " << (xTo - x) << " yDif: " << (yTo-y) << std::endl;
         if ((*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2)
             || (*World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8)) {
             x = (xTo + World::overallWidth) % World::overallWidth;
@@ -165,7 +169,7 @@ void LivingEntity::tick() {
                                                                                            : nullptr; //TODO synchronize from here
         }
         if (nearestMate) {
-            nearestMate->energy += 55;
+            nearestMate->addEnergy(60);
             energy -= 60;
         }
     }
@@ -187,6 +191,12 @@ void LivingEntity::tick() {
     energy -= thoughts.move ? energyLossWithMove : energyLossWithoutMove;
     assert(thoughts.move ? energyLossWithMove : energyLossWithoutMove > 0 && "Entity not losing Energy");
     if (energy <= 0) World::removeLivingEntity(this);
+    if(energy > MAX_ENERGY) {
+        this->energy = MAX_ENERGY;
+    } else {
+        this->energy = energy;
+    }
+    brain->printThink = false; //TODO remove
 }
 
 int LivingEntity::energyLossPerTick(bool move, float speed, float size) {
@@ -207,6 +217,14 @@ float LivingEntity::difference(const LivingEntity &e) {
                      + (e.speed - speed) * (e.speed - speed)
                      + (e.size - size) * (e.size - size)
                      + (e.waterAgility - waterAgility) * (e.waterAgility - waterAgility));//TODO consider brain
+}
+
+void LivingEntity::addEnergy(int e) {
+    if(energy + e > MAX_ENERGY) {
+        energy = MAX_ENERGY;
+    } else {
+        energy += e;
+    }
 }
 
 int LivingEntity::serializedSize() {
@@ -239,6 +257,7 @@ std::ostream &operator<<(std::ostream &strm, const LivingEntity &l) {
     strm << "Entity:[id: " << l.id << ", x: " << l.x << ", y: " << l.y << ", color:{r: " << ((int) l.color.r) << ", g: "
          << ((int) l.color.g) << ", b: " << ((int) l.color.b) << "}, speed: " << l.speed << ", size: " << l.size
          << ", waterAgility: " << l.waterAgility << ", brainLayers: " << l.brain->getNumLayers() << "]";
+    strm << *l.brain;
     return strm;
 }
 

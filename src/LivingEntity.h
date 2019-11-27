@@ -41,6 +41,8 @@ public:
     bool visibleOn(Tile *tile);
     float difference(const LivingEntity &e);
 
+    void addEnergy(int energy);
+
     int serializedSize() override;
 
     void serialize(void *&ptr) override;
