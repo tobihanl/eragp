@@ -110,15 +110,16 @@ void renderLoop(long ticks) {
                     // Mouse clicked?
                 case SDL_MOUSEBUTTONDOWN:
                     if (e.button.button == SDL_BUTTON_LEFT) {
-                        LivingEntity *nearest = World::findNearestLiving(dim.p.x + e.button.x, dim.p.y + e.button.y,
-                                                                         -1, false);
+                        LivingEntity *nearest = World::findNearestLivingToPoint(dim.p.x + e.button.x,
+                                                                                dim.p.y + e.button.y);
 
                         if (similarityMode) {
                             if (nearest) selectedEntities[countSelectedEntities++] = nearest;
 
                             // Two entities selected?
                             if (countSelectedEntities >= 2) {
-                                std::cout << "Difference: " << (*selectedEntities[0]).difference(*selectedEntities[1])
+                                std::cout << "Squared difference: " << (*selectedEntities[0]).squaredDifference(
+                                        *selectedEntities[1])
                                           << std::endl;
                                 selectedEntities[0] = selectedEntities[1] = nullptr;
                                 countSelectedEntities = 0;
