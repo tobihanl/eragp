@@ -189,16 +189,6 @@ void LivingEntity::tick() {
     if (energy <= 0) World::removeLivingEntity(this);
 }
 
-//TODO consider new properties when added, maybe switch to squaredDistance?
-float LivingEntity::difference(const LivingEntity &e) {
-    return std::sqrt(((float) (e.color.r - color.r) / 255.f) * ((float) (e.color.r - color.r) / 255.f)
-                     + ((float) (e.color.g - color.g) / 255.f) * ((float) (e.color.g - color.g) / 255.f)
-                     + ((float) (e.color.b - color.b) / 255.f) * ((float) (e.color.b - color.b) / 255.f)
-                     + (e.speed - speed) * (e.speed - speed)
-                     + (e.size - size) * (e.size - size)
-                     + (e.waterAgility - waterAgility) * (e.waterAgility - waterAgility));//TODO consider brain
-}
-
 /**
  * Writes the data to the given point in memory and sets the pointer to point to the next free byte after the written data
  * Only works on platforms with sizeof(int) = sizeof(float) = 32 bit

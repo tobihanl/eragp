@@ -15,6 +15,8 @@
 #define VIEW_RANGE_SQUARED 25600 //160*160
 #define VIEW_RANGE 160
 
+#define ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD 0.0016
+
 #define MAX_FOOD_INTERVAL 1000000 //Can be much bigger because it is equally distributed
 
 #define MSGS_PER_NEIGHBOR 3

@@ -43,7 +43,15 @@ public:
 
     void tick() override;
 
-    float difference(const LivingEntity &e);
+    //TODO consider new properties when added
+    float squaredDifference(const LivingEntity &e) {
+        return ((float) (e.color.r - color.r) / 255.f) * ((float) (e.color.r - color.r) / 255.f)
+               + ((float) (e.color.g - color.g) / 255.f) * ((float) (e.color.g - color.g) / 255.f)
+               + ((float) (e.color.b - color.b) / 255.f) * ((float) (e.color.b - color.b) / 255.f)
+               + (e.speed - speed) * (e.speed - speed)
+               + (e.size - size) * (e.size - size)
+               + (e.waterAgility - waterAgility) * (e.waterAgility - waterAgility);//TODO consider brain
+    }
 
     void serialize(void *&ptr) override;
 

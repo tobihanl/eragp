@@ -118,7 +118,8 @@ void renderLoop(long ticks) {
 
                             // Two entities selected?
                             if (countSelectedEntities >= 2) {
-                                std::cout << "Difference: " << (*selectedEntities[0]).difference(*selectedEntities[1])
+                                std::cout << "Squared difference: " << (*selectedEntities[0]).squaredDifference(
+                                        *selectedEntities[1])
                                           << std::endl;
                                 selectedEntities[0] = selectedEntities[1] = nullptr;
                                 countSelectedEntities = 0;

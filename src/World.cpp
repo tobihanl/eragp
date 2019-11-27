@@ -407,7 +407,7 @@ NearestLiving World::findNearestLiving(LivingEntity *le, bool surviving) {
     for (const auto &e : living) {
         if (*e == *le || (surviving && toRemoveLiving(e))) continue;
 
-        bool isEnemy = le->difference(*e) >= 0.04;
+        bool isEnemy = le->squaredDifference(*e) >= ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD;
         if (isEnemy && !e->visibleOn(tileAt(le->x, le->y))) continue;
 
         int dist = e->getSquaredDistance(le->x, le->y);
