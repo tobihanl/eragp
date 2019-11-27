@@ -387,11 +387,11 @@ void World::receiveEntities(int rank, int tag) {
 
 FoodEntity *World::findNearestFood(int px, int py, bool surviving) {
     FoodEntity *f = nullptr;
-    int dist = 0;
+    int dist = VIEW_RANGE_SQUARED + 1;
     for (const auto &e : food) {
         if (surviving && toRemoveFood(e)) continue;
         int tempDist = e->getSquaredDistance(px, py);
-        if (tempDist <= VIEW_RANGE_SQUARED && (!f || tempDist < dist)) {
+        if (tempDist <= VIEW_RANGE_SQUARED && tempDist < dist) {
             f = e;
             dist = tempDist;
         }
