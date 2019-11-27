@@ -426,10 +426,10 @@ NearestLiving World::findNearestLiving(LivingEntity *le, bool surviving) {
 
 LivingEntity *World::findNearestLivingToPoint(int px, int py) {
     LivingEntity *n = nullptr;
-    int dist = 0;
+    int dist = VIEW_RANGE_SQUARED + 1;
     for (const auto &e : living) {
         int tempDist = e->getSquaredDistance(px, py);
-        if (tempDist <= VIEW_RANGE_SQUARED && (!n || tempDist < dist)) {
+        if (tempDist <= VIEW_RANGE_SQUARED && tempDist < dist) {
             n = e;
             dist = tempDist;
         }
