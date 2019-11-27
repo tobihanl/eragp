@@ -57,7 +57,9 @@ public:
 
     void serialize(void *&ptr);
 
-    int getNumLayers();
+    int getNumLayers() {
+        return numLayers;
+    }
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_DESKTOP_BRAIN_H
