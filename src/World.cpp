@@ -6,8 +6,6 @@
 #include "Rng.h"
 #include "Log.h"
 
-int *splitRect(int num, int width, int height);
-
 // TODO [VERY IMPORTANT!] Implement checking if entity already exists in a vector to prevent duplicates!
 
 std::vector<FoodEntity *> World::food = std::vector<FoodEntity *>();
@@ -22,7 +20,7 @@ std::vector<MPISendEntity> World::livingEntitiesToMoveToNeighbors = std::vector<
 std::vector<MPISendEntity> World::foodToSendToNeighbors = std::vector<MPISendEntity>();
 std::vector<MPISendEntity> World::removedFoodToSendToNeighbors = std::vector<MPISendEntity>();
 
-std::vector<WorldDim> World::worlds = std::vector<WorldDim>();
+WorldDim *World::worlds = nullptr;
 std::vector<PaddingRect> World::paddingRects = std::vector<PaddingRect>();
 std::vector<int> World::paddingRanks = std::vector<int>();
 
@@ -50,6 +48,7 @@ int World::maxTicksToSkip = 0;
 bool World::isSetup = false;
 
 SDL_Texture *World::background = nullptr;
+SDL_Texture *World::entities = nullptr;
 
 std::vector<Tile *> World::terrain = std::vector<Tile *>();
 
@@ -69,13 +68,9 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
         }
 
         // Get dimensions for all worlds
+        worlds = new WorldDim[10];
         for (int i = 0; i < NUMBER_OF_MAIMUC_NODES; i++)
-            worlds.push_back({
-                                     ((i % 2) == 0) ? 0 : 800,
-                                     (i / 2) * 600,
-                                     800,
-                                     600
-                             });
+            worlds[i] = {((i % 2) == 0) ? 0 : 800, (i / 2) * 600, 800, 600};
 
         overallWidth = 800 * 2;
         overallHeight = 600 * 5;
@@ -84,8 +79,8 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
         overallHeight = newOverallHeight;
 
         // Get dimensions for all worlds
-        for (int i = 0; i < MPI_Nodes; i++)
-            worlds.push_back(calcWorldDimensions(i, MPI_Nodes));
+        worlds = new WorldDim[MPI_Nodes];
+        calcWorldDimensions(worlds, 0, MPI_Nodes - 1, 0, 0, overallWidth, overallHeight);
     }
 
     // Set dimension for this world
@@ -125,50 +120,43 @@ void World::finalize() {
     living.clear();
 
     Renderer::cleanup(background);
+    Renderer::cleanup(entities);
+
+    delete[] worlds;
 }
 
 void World::generateTerrain() {
-    int heightWithPadding = height + (2 * WORLD_PADDING);
-    int widthWithPadding = width + (2 * WORLD_PADDING);
+    int heightWithPadding = height + (2 * WORLD_PADDING) + (y % TILE_SIZE) + (TILE_SIZE - (y + height) % TILE_SIZE);
+    int widthWithPadding = width + (2 * WORLD_PADDING) + (x % TILE_SIZE) + (TILE_SIZE - (x + width) % TILE_SIZE);
 
-    int xOffset = x - WORLD_PADDING;
-    int yOffset = y - WORLD_PADDING;
-    if (xOffset < 0) xOffset += overallWidth;
-    if (yOffset < 0) yOffset += overallHeight;
+    int xOffset = x - WORLD_PADDING - (x % TILE_SIZE);
+    int yOffset = y - WORLD_PADDING - (y % TILE_SIZE);
 
     for (int py = 0; py < heightWithPadding / TILE_SIZE; py++) {
         for (int px = 0; px < widthWithPadding / TILE_SIZE; px++) {
-            int pointX = (px * TILE_SIZE) + xOffset;
-            int pointY = (py * TILE_SIZE) + yOffset;
-
-            // Overlap?
-            if (pointX >= overallWidth) pointX -= overallWidth;
-            if (pointY >= overallHeight) pointY -= overallHeight;
-
             // Noise
-            float val = SimplexNoise::noise((float) pointX / (36.f * TILE_SIZE),
-                                            (float) pointY / (36.f * TILE_SIZE));
+            float val = SimplexNoise::noise((float) ((px * TILE_SIZE) + xOffset) / (36.f * TILE_SIZE),
+                                            (float) ((py * TILE_SIZE) + yOffset) / (36.f * TILE_SIZE));
 
-            if (val < -0.4) {
+            if (val < -0.4)
                 terrain.push_back(&Tile::WATER);
-            } else if (val < -0.2) {
+            else if (val < -0.2)
                 terrain.push_back(&Tile::SAND);
-            } else if (val < 0.7) {
+            else if (val < 0.7)
                 terrain.push_back(&Tile::GRASS);
-            } else {
+            else
                 terrain.push_back(&Tile::STONE);
-            }
         }
     }
 }
 
-void World::renderBackground() {
-    int heightWithPadding = height + (2 * WORLD_PADDING);
-    int widthWithPadding = width + (2 * WORLD_PADDING);
+SDL_Texture *World::renderTerrain() {
+    int heightWithPadding = height + (2 * WORLD_PADDING) + (y % TILE_SIZE) + (TILE_SIZE - (y + height) % TILE_SIZE);
+    int widthWithPadding = width + (2 * WORLD_PADDING) + (x % TILE_SIZE) + (TILE_SIZE - (x + width) % TILE_SIZE);
 
     // Pre-render terrain for faster rendering
-    background = Renderer::createTexture(widthWithPadding, heightWithPadding, SDL_TEXTUREACCESS_TARGET);
-    Renderer::setTarget(background);
+    SDL_Texture *tex = Renderer::createTexture(widthWithPadding, heightWithPadding, SDL_TEXTUREACCESS_TARGET);
+    Renderer::setTarget(tex);
     Renderer::clear();
 
     // Copy textures to background
@@ -186,20 +174,27 @@ void World::renderBackground() {
     Renderer::cleanup(t);
 
     // Change render target back to default
-    Renderer::present();
     Renderer::setTarget(nullptr);
+    return tex;
 }
 
 void World::render() {
-    if (World::background == nullptr) renderBackground();
-    Renderer::copy(World::background, -WORLD_PADDING, -WORLD_PADDING);
+    Renderer::copy(background, -(WORLD_PADDING + (x % TILE_SIZE)), -(WORLD_PADDING + (y % TILE_SIZE)));
 
+    // Render entities
+    Renderer::setTarget(entities);
     for (const auto &f : food) {
         f->render();
     }
     for (const auto &e : living) {
         e->render();
     }
+    Renderer::setTarget(nullptr);
+    Renderer::copy(entities, 0, 0);
+
+    // Show the rank of the node in the upper left of the window
+    SDL_Texture *t = Renderer::renderFont(std::to_string(MPI_Rank), 25, {255, 255, 255, 255}, "font.ttf");
+    Renderer::copy(t, 10, 10);
 }
 
 void World::tick() {
@@ -254,6 +249,9 @@ void World::tick() {
             // Send entity to other node
             livingEntitiesToMoveToNeighbors.push_back({static_cast<int>(rankAt(e->x, e->y)), e});
             removeLivingEntity(e);
+
+            // Render entity as it will be deleted before world will be rendered!
+            if (Renderer::getIsSetup()) e->render();
 
             /* TODO: Re-enable! (Right now, a node NOT being a neighbor gets data sent with the code below)
             // Send entity to nodes having a padding at this position (excluding THIS node!)
@@ -518,53 +516,59 @@ bool World::removeFoodEntity(FoodEntity *e, bool received) {
     return false;
 }
 
-WorldDim World::calcWorldDimensions(int rank, int num) {
-    WorldDim dim;
+void World::calcWorldDimensions(WorldDim *dims, int rankStart, int rankEnd, int px, int py, int w, int h) {
+    int n = rankEnd - rankStart + 1;
 
-    // Get Width and Height of the world
-    int *rect = splitRect(num, overallWidth, overallHeight);
-    dim.w = rect[0];
-    dim.h = rect[1];
+    // No split?
+    if (n < 1) return;
 
-    // Get Position of the world (and update width and height if needed)
-    int overlap;
-    for (int i = 1; i <= rank; i++) {
-        dim.p.x += dim.w;
-
-        // Height overlap? -> Last row
-        if ((dim.p.y + dim.h) > overallHeight) {
-            overlap = (dim.p.y + dim.h) - overallHeight;
-            dim.h -= overlap;
-            dim.w += (dim.w * overlap) / dim.h;
-        }
-
-        // Width overlap?
-        if ((dim.p.x + dim.w) >= overallWidth) {
-            if (i == rank) {
-                overlap = (dim.p.x + dim.w) - overallWidth;
-                if (overlap == dim.w) {
-                    dim.p.x = 0;
-                    dim.p.y += dim.h;
-                } else {
-                    dim.w -= overlap;
-                }
-            } else {
-                dim.p.x = -dim.w;
-                dim.p.y += dim.h;
-            }
-        }
-
-        // Last rectangle?
-        if ((i + 1) == num)
-            dim.w = overallWidth - dim.p.x;
+    // Only split into 1?
+    if (n == 1) {
+        dims[0] = {{px, py}, w, h};
+        return;
     }
 
-    return dim;
+    // Only split into 3?
+    if (n == 3) {
+        if (w > h) {
+            int newW = w / 3;
+            dims[rankStart] = {{px, py}, newW, h};
+            dims[rankStart + 1] = {{px + newW, py}, newW, h};
+            dims[rankStart + 2] = {{px + 2 * newW, py}, newW + (w % 3), h};
+        } else {
+            int newH = h / 3;
+            dims[rankStart] = {{px, py}, w, newH};
+            dims[rankStart + 1] = {{px, py + newH}, w, newH};
+            dims[rankStart + 2] = {{px, py + 2 * newH}, w, newH + (h % 3)};
+        }
+        return;
+    }
+
+    int middle = (rankStart + rankEnd) / 2;
+    if (w > h) {
+        int newW = w / 2;
+        if (n == 2) {
+            dims[rankStart] = {{px, py}, newW, h};
+            dims[rankStart + 1] = {{px + newW, py}, newW + (w % 2), h};
+        } else {
+            calcWorldDimensions(dims, rankStart, middle, px, py, newW, h);
+            calcWorldDimensions(dims, middle + 1, rankEnd, px + newW, py, newW + (w % 2), h);
+        }
+    } else {
+        int newH = h / 2;
+        if (n == 2) {
+            dims[rankStart] = {{px, py}, w, newH};
+            dims[rankStart + 1] = {{px, py + newH}, w, newH + (h % 2)};
+        } else {
+            calcWorldDimensions(dims, rankStart, middle, px, py, w, newH);
+            calcWorldDimensions(dims, middle + 1, rankEnd, px, py + newH, w, newH + (h % 2));
+        }
+    }
 }
 
 void World::calcPaddingRects() {
     WorldDim world = getWorldDim();
-    for (size_t i = 0; i < worlds.size(); i++) {
+    for (size_t i = 0; i < MPI_Nodes; i++) {
         if (i == MPI_Rank) continue;
 
         WorldDim otherWorld = worlds[i];
@@ -573,30 +577,16 @@ void World::calcPaddingRects() {
         otherWorld.w += 2 * WORLD_PADDING;
         otherWorld.h += 2 * WORLD_PADDING;
 
-        /*
-         * 2 | 3 | 4
-         * 1 | 0 | 5
-         * 8 | 7 | 6
-         */
-        Rect intersection;
-        for (int j = 0; j < 9; j++) {
-            if (j == 1 || j == 7 || j == 8) otherWorld.p.x -= overallWidth;
-            if (j == 2) otherWorld.p.y -= overallHeight;
-            if (j == 3 || j == 4) otherWorld.p.x += overallWidth;
-            if (j == 5 || j == 6) otherWorld.p.y += overallHeight;
-
-            // Intersection?
-            intersection = calcIntersection(world, otherWorld);
-            if (intersection.w > 0 && intersection.h > 0)
-                paddingRects.push_back({(int) i, intersection});
-        }
+        Rect intersection = calcIntersection(world, otherWorld);
+        if (intersection.w > 0 && intersection.h > 0)
+            paddingRects.push_back({(int) i, intersection});
     }
 }
 
 size_t World::rankAt(int px, int py) {
     //TODO could cause overflow for large worlds. Use long instead?
     Point p = {(px + overallWidth) % overallWidth, (py + overallHeight) % overallHeight};
-    for (size_t i = 0; i < worlds.size(); i++) {
+    for (size_t i = 0; i < MPI_Nodes; i++) {
         if (pointInRect(p, worlds[i]))
             return i;
     }
@@ -614,61 +604,14 @@ std::vector<size_t> *World::paddingRanksAt(int px, int py) {
     return ranks;
 }
 
-/**
- * Splits a given rectangle (with width and height) into num smaller
- * rectangles that have around the same area as the given rectangle
- *
- * @param   num     Number of rectangles, the given rectangle has to be split
- * @param   width   The width of the given rectangle
- * @param   height  The height of the given rectangle
- *
- * @return  Array with the width (1st index) and height (2nd index) for the
- *          resulting rectangle
- */
-int *splitRect(int num, int width, int height) {
-    static int dim[2] = {width, height};
-
-    // Doesn't the rectangle have to be split?
-    if (num < 2)
-        return dim;
-
-    // Split the rectangle (into two halves) as long as there are fewer rectangles then wanted
-    int rects = 1;
-    while (rects < num) {
-        rects *= 2;
-        if (width > height)
-            width /= 2;
-        else
-            height /= 2;
-    }
-
-    // Split into too many rectangles?
-    if (rects > num) {
-        if (width > height)
-            height += (height / num) * (rects - num);
-        else
-            width += (width / num) * (rects - num);
-    }
-
-    // Return width and height of one rectangle (~ 1/num of the original)
-    dim[0] = width;
-    dim[1] = height;
-    return dim;
-}
-
 Tile *World::tileAt(int px, int py) {
     if (px < x - WORLD_PADDING || px >= x + width + WORLD_PADDING ||
-        py < y - WORLD_PADDING || py >= y + height + WORLD_PADDING) {
+        py < y - WORLD_PADDING || py >= y + height + WORLD_PADDING)
         return &Tile::INVALID;
-    } else {
-        int xOffset = x - WORLD_PADDING;
-        int yOffset = y - WORLD_PADDING;
-        if (xOffset < 0) xOffset += overallWidth;
-        if (yOffset < 0) yOffset += overallHeight;
 
-        px = (px - xOffset + overallWidth) % overallWidth;
-        py = (py - yOffset + overallHeight) % overallHeight;
+    int xOffset = x - WORLD_PADDING - (x % TILE_SIZE);
+    int yOffset = y - WORLD_PADDING - (y % TILE_SIZE);
+    int widthWithPadding = width + (2 * WORLD_PADDING) + (x % TILE_SIZE) + (TILE_SIZE - (x + width) % TILE_SIZE);
 
-        return terrain[(py / TILE_SIZE) * ((width + (2 * WORLD_PADDING)) / TILE_SIZE) + (px / TILE_SIZE)];
-    }
+    return terrain[((py - yOffset) / TILE_SIZE) * (widthWithPadding / TILE_SIZE) + ((px - xOffset) / TILE_SIZE)];
 }

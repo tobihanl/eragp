@@ -46,6 +46,7 @@ int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
     }
 
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(ren, 255, 255, 255, 0);
 
     // Renderer successfully set up
     isSetup = true;

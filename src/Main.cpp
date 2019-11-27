@@ -177,11 +177,14 @@ void renderLoop(long ticks) {
         }
 
         //############################ TICK AND RENDER ############################
+        Renderer::setTarget(World::entities);
+        Renderer::clear();
         if (!paused) {
             int tickTime = Log::currentTime();
             World::tick();
             Log::data.tick = Log::endTime(tickTime);
         }
+        Renderer::setTarget(nullptr);
 
         // Render everything
         int renderTime = Log::currentTime();
@@ -551,6 +554,10 @@ void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padd
         Renderer::copy(Renderer::renderRect(p.rect.w, p.rect.h, {0, 0, 255, 255}, false),
                        p.rect.p.x - dim.p.x,
                        p.rect.p.y - dim.p.y);
-    Renderer::present();
     Renderer::setTarget(nullptr);
+
+    // Render terrain and create texture for entities
+    World::background = World::renderTerrain();
+    World::entities = Renderer::createTexture(dim.w, dim.h, SDL_TEXTUREACCESS_TARGET);
+    SDL_SetTextureBlendMode(World::entities, SDL_BLENDMODE_BLEND);
 }
