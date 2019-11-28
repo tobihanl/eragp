@@ -319,15 +319,15 @@ void World::tick() {
     addLiving.clear();
 }
 
-void *World::sendEntities(const std::vector<MPISendEntity> &entities, int rank, int tag, MPI_Request *request) {
+void *World::sendEntities(const std::vector<MPISendEntity> &entityVec, int rank, int tag, MPI_Request *request) {
     int totalSize = 0;
-    for (const auto &e : entities)
+    for (const auto &e : entityVec)
         if (e.rank == rank) totalSize += e.entity->serializedSize();
 
     void *buffer = malloc(totalSize);
     void *start = buffer;
 
-    for (const auto &e : entities)
+    for (const auto &e : entityVec)
         if (e.rank == rank)
             e.entity->serialize(buffer);
 

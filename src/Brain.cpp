@@ -14,18 +14,20 @@ Brain::Brain(Brain *b) : numLayers(b->numLayers), weights(new Matrix *[b->numLay
 
 Brain::Brain(int continuousInSize, int hiddenPreSize, int processedInSize, int normalizedInSize, int hiddenSize,
              int outSize) : numLayers(5), weights(new Matrix *[4]), biases(new Matrix *[4]) {
-    weights[0] = new Matrix(hiddenPreSize, continuousInSize, -(SQRT_6 / std::sqrt(continuousInSize + hiddenPreSize)),
-                            (SQRT_6 / std::sqrt(continuousInSize + hiddenPreSize)));
+    weights[0] = new Matrix(hiddenPreSize, continuousInSize,
+                            (float) -(SQRT_6 / std::sqrt(continuousInSize + hiddenPreSize)),
+                            (float) (SQRT_6 / std::sqrt(continuousInSize + hiddenPreSize)));
     biases[0] = new Matrix(hiddenPreSize, 1, 0);
-    weights[1] = new Matrix(processedInSize, hiddenPreSize, -(SQRT_6 / std::sqrt(hiddenPreSize + processedInSize)),
-                            (SQRT_6 / std::sqrt(hiddenPreSize + processedInSize)));
+    weights[1] = new Matrix(processedInSize, hiddenPreSize,
+                            (float) -(SQRT_6 / std::sqrt(hiddenPreSize + processedInSize)),
+                            (float) (SQRT_6 / std::sqrt(hiddenPreSize + processedInSize)));
     biases[1] = new Matrix(processedInSize, 1, 0);
     weights[2] = new Matrix(hiddenSize, processedInSize + normalizedInSize,
-                            -(SQRT_6 / std::sqrt(processedInSize + normalizedInSize + hiddenPreSize)),
-                            (SQRT_6 / std::sqrt(processedInSize + normalizedInSize + hiddenPreSize)));
+                            (float) -(SQRT_6 / std::sqrt(processedInSize + normalizedInSize + hiddenPreSize)),
+                            (float) (SQRT_6 / std::sqrt(processedInSize + normalizedInSize + hiddenPreSize)));
     biases[2] = new Matrix(hiddenSize, 1, 0);
-    weights[3] = new Matrix(outSize, hiddenSize, -(SQRT_6 / std::sqrt(hiddenSize + outSize)),
-                            (SQRT_6 / std::sqrt(hiddenSize + outSize)));
+    weights[3] = new Matrix(outSize, hiddenSize, (float) -(SQRT_6 / std::sqrt(hiddenSize + outSize)),
+                            (float) (SQRT_6 / std::sqrt(hiddenSize + outSize)));
     biases[3] = new Matrix(outSize, 1, 0);
 
 }

@@ -87,10 +87,10 @@ void LivingEntity::render() {
 
 void LivingEntity::tick() {
     //################################# Breed ################################# at the beginning, so spawning happens before move ->on the right node
-    int energy = this->energy;
+    int tempEnergy = this->energy;
     if (cooldown > 0) cooldown--;
-    if (cooldown == 0 && energy >= 60 * energyLossWithMove) {
-        //energy -= 60; leaving out might give better results
+    if (cooldown == 0 && tempEnergy >= 60 * energyLossWithMove) {
+        //tempEnergy -= 60; leaving out might give better results
         Uint8 nr = color.r + (int) std::round(getRandomFloatBetween(0, 2.55));
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
         Uint8 ng = color.g + (int) std::round(getRandomFloatBetween(0, 2.55));
@@ -113,11 +113,11 @@ void LivingEntity::tick() {
 
 
     Matrix continuousIn(6, 1, {
-            (float) (nearestFood ? nearestFood->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
-            (float) (nearest.enemy ? nearest.enemy->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
-            (float) (nearest.mate ? nearest.mate->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
-            (float) energy / MAX_ENERGY,
-            (float) (nearest.mate ? nearest.mate->energy / MAX_ENERGY * 0.8f : 1.f),
+            (nearestFood ? nearestFood->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
+            (nearest.enemy ? nearest.enemy->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
+            (nearest.mate ? nearest.mate->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
+            (float) tempEnergy / MAX_ENERGY,
+            (nearest.mate ? (float) nearest.mate->energy / MAX_ENERGY * 0.8f : 1.f),
             nearest.enemy ? (float) nearest.enemy->size : 0.f
     });
     Matrix normalizedIn(4, 1, {
@@ -156,7 +156,7 @@ void LivingEntity::tick() {
         if (nearest.enemy) {
             if (size > nearest.enemy->size) {
                 World::removeLivingEntity(nearest.enemy); //don't forget to synchronize
-                energy += nearest.enemy->energy;
+                tempEnergy += nearest.enemy->energy;
             } else {
                 World::removeLivingEntity(this);
                 return;
@@ -164,7 +164,7 @@ void LivingEntity::tick() {
         }
     }
     //################################## Share ##################################
-    if (thoughts.share && energy > 80 && nearest.mate &&
+    if (thoughts.share && tempEnergy > 80 && nearest.mate &&
         nearest.mate->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
         if (World::toRemoveLiving(nearest.mate)) {
             LivingEntity *temp = World::findNearestLiving(this, true).mate;
@@ -173,7 +173,7 @@ void LivingEntity::tick() {
         }
         if (nearest.mate) {
             nearest.mate->addEnergy(60);
-            energy -= 60;
+            tempEnergy -= 60;
         }
     }
     //################################## Eat ##################################
@@ -186,18 +186,18 @@ void LivingEntity::tick() {
         }
         if (nearestFood) {
             World::removeFoodEntity(nearestFood, false); //don't forget to synchronize
-            energy += nearestFood->energy;
+            tempEnergy += nearestFood->energy;
         }
     }
 
     //################################# Energy ################################
-    energy -= thoughts.move ? energyLossWithMove : energyLossWithoutMove;
+    tempEnergy -= thoughts.move ? energyLossWithMove : energyLossWithoutMove;
     assert(thoughts.move ? energyLossWithMove : energyLossWithoutMove > 0 && "Entity not losing Energy");
-    if (energy <= 0) World::removeLivingEntity(this);
-    if(energy > MAX_ENERGY) {
+    if (tempEnergy <= 0) World::removeLivingEntity(this);
+    if (tempEnergy > MAX_ENERGY) {
         this->energy = MAX_ENERGY;
     } else {
-        this->energy = energy;
+        this->energy = tempEnergy;
     }
     brain->printThink = false; //TODO remove
 }

@@ -190,7 +190,7 @@ private:
      */
     static std::vector<size_t> *paddingRanksAt(int px, int py);
 
-    static void *sendEntities(const std::vector<MPISendEntity> &entities, int rank, int tag, MPI_Request *request);
+    static void *sendEntities(const std::vector<MPISendEntity> &entityVec, int rank, int tag, MPI_Request *request);
 
     static void receiveEntities(int rank, int tag);
 
