@@ -1,6 +1,6 @@
 //TODO to disable asserts in release: #define NDEBUG
+#include <sstream>
 #include <iostream>
-#include <chrono>
 #include <cstdlib>
 #include <poll.h>
 #include <SDL.h>
@@ -10,9 +10,15 @@
 #include "World.h"
 #include "Brain.h"
 #include "Tile.h"
+#include "Log.h"
 #include "Rng.h"
 
 #define MS_PER_TICK 100
+
+// Init class Log attributes
+bool Log::logging = false;
+FILE *Log::logFile = nullptr;
+LogData Log::data = {};
 
 void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padding);
 
@@ -34,17 +40,28 @@ void renderLoop(long ticks) {
     LivingEntity *selectedEntities[2] = {nullptr};
     WorldDim dim = World::getWorldDim();
 
+    // Frame rate
+    SDL_Texture *fps = nullptr;
+    SDL_Rect fpsRect = {0, 10, 0, 0}; // Always 10px padding to the top
+    int frameTime = 0, frames = 0;
+
     //=============================================================================
     //                               BEGIN MAIN LOOP
     //=============================================================================
     SDL_Event e;
-    int currentTime, elapsedTime, previousTime;
+    int currentTime, elapsedTime;
+    int previousTime = Log::currentTime();
     bool run = ticks == -1 || ticks > 0;
+    int counter = 0;
     while (run) {
-        // Calculate lag between last and current turn
-        currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::system_clock::now().time_since_epoch()).count();
+        currentTime = Log::currentTime();
+        frameTime += currentTime - previousTime;
         previousTime = currentTime;
+
+        // Log new tick
+        Log::data.turn = counter++;
+        Log::data.food = World::getAmountOfFood();
+        Log::data.livings = World::getAmountOfLivings();
 
         //############################# PROCESS INPUT #############################
         while (SDL_PollEvent(&e)) {
@@ -93,15 +110,16 @@ void renderLoop(long ticks) {
                     // Mouse clicked?
                 case SDL_MOUSEBUTTONDOWN:
                     if (e.button.button == SDL_BUTTON_LEFT) {
-                        LivingEntity *nearest = World::findNearestLiving(dim.p.x + e.button.x, dim.p.y + e.button.y,
-                                                                         -1);
+                        LivingEntity *nearest = World::findNearestLivingToPoint(dim.p.x + e.button.x,
+                                                                                dim.p.y + e.button.y);
 
                         if (similarityMode) {
                             if (nearest) selectedEntities[countSelectedEntities++] = nearest;
 
                             // Two entities selected?
                             if (countSelectedEntities >= 2) {
-                                std::cout << "Difference: " << (*selectedEntities[0]).difference(*selectedEntities[1])
+                                std::cout << "Squared difference: " << (*selectedEntities[0]).squaredDifference(
+                                        *selectedEntities[1])
                                           << std::endl;
                                 selectedEntities[0] = selectedEntities[1] = nullptr;
                                 countSelectedEntities = 0;
@@ -148,34 +166,74 @@ void renderLoop(long ticks) {
         // Quit?
         if (!run) break;
 
+        // Calc FPS
+        if (frameTime >= 1000) {
+            Renderer::cleanup(fps);
+
+            frameTime = 0;
+            fps = Renderer::renderFont(std::to_string(frames), 25, {255, 255, 255, 255}, "font.ttf");
+            frames = 0;
+
+            // 10px padding to the right
+            Renderer::query(fps, &fpsRect);
+            fpsRect.x = dim.w - fpsRect.w - 10;
+        }
+
         //############################ TICK AND RENDER ############################
-        if (!paused) World::tick();
+        Renderer::setTarget(World::entities);
+        Renderer::clear();
+        if (!paused) {
+            int tickTime = Log::currentTime();
+            World::tick();
+            Log::data.tick = Log::endTime(tickTime);
+        }
+        Renderer::setTarget(nullptr);
 
         // Render everything
+        int renderTime = Log::currentTime();
         Renderer::clear();
         World::render();
         if (paddings) Renderer::copy(padding, 0, 0);
         if (borders) Renderer::copy(border, 0, 0);
         if (paused) Renderer::copy(pauseText, 10, 10);
+        Renderer::copy(fps, &fpsRect);
         Renderer::present();
+        frames++;
+        Log::data.render = Log::endTime(renderTime);
 
         //########################### WAIT IF TOO FAST ############################
-        currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::system_clock::now().time_since_epoch()).count();
+        currentTime = Log::currentTime();
         elapsedTime = (currentTime - previousTime);
 
         // Delay loop turn
-        if (elapsedTime <= MS_PER_TICK)
+        if (elapsedTime <= MS_PER_TICK) {
             SDL_Delay(MS_PER_TICK - elapsedTime);
+            Log::data.delay = MS_PER_TICK - elapsedTime;
+        }
 
         // Set running status for next loop turn
         run = ticks == -1 || (--ticks) > 0;
+
+        Log::data.overall = Log::endTime(previousTime);
+        Log::writeLogData();
     }
     //=============================================================================
     //                                END MAIN LOOP
     //=============================================================================
 
+    // Cleanup digits
+    for (int i = 0; i < 10; i++)
+        Renderer::cleanup(LivingEntity::digits[i]);
+
     // Destroy renderer (close window) and exit
+    Renderer::cleanup(Tile::GRASS.texture);
+    Renderer::cleanup(Tile::STONE.texture);
+    Renderer::cleanup(Tile::SAND.texture);
+    Renderer::cleanup(Tile::WATER.texture);
+    Renderer::cleanup(border);
+    Renderer::cleanup(padding);
+    Renderer::cleanup(pauseText);
+    Renderer::cleanup(fps);
     Renderer::destroy();
 }
 
@@ -197,7 +255,14 @@ void normalLoop(long ticks) {
 
     Uint8 buffer = 0;
     bool run = ticks == -1 || ticks > 0;
+    int counter = 0;
     while (run) {
+        // Log new tick
+        int loopTime = Log::currentTime();
+        Log::data.turn = counter++;
+        Log::data.food = World::getAmountOfFood();
+        Log::data.livings = World::getAmountOfLivings();
+
         //############################# PROCESS INPUT #############################
         if (World::getMPIRank() == 0 && poll(cin, 1, 1)) {
             std::string str;
@@ -235,10 +300,15 @@ void normalLoop(long ticks) {
         if (!run) break;
 
         //################################## TICK #################################
+        int tickTime = Log::currentTime();
         World::tick();
+        Log::data.tick = Log::endTime(tickTime);
 
         // Set running status for next loop turn
         run = ticks == -1 || (--ticks) > 0;
+
+        Log::data.overall = Log::endTime(loopTime);
+        Log::writeLogData();
     }
 }
 
@@ -255,6 +325,8 @@ int main(int argc, char **argv) {
     bool maimuc = false, render = false;
     float foodRate = 1.f;  //food spawned per 2000 tiles per tick
     long ticks = -1;
+    long livings = 50, food = 100;
+    std::string filename;
 
     std::random_device rd;
     unsigned int randomSeed = rd();
@@ -262,7 +334,7 @@ int main(int argc, char **argv) {
     // Scan program arguments
     opterr = 0;
     int c;
-    while ((c = getopt(argc, argv, "h:w:m::f:r::t:s:")) != -1) {
+    while ((c = getopt(argc, argv, "h:w:m::f:r::t:s:l:e:")) != -1) {
         char *ptr = nullptr;
         switch (c) {
             // Render flag
@@ -322,16 +394,62 @@ int main(int argc, char **argv) {
                 }
                 break;
 
-                // Unknown Option
             case 's':
                 if (optarg != nullptr) randomSeed = std::stoi(optarg, nullptr);
                 break;
+
+                // Log to file
+            case 'l':
+                if (optarg != nullptr) {
+                    if (optarg[0] == '-') {
+                        std::cerr << "Option -l requires a string (path to file) specifying the logging location!"
+                                  << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                    filename = optarg;
+                }
+                break;
+
+                // Amount of entities
+            case 'e':
+                if (optarg != nullptr) {
+                    if (optarg[0] == '-') {
+                        std::cerr
+                                << "Option -e requires a string specifying the amount of livings and food to spawn on the"
+                                << "entire world. Format: {Livings},{Food}" << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                    std::istringstream opts(optarg);
+                    std::string l, f;
+                    getline(opts, l, ',');
+                    getline(opts, f, ',');
+                    livings = strtol(l.c_str(), &ptr, 10);
+                    if (*ptr) {
+                        std::cerr << "Option -e requires two integers delimited by a comma!" << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                    food = strtol(f.c_str(), &ptr, 10);
+                    if (*ptr) {
+                        std::cerr << "Option -e requires two integers delimited by a comma!" << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                }
+                break;
+
+                // Unknown Option
             case '?':
                 if (optopt == 'h' || optopt == 'w' || optopt == 't') {
                     std::cerr << "Option -" << (char) optopt << " requires an integer!" << std::endl;
                 } else if (optopt == 'f') {
                     std::cerr << "Option -f requires a float indicating the amount of food spawned per 2000 tiles "
                               << "per tick!" << std::endl;
+                } else if (optopt == 'l') {
+                    std::cerr << "Option -l requires a string (path to file) specifying the logging location!"
+                              << std::endl;
+                } else if (optopt == 'e') {
+                    std::cerr << "Option -e requires a string specifying the amount of livings and food to spawn on the"
+                              << "entire world. Format: {Livings},{Food}" << std::endl;
+
                 } else {
                     std::cerr << "Unknown option character -" << (char) optopt << std::endl;
                 }
@@ -348,6 +466,8 @@ int main(int argc, char **argv) {
     // Init world
     World::setup(width, height, maimuc, foodRate);
     WorldDim dim = World::getWorldDim();
+    if (!filename.empty())
+        Log::startLogging(filename + "-" + std::to_string(World::getMPIRank()) + ".csv");
 
     // Init renderer
     if (render) {
@@ -358,7 +478,9 @@ int main(int argc, char **argv) {
     }
 
     //============================= ADD TEST ENTITIES =============================
-    for (int i = 0; i < 10; i++) {
+    long max = livings / World::getMPINodes();
+    if (World::getMPIRank() >= World::getMPINodes() - livings % World::getMPINodes()) max++;
+    for (long i = 0; i < max; i++) {
         auto *brain = new Brain(6, 8, 4, 4, 10, 4);
         auto *entity = new LivingEntity(
                 getRandomIntBetween(0, dim.w) + dim.p.x,
@@ -374,9 +496,14 @@ int main(int argc, char **argv) {
 
         World::addLivingEntity(entity, false);
     }
-    for (int i = 0; i < 100; i++) {
+    max = food / World::getMPINodes();
+    if (World::getMPIRank() >= World::getMPINodes() - food % World::getMPINodes()) max++;
+    for (long i = 0; i < max; i++) {
         World::addFoodEntity(
-                new FoodEntity(getRandomIntBetween(0, dim.w) + dim.p.x, getRandomIntBetween(0, dim.h) + dim.p.y, 8 * 60),
+                new FoodEntity(
+                        getRandomIntBetween(0, dim.w) + dim.p.x,
+                        getRandomIntBetween(0, dim.h) + dim.p.y,
+                        8 * 60),
                 false);
     }
     //=========================== END ADD TEST ENTITIES ===========================
@@ -392,6 +519,7 @@ int main(int argc, char **argv) {
         std::cout << "EXITING..." << std::endl;
 
     World::finalize();
+    Log::endLogging();
 
     // END MPI
     MPI_Finalize();
@@ -429,6 +557,12 @@ void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padd
         Renderer::copy(Renderer::renderRect(p.rect.w, p.rect.h, {0, 0, 255, 255}, false),
                        p.rect.p.x - dim.p.x,
                        p.rect.p.y - dim.p.y);
-    Renderer::present();
     Renderer::setTarget(nullptr);
+
+    // Render terrain and create texture for entities
+    World::background = World::renderTerrain();
+    World::entities = Renderer::createTexture(dim.w, dim.h, SDL_TEXTUREACCESS_TARGET);
+    SDL_SetTextureBlendMode(World::entities, SDL_BLENDMODE_BLEND);
+    World::rankTexture = Renderer::renderFont(std::to_string(World::getMPIRank()), 25, {255, 255, 255, 255},
+                                              "font.ttf");
 }

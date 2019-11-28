@@ -145,10 +145,6 @@ void Brain::serialize(void *&ptr) {
     }
 }
 
-int Brain::getNumLayers() {
-    return numLayers;
-}
-
 std::ostream &operator<<(std::ostream &strm, const Brain &b) {
     strm << "Brain[numLayers: " << b.numLayers;
     for (int i = 0; i < b.numLayers - 1; i++) {

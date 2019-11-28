@@ -57,7 +57,10 @@ public:
 
     void serialize(void *&ptr);
 
-    int getNumLayers();
+    int getNumLayers() {
+        return numLayers;
+    }
+
     bool printThink = false; //TODO remove
 };
 

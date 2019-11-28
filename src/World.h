@@ -1,8 +1,9 @@
 #ifndef ERAGP_MAIMUC_EVO_2019_WORLD_H
 #define ERAGP_MAIMUC_EVO_2019_WORLD_H
 
+#include <algorithm>
 #include <vector>
-#include "mpi.h"
+#include <mpi.h>
 #include "FoodEntity.h"
 #include "LivingEntity.h"
 #include "Tile.h"
@@ -13,6 +14,8 @@
 
 #define VIEW_RANGE_SQUARED 25600 //160*160
 #define VIEW_RANGE 160
+
+#define ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD 0.0016
 
 #define MAX_FOOD_INTERVAL 1000000 //Can be much bigger because it is equally distributed
 
@@ -44,6 +47,11 @@ struct PaddingRect {
     struct Rect rect;
 };
 
+struct NearestLiving {
+    LivingEntity *mate;
+    LivingEntity *enemy;
+};
+
 typedef struct Rect WorldDim;
 
 //=================================== Class ===================================
@@ -68,8 +76,6 @@ private:
 
     static bool isSetup;
 
-    static SDL_Texture *background;
-
     //TODO change list implementation and handle shared data
     static std::vector<FoodEntity *> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
     static std::vector<LivingEntity *> living;
@@ -84,7 +90,7 @@ private:
     static std::vector<MPISendEntity> foodToSendToNeighbors;
     static std::vector<MPISendEntity> removedFoodToSendToNeighbors;
 
-    static std::vector<WorldDim> worlds;
+    static WorldDim *worlds;
     static std::vector<PaddingRect> paddingRects;
     static std::vector<int> paddingRanks;
 
@@ -98,36 +104,43 @@ public:
     static int overallWidth;
     static int overallHeight;
 
+    static SDL_Texture *background;
+    static SDL_Texture *entities;
+    static SDL_Texture *rankTexture;
+
+    /**
+     * Initialize the world, which is part of the overall world and set
+     * it up.
+     *
+     * @param   newOverallWidth     Width of the overall world
+     * @param   newOverallHeight    Height of the overall world
+     * @param   maimuc              Indicates, whether the program is executed
+     *                              on MaiMUC or not
+     */
     static void setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate);
 
     static void finalize();
 
-    static int getMPIRank();
+    static int getMPIRank() { return MPI_Rank; }
 
-    static int getMPINodes();
+    static int getMPINodes() { return MPI_Nodes; }
 
-    static WorldDim getWorldDim();
+    static WorldDim getWorldDim() { return getWorldDimOf(MPI_Rank); }
 
-    static WorldDim getWorldDimOf(int rank);
+    static WorldDim getWorldDimOf(int rank) { return worlds[rank]; }
+
+    static SDL_Texture *renderTerrain();
 
     static void render();
 
     static void tick();
 
-    static FoodEntity *findNearestFood(int px, int py);
-
-    static FoodEntity *findNearestSurvivingFood(int px, int py);
-
-    static LivingEntity *findNearestLiving(int px, int py, int id);
-
-    static LivingEntity *findNearestEnemy(LivingEntity *le);
-
     //non-surviving functions: always base thinking input on last tick, bot some kind of half-tick
-    static LivingEntity *findNearestSurvivingEnemy(LivingEntity *le);
+    static FoodEntity *findNearestFood(int px, int py, bool surviving);
 
-    static LivingEntity *findNearestMate(LivingEntity *le);
+    static NearestLiving findNearestLiving(LivingEntity *le, bool surviving);
 
-    static LivingEntity *findNearestSurvivingMate(LivingEntity *le);
+    static LivingEntity *findNearestLivingToPoint(int px, int py);
 
     static bool addLivingEntity(LivingEntity *e, bool received);
 
@@ -137,40 +150,69 @@ public:
 
     static bool removeFoodEntity(FoodEntity *e, bool received);
 
-    static bool toRemoveFood(FoodEntity *e);
+    static bool toRemoveFood(FoodEntity *e) {
+        return std::find(removeFood.begin(), removeFood.end(), e) != removeFood.end();
+    }
 
-    static bool toRemoveLiving(LivingEntity *e);
+    static bool toRemoveLiving(LivingEntity *e) {
+        return std::find(removeLiving.begin(), removeLiving.end(), e) != removeLiving.end();
+    }
 
     static Tile *tileAt(int px, int py);
 
-    static std::vector<PaddingRect> *getPaddingRects();
+    static std::vector<PaddingRect> *getPaddingRects() { return &paddingRects; }
+
+    static int getAmountOfLivings() { return living.size(); }
+
+    static int getAmountOfFood() { return food.size(); }
 
 private:
-    static WorldDim calcWorldDimensions(int rank, int num);
+    static void calcWorldDimensions(WorldDim *dims, int rankStart, int rankEnd, int px, int py, int w, int h);
 
     static void calcPaddingRects();
 
     static void generateTerrain();
 
-    static void renderTerrain();
+    static bool toAddLiving(LivingEntity *e) {
+        return std::find(addLiving.begin(), addLiving.end(), e) != addLiving.end();
+    }
 
-    static bool toAddLiving(LivingEntity *e);
-
-    static bool toAddFood(FoodEntity *e);
+    static bool toAddFood(FoodEntity *e) {
+        return std::find(addFood.begin(), addFood.end(), e) != addFood.end();
+    }
 
     static size_t rankAt(int px, int py);
 
+    /**
+     * @return      Ranks having a padding on the given coordinates
+     *
+     * @attention   Only works for (x,y) coordinates on THIS node!
+     */
     static std::vector<size_t> *paddingRanksAt(int px, int py);
 
     static void *sendEntities(const std::vector<MPISendEntity> &entities, int rank, int tag, MPI_Request *request);
 
     static void receiveEntities(int rank, int tag);
 
-    static long gcd(long a, long b);
+    static long gcd(long a, long b) {
+        if (a == 0) return b;
+        if (b == 0) return a;
+        if (a < b) return gcd(a, b % a);
+        return gcd(b, a % b);
+    }
 
-    static bool pointInRect(const Point &p, const Rect &r);
+    static bool pointInRect(const Point &p, const Rect &r) {
+        return r.p.x <= p.x && p.x < r.p.x + r.w && r.p.y <= p.y && p.y < r.p.y + r.h;
+    }
 
-    static Rect calcIntersection(const Rect &rect1, const Rect &rect2);
+    static Rect calcIntersection(const Rect &rect1, const Rect &rect2) {
+        int x1 = std::max(rect1.p.x, rect2.p.x);
+        int y1 = std::max(rect1.p.y, rect2.p.y);
+        int x2 = std::min(rect1.p.x + rect1.w, rect2.p.x + rect2.w);
+        int y2 = std::min(rect1.p.y + rect1.h, rect2.p.y + rect2.h);
+
+        return {{x1, y1}, x2 - x1, y2 - y1};
+    }
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_WORLD_H
