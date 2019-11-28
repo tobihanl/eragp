@@ -7,6 +7,7 @@
 #include "Rng.h"
 
 #define PI 3.14159265
+#define MAX_ENERGY 9999
 
 SDL_Texture *LivingEntity::digits[10];
 
@@ -61,7 +62,6 @@ static int getNumDigits(int x) {
     else if (x < 100) return 2;
     else if (x < 1000) return 3;
     else if (x < 10000) return 4;
-    else if (x < 100000) return 5;
     assert(false && "Too much energy");
 }
 
@@ -87,9 +87,10 @@ void LivingEntity::render() {
 
 void LivingEntity::tick() {
     //################################# Breed ################################# at the beginning, so spawning happens before move ->on the right node
+    int tempEnergy = this->energy;
     if (cooldown > 0) cooldown--;
-    if (cooldown == 0 && energy >= 60 * energyLossWithMove) {
-        //energy -= 60; leaving out might give better results
+    if (cooldown == 0 && tempEnergy >= 60 * energyLossWithMove) {
+        //tempEnergy -= 60; leaving out might give better results
         Uint8 nr = color.r + (int) std::round(getRandomFloatBetween(0, 2.55));
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
         Uint8 ng = color.g + (int) std::round(getRandomFloatBetween(0, 2.55));
@@ -112,11 +113,12 @@ void LivingEntity::tick() {
 
 
     Matrix continuousIn(6, 1, {
-            (float) (nearestFood ? nearestFood->getDistance(x, y) : VIEW_RANGE * 2),
-            (float) (nearest.enemy ? nearest.enemy->getDistance(x, y) : VIEW_RANGE * 2),
-            (float) (nearest.mate ? nearest.mate->getDistance(x, y) : VIEW_RANGE * 2),
-            (float) energy, (float) (nearest.mate ? nearest.mate->energy : VIEW_RANGE * 2),
-            nearest.enemy ? (float) nearest.enemy->size * 500 : 0.f
+            (nearestFood ? nearestFood->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
+            (nearest.enemy ? nearest.enemy->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
+            (nearest.mate ? nearest.mate->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
+            (float) tempEnergy / MAX_ENERGY,
+            (nearest.mate ? (float) nearest.mate->energy / MAX_ENERGY * 0.8f : 1.f),
+            nearest.enemy ? (float) nearest.enemy->size : 0.f
     });
     Matrix normalizedIn(4, 1, {
             (float) (nearestFood ? std::atan2(nearestFood->x - x, nearestFood->y - y) / PI : rotation),
@@ -137,6 +139,7 @@ void LivingEntity::tick() {
         if (yTo < 0) yTo = 0;
         if (xTo >= World::overallWidth) xTo = World::overallWidth - 1;
         if (yTo >= World::overallHeight) yTo = World::overallHeight - 1;
+        if(brain->printThink) std::cout << "xDif: " << (xTo - x) << " yDif: " << (yTo-y) << std::endl;
         if ((*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2)
             || (*World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8)) {
             x = (xTo + World::overallWidth) % World::overallWidth;
@@ -153,7 +156,7 @@ void LivingEntity::tick() {
         if (nearest.enemy) {
             if (size > nearest.enemy->size) {
                 World::removeLivingEntity(nearest.enemy); //don't forget to synchronize
-                energy += nearest.enemy->energy;
+                tempEnergy += nearest.enemy->energy;
             } else {
                 World::removeLivingEntity(this);
                 return;
@@ -161,7 +164,7 @@ void LivingEntity::tick() {
         }
     }
     //################################## Share ##################################
-    if (thoughts.share && energy > 80 && nearest.mate &&
+    if (thoughts.share && tempEnergy > 80 && nearest.mate &&
         nearest.mate->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
         if (World::toRemoveLiving(nearest.mate)) {
             LivingEntity *temp = World::findNearestLiving(this, true).mate;
@@ -169,8 +172,8 @@ void LivingEntity::tick() {
                                                                                            : nullptr; //TODO synchronize from here
         }
         if (nearest.mate) {
-            nearest.mate->energy += 55;
-            energy -= 60;
+            nearest.mate->addEnergy(60);
+            tempEnergy -= 60;
         }
     }
     //################################## Eat ##################################
@@ -183,14 +186,28 @@ void LivingEntity::tick() {
         }
         if (nearestFood) {
             World::removeFoodEntity(nearestFood, false); //don't forget to synchronize
-            energy += nearestFood->energy;
+            tempEnergy += nearestFood->energy;
         }
     }
 
     //################################# Energy ################################
-    energy -= thoughts.move ? energyLossWithMove : energyLossWithoutMove;
+    tempEnergy -= thoughts.move ? energyLossWithMove : energyLossWithoutMove;
     assert(thoughts.move ? energyLossWithMove : energyLossWithoutMove > 0 && "Entity not losing Energy");
-    if (energy <= 0) World::removeLivingEntity(this);
+    if (tempEnergy <= 0) World::removeLivingEntity(this);
+    if (tempEnergy > MAX_ENERGY) {
+        this->energy = MAX_ENERGY;
+    } else {
+        this->energy = tempEnergy;
+    }
+    brain->printThink = false; //TODO remove
+}
+
+void LivingEntity::addEnergy(int e) {
+    if(energy + e > MAX_ENERGY) {
+        energy = MAX_ENERGY;
+    } else {
+        energy += e;
+    }
 }
 
 /**
@@ -219,6 +236,7 @@ std::ostream &operator<<(std::ostream &strm, const LivingEntity &l) {
     strm << "Entity:[id: " << l.id << ", x: " << l.x << ", y: " << l.y << ", color:{r: " << ((int) l.color.r) << ", g: "
          << ((int) l.color.g) << ", b: " << ((int) l.color.b) << "}, speed: " << l.speed << ", size: " << l.size
          << ", waterAgility: " << l.waterAgility << ", brainLayers: " << l.brain->getNumLayers() << "]";
+    strm << *l.brain;
     return strm;
 }
 

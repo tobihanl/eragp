@@ -53,6 +53,8 @@ public:
                + (e.waterAgility - waterAgility) * (e.waterAgility - waterAgility);//TODO consider brain
     }
 
+    void addEnergy(int energy);
+
     void serialize(void *&ptr) override;
 
     int serializedSize() override {

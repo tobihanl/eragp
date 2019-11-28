@@ -125,7 +125,10 @@ void renderLoop(long ticks) {
                                 countSelectedEntities = 0;
                             }
                         } else {
-                            if (nearest) std::cout << *nearest << std::endl;
+                            if (nearest) {
+                                std::cout << *nearest << std::endl;
+                                nearest->brain->printThink = true;
+                            }
                             else std::cout << "No nearest entity available!" << std::endl;
                         }
                     }

@@ -27,7 +27,7 @@ public:
      * Amount of layers is now fixed for simplicity with exactly one hidden layer for preprocessing and one for actual.
      *
      * @param continuousInSize amount of continuous inputs (e.g. energy, distance...)
-     * @param hiddenPreSize amount of neurons in the hidden layer fore preprocessing of the continuous data
+     * @param hiddenPreSize amount of neurons in the hidden layer for preprocessing of the continuous data
      * @param processedInSize amount of output neurons of the preprocessing network -> additional input of actual network
      * @param normalizedInSize amount of inputs in range -1 to 1 (rotation, landInFront)
      * @param hiddenSize amount of hidden neurons in the actual thinking
@@ -60,6 +60,8 @@ public:
     int getNumLayers() {
         return numLayers;
     }
+
+    bool printThink = false; //TODO remove
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_DESKTOP_BRAIN_H

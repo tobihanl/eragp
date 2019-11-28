@@ -1,6 +1,7 @@
 #include "Brain.h"
 #include <cassert>
 #include <cmath>
+#define SQRT_6 2.4494898319244385
 
 Brain::Brain(Brain *b) : numLayers(b->numLayers), weights(new Matrix *[b->numLayers - 1]),
                          biases(new Matrix *[b->numLayers - 1]) {
@@ -13,18 +14,20 @@ Brain::Brain(Brain *b) : numLayers(b->numLayers), weights(new Matrix *[b->numLay
 
 Brain::Brain(int continuousInSize, int hiddenPreSize, int processedInSize, int normalizedInSize, int hiddenSize,
              int outSize) : numLayers(5), weights(new Matrix *[4]), biases(new Matrix *[4]) {
-    weights[0] = new Matrix(hiddenPreSize, continuousInSize, -std::sqrt(1.f / (float) continuousInSize),
-                            std::sqrt(1.f / (float) continuousInSize));
+    weights[0] = new Matrix(hiddenPreSize, continuousInSize,
+                            (float) -(SQRT_6 / std::sqrt(continuousInSize + hiddenPreSize)),
+                            (float) (SQRT_6 / std::sqrt(continuousInSize + hiddenPreSize)));
     biases[0] = new Matrix(hiddenPreSize, 1, 0);
-    weights[1] = new Matrix(processedInSize, hiddenPreSize, -std::sqrt(1.f / (float) hiddenPreSize),
-                            std::sqrt(1.f / (float) hiddenPreSize));
+    weights[1] = new Matrix(processedInSize, hiddenPreSize,
+                            (float) -(SQRT_6 / std::sqrt(hiddenPreSize + processedInSize)),
+                            (float) (SQRT_6 / std::sqrt(hiddenPreSize + processedInSize)));
     biases[1] = new Matrix(processedInSize, 1, 0);
     weights[2] = new Matrix(hiddenSize, processedInSize + normalizedInSize,
-                            -std::sqrt(1.f / (float) (processedInSize + normalizedInSize)),
-                            std::sqrt(1.f / (float) (processedInSize + normalizedInSize)));
+                            (float) -(SQRT_6 / std::sqrt(processedInSize + normalizedInSize + hiddenPreSize)),
+                            (float) (SQRT_6 / std::sqrt(processedInSize + normalizedInSize + hiddenPreSize)));
     biases[2] = new Matrix(hiddenSize, 1, 0);
-    weights[3] = new Matrix(outSize, hiddenSize, -std::sqrt(1.f / (float) hiddenSize),
-                            std::sqrt(1.f / (float) hiddenSize));
+    weights[3] = new Matrix(outSize, hiddenSize, (float) -(SQRT_6 / std::sqrt(hiddenSize + outSize)),
+                            (float) (SQRT_6 / std::sqrt(hiddenSize + outSize)));
     biases[3] = new Matrix(outSize, 1, 0);
 
 }
@@ -63,13 +66,18 @@ ThinkResult Brain::think(Matrix input, Matrix normalizedInput) {
            normalizedInput.getHeight() + weights[1]->getHeight() == weights[2]->getWidth() &&
            "Wrong size of normalized input Matrix in Brain::think()");
 
+    if(printThink) std::cout << this << std::endl; //TODO remove
+    if(printThink) std::cout << "Continuous Input:\n" << input << std::endl; //TODO remove
     input = weights[0]->dotProduct(input);
     input += (Matrix) biases[0];
     input.apply(std::tanh);
+    if(printThink) std::cout << "Hidden Pre:\n" << input << std::endl; //TODO remove
 
     input = weights[1]->dotProduct(input);
     input += (Matrix) biases[1];
     input.apply(std::tanh);
+    if(printThink) std::cout << "Normalized In:\n" << input << std::endl; //TODO remove
+    if(printThink) std::cout << "Processed in:\n" << input << std::endl; //TODO remove
 
     input.data.reserve(input.height + normalizedInput.height);
     input.data.insert(input.data.end(), normalizedInput.data.begin(), normalizedInput.data.end());
@@ -77,11 +85,12 @@ ThinkResult Brain::think(Matrix input, Matrix normalizedInput) {
     input = weights[2]->dotProduct(input);
     input += (Matrix) biases[2];
     input.apply(std::tanh);
+    if(printThink) std::cout << "Hidden:\n" << input << std::endl; //TODO remove
 
     input = weights[3]->dotProduct(input);
     input += (Matrix) biases[3];
     input.apply(std::tanh);
-
+    if(printThink) std::cout << "Result:\n" << input << std::endl; //TODO remove
     ThinkResult res = {input(0, 0), input(1, 0) > -0.5, input(2, 0) > 0, input(3, 0) > 0};
     return res;
 }
