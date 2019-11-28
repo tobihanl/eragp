@@ -62,7 +62,6 @@ static int getNumDigits(int x) {
     else if (x < 100) return 2;
     else if (x < 1000) return 3;
     else if (x < 10000) return 4;
-    //else if (x < 100000) return 5;
     assert(false && "Too much energy");
 }
 
