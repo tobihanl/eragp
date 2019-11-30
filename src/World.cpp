@@ -69,7 +69,7 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
         }
 
         // Get dimensions for all worlds
-        worlds = new WorldDim[10];
+        worlds = new WorldDim[NUMBER_OF_MAIMUC_NODES];
         for (int i = 0; i < NUMBER_OF_MAIMUC_NODES; i++)
             worlds[i] = {((i % 2) == 0) ? 0 : 800, (i / 2) * 600, 800, 600};
 
@@ -119,10 +119,6 @@ void World::finalize() {
 
     food.clear();
     living.clear();
-
-    Renderer::cleanup(background);
-    Renderer::cleanup(entities);
-    Renderer::cleanup(rankTexture);
 
     delete[] worlds;
 }
