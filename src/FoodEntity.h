@@ -3,10 +3,11 @@
 
 #include "Entity.h"
 
-#define AMOUNT_OF_FOOD_PARAMS 4
+#define AMOUNT_OF_FOOD_PARAMS 5
 
 class FoodEntity : public Entity {
 private:
+    int expire;
 
 public:
     int energy;
@@ -19,7 +20,7 @@ public:
 
     void render() override;
 
-    void tick() override {}
+    void tick() override;
 
     int serializedSize() override {
         return AMOUNT_OF_FOOD_PARAMS * 4;
@@ -30,6 +31,7 @@ public:
         ((int *) ptr)[1] = x;
         ((int *) ptr)[2] = y;
         ((int *) ptr)[3] = energy;
+        ((int *) ptr)[4] = expire;
         ptr = static_cast<int *>(ptr) + AMOUNT_OF_FOOD_PARAMS;
     }
 };
