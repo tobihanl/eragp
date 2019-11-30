@@ -48,6 +48,9 @@ next to each other. The borders are drawn in red.
 - **Draw padding areas** `A`: Draws all padding areas from other nodes on the window of a node. The rectangles are drawn
 in blue.
 
+- **Hide window** `H`: Hide window and switch to no render mode (like leaving out the `-r` option). To switch back
+again, write the character `r` *(render)* into the console of the simulation.
+
 - **Quit** `Q`: Stops simulation and quits the application.
 
 - **Left-click**: Get information about the nearest living entity, where the mouse was pressed, printed in the console.
