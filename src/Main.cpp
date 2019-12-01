@@ -324,6 +324,7 @@ int main(int argc, char **argv) {
     int width = 960, height = 720;
     bool maimuc = false, render = false;
     float foodRate = 1.f;  //food spawned per 2000 tiles per tick
+    float zoom = 1.f;
     long ticks = -1;
     long livings = 50, food = 100;
     std::string filename;
@@ -334,7 +335,7 @@ int main(int argc, char **argv) {
     // Scan program arguments
     opterr = 0;
     int c;
-    while ((c = getopt(argc, argv, "h:w:m::f:r::t:s:l:e:")) != -1) {
+    while ((c = getopt(argc, argv, "h:w:m::f:r::t:s:l:e:z:")) != -1) {
         char *ptr = nullptr;
         switch (c) {
             // Render flag
@@ -398,6 +399,18 @@ int main(int argc, char **argv) {
                 if (optarg != nullptr) randomSeed = std::stoi(optarg, nullptr);
                 break;
 
+                // Zoom
+            case 'z':
+                if (optarg) {
+                    zoom = (float) strtod(optarg, &ptr);
+                    if (*ptr || zoom < 0.1f) {
+                        std::cerr << "Option -z requires a (positive, >=0.1) float for the zoom of the world!"
+                                  << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                }
+                break;
+
                 // Log to file
             case 'l':
                 if (optarg != nullptr) {
@@ -449,7 +462,8 @@ int main(int argc, char **argv) {
                 } else if (optopt == 'e') {
                     std::cerr << "Option -e requires a string specifying the amount of livings and food to spawn on the"
                               << "entire world. Format: {Livings},{Food}" << std::endl;
-
+                } else if (optopt == 'z') {
+                    std::cerr << "Option -z requires a (positive, >=0.1) float for the zoom of the world!" << std::endl;
                 } else {
                     std::cerr << "Unknown option character -" << (char) optopt << std::endl;
                 }
@@ -464,7 +478,7 @@ int main(int argc, char **argv) {
     rng.seed(randomSeed);
 
     // Init world
-    World::setup(width, height, maimuc, foodRate);
+    World::setup(width, height, maimuc, foodRate, zoom);
     WorldDim dim = World::getWorldDim();
     if (!filename.empty())
         Log::startLogging(filename + "-" + std::to_string(World::getMPIRank()) + ".csv");

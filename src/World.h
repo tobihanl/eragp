@@ -117,7 +117,7 @@ public:
      * @param   maimuc              Indicates, whether the program is executed
      *                              on MaiMUC or not
      */
-    static void setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate);
+    static void setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate, float zoom);
 
     static void finalize();
 
@@ -171,7 +171,7 @@ private:
 
     static void calcPaddingRects();
 
-    static void generateTerrain();
+    static void generateTerrain(float zoom);
 
     static bool toAddLiving(LivingEntity *e) {
         return std::find(addLiving.begin(), addLiving.end(), e) != addLiving.end();

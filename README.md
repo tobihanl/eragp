@@ -9,29 +9,32 @@ Wednesday, 12:00 - 13:00 in main hall of the MI building.
 ## Coding guidelines
 Link to Trello task as first line in commit message.
 
-## Commandline arguments
+## Commandline arguments (optional)
 
-- **Width** `-w` (optional): Integer value declaring the width (in pixels) of the whole world. Default is 960px.
+- **Width** `-w`: Integer value declaring the width (in pixels) of the whole world. Default is 960px.
 
-- **Height** `-h` (optional): Integer value declaring the height (in pixels) of the whole world. Default is 720px.
+- **Height** `-h`: Integer value declaring the height (in pixels) of the whole world. Default is 720px.
 
-- **Food Spawn Rate** `-f` (optional): Float value that defines the amount of food spawned per 2000 tiles per tick.
+- **Food Spawn Rate** `-f`: Float value that defines the amount of food spawned per 2000 tiles per tick.
 Default is 1.
 
-- **Ticks** `-t` (optional): Amount of ticks (`long`) to simulate. No limitation with value -1. Default is -1.
+- **Ticks** `-t`: Amount of ticks (`long`) to simulate. No limitation with value -1. Default is -1.
 
-- **Render** `-r` (optional): Render the application while running. No value required. Default is **no rendering**.
+- **Render** `-r`: Render the application while running. No value required. Default is **no rendering**.
 
-- **MaiMUC** `-m` (optional): Run the application with the MaiMUC configuration. No value required. Application **must
+- **Zoom** `-z`: Zoom into the world. A (`float`) value greater/less than 1 zooms into/out of the world. Default is 1.
+Only values greater than 0.1 are allowed.
+
+- **MaiMUC** `-m`: Run the application with the MaiMUC configuration. No value required. Application **must
 be** executed on 10 nodes with this configuration!
 
-- **Random Seed** `-s` (optional): Run application with given seed.
+- **Random Seed** `-s`: Run application with given seed.
 
-- **Amount of entities** `e` (optional): Specify the amount of entities to spawn at start-up on the **entire** world.
+- **Amount of entities** `e`: Specify the amount of entities to spawn at start-up on the **entire** world.
 Entities will be distributed equally to all ranks. Format for argument: `{AMOUNT_LIVINGS},{AMOUNT_FOOD}`. Default is
 `50,100`.
 
-- **Log File** `-l` (optional): Log data about application into a `.csv` file. Filename has to be specified within this
+- **Log File** `-l`: Log data about application into a `.csv` file. Filename has to be specified within this
 option. The following will be appended to the filename: `-{MPI_Rank}.csv`.
 
 ## Using the keyboard and mouse while running the application

@@ -53,7 +53,7 @@ SDL_Texture *World::rankTexture = nullptr;
 
 std::vector<Tile *> World::terrain = std::vector<Tile *>();
 
-void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate) {
+void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate, float zoom) {
     if (isSetup)
         return;
 
@@ -90,7 +90,7 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
     width = worlds[MPI_Rank].w;
     height = worlds[MPI_Rank].h;
 
-    generateTerrain();
+    generateTerrain(zoom);
 
     // Calculate padding area stuff
     calcPaddingRects();
@@ -127,7 +127,7 @@ void World::finalize() {
     delete[] worlds;
 }
 
-void World::generateTerrain() {
+void World::generateTerrain(float zoom) {
     int heightWithPadding = height + (2 * WORLD_PADDING) + (y % TILE_SIZE) + (TILE_SIZE - (y + height) % TILE_SIZE);
     int widthWithPadding = width + (2 * WORLD_PADDING) + (x % TILE_SIZE) + (TILE_SIZE - (x + width) % TILE_SIZE);
 
@@ -137,8 +137,8 @@ void World::generateTerrain() {
     for (int py = 0; py < heightWithPadding / TILE_SIZE; py++) {
         for (int px = 0; px < widthWithPadding / TILE_SIZE; px++) {
             // Noise
-            float val = SimplexNoise::noise((float) ((px * TILE_SIZE) + xOffset) / (36.f * TILE_SIZE),
-                                            (float) ((py * TILE_SIZE) + yOffset) / (36.f * TILE_SIZE));
+            float val = SimplexNoise::noise((float) ((px * TILE_SIZE) + xOffset) / (36.f * zoom * TILE_SIZE),
+                                            (float) ((py * TILE_SIZE) + yOffset) / (36.f * zoom * TILE_SIZE));
 
             if (val < -0.4)
                 terrain.push_back(&Tile::WATER);
