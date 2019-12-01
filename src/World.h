@@ -10,10 +10,11 @@
 
 #define TILE_SIZE 8
 #define NUMBER_OF_MAIMUC_NODES 10
-#define WORLD_PADDING (7 * TILE_SIZE)    // must be a multiple of TILE_SIZE!
 
-#define VIEW_RANGE_SQUARED 25600 //160*160
-#define VIEW_RANGE 160
+#define VIEW_RANGE (20 * TILE_SIZE) // 160, should be a multiple of TILE_SIZE!
+#define VIEW_RANGE_SQUARED (VIEW_RANGE * VIEW_RANGE)
+
+#define WORLD_PADDING (2 * VIEW_RANGE) // must be a multiple of TILE_SIZE!
 
 #define ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD 0.0016
 
