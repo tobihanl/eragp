@@ -99,9 +99,9 @@ void LivingEntity::tick() {
         nb = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
 
         // Create children
-        auto child = new LivingEntity(x, y, {nr, ng, nb, 255}, speed + getRandomFloatBetween(0, 0.01),
-                                      size + getRandomFloatBetween(0, 0.01),
-                                      waterAgility + getRandomFloatBetween(0, 0.01), brain->createMutatedCopy());
+        auto child = new LivingEntity(x, y, {nr, ng, nb, 255}, speed + getRandomFloatBetween(-0.05, 0.05),
+                                      size + getRandomFloatBetween(-0.05, 0.05),
+                                      waterAgility + getRandomFloatBetween(-0.05, 0.05), brain->createMutatedCopy());
         if (!World::addLivingEntity(child, false)) // Not added?
             delete child;
 

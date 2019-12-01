@@ -11,7 +11,7 @@ static int getRandomIntBetween(int from, int to) {
 }
 
 static float getRandomFloatBetween(float from, float to) {
-    std::normal_distribution<float> distribution(from, to);
+    std::uniform_real_distribution<float> distribution(from, to);
     return distribution(rng);
 }
 

@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cmath>
 #define SQRT_6 2.4494898319244385
+#define MAX_MUTATION 0.05
 
 Brain::Brain(Brain *b) : numLayers(b->numLayers), weights(new Matrix *[b->numLayers - 1]),
                          biases(new Matrix *[b->numLayers - 1]) {
@@ -67,8 +68,8 @@ ThinkResult Brain::think(Matrix input) {
 Brain *Brain::createMutatedCopy() {
     auto *copy = new Brain(this);
     for (int i = 0; i < numLayers - 1; i++) {
-        *(copy->weights[i]) += Matrix(weights[i]->getHeight(), weights[i]->getWidth(), -0.01, 0.01);
-        *(copy->biases[i]) += Matrix(biases[i]->getHeight(), 1, -0.01, 0.01);
+        *(copy->weights[i]) += Matrix(weights[i]->getHeight(), weights[i]->getWidth(), -MAX_MUTATION, MAX_MUTATION);
+        *(copy->biases[i]) += Matrix(biases[i]->getHeight(), 1, -MAX_MUTATION, MAX_MUTATION);
     }
     return copy;
 }
