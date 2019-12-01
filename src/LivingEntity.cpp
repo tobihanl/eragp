@@ -112,23 +112,20 @@ void LivingEntity::tick() {
     NearestLiving nearest = World::findNearestLiving(this, false);
 
 
-    Matrix continuousIn(6, 1, {
+    Matrix input(10, 1, {
             (nearestFood ? nearestFood->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
             (nearest.enemy ? nearest.enemy->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
             (nearest.mate ? nearest.mate->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
             (float) tempEnergy / MAX_ENERGY,
             (nearest.mate ? (float) nearest.mate->energy / MAX_ENERGY * 0.8f : 1.f),
-            nearest.enemy ? (float) nearest.enemy->size : 0.f
-    });
-    Matrix normalizedIn(4, 1, {
+            nearest.enemy ? (float) nearest.enemy->size : 0.f,
             (float) (nearestFood ? std::atan2(nearestFood->x - x, nearestFood->y - y) / PI : rotation),
             (float) (nearest.enemy ? std::atan2(nearest.enemy->x - x, nearest.enemy->y - y) / PI : rotation),
             (float) (nearest.mate ? std::atan2(nearest.mate->x - x, nearest.mate->y - y) / PI : rotation),
             *World::tileAt(x + (int) std::round(std::cos(rotation * PI) * TILE_SIZE),
                            y + (int) std::round(std::sin(rotation * PI) * TILE_SIZE)) == Tile::WATER ? -1.f : 1.f
     });
-    //std::cout << continuousIn << normalizedIn << std::endl;
-    ThinkResult thoughts = brain->think(continuousIn, normalizedIn);
+    ThinkResult thoughts = brain->think(input);
     rotation = thoughts.rotation;
     //################################# Move ##################################
     if (thoughts.move) {
