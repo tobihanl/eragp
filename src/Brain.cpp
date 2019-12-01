@@ -5,7 +5,7 @@
 #define MAX_MUTATION 0.05
 
 Brain::Brain(Brain *b) : numLayers(b->numLayers), weights(new Matrix *[b->numLayers - 1]),
-                         biases(new Matrix *[b->numLayers - 1]) {
+                         biases(new Matrix *[b->numLayers - 1]), lastResult(b->lastResult) {
     for (int i = 0; i < numLayers - 1; i++) {
         weights[i] = new Matrix(b->weights[i]);
         biases[i] = new Matrix(b->biases[i]);
@@ -13,7 +13,7 @@ Brain::Brain(Brain *b) : numLayers(b->numLayers), weights(new Matrix *[b->numLay
 
 }
 
-Brain::Brain(int num, int sizes[]) : numLayers(num), weights(new Matrix *[num - 1]), biases(new Matrix *[num - 1]) {
+Brain::Brain(int num, int sizes[]) : numLayers(num), weights(new Matrix *[num - 1]), biases(new Matrix *[num - 1]), lastResult(new Matrix(sizes[num - 1], 1, -1.f, 1.f)) {
     for(int i = 0; i < num - 1; i++) {
         weights[i] = new Matrix(sizes[i+1], sizes[i],
                                 (float) -(SQRT_6 / std::sqrt(sizes[i] + sizes[i+1])),
@@ -36,6 +36,10 @@ Brain::Brain(void *&ptr) : numLayers(((int *) ptr)[0]), weights(new Matrix *[((i
                                                               static_cast<float *>(ptr) + 2 + height2));
         ptr = static_cast<float *>(ptr) + (2 + height2);
     }
+    int height = ((int *) ptr)[0];
+    lastResult = new Matrix(height, 1, std::vector<float>(static_cast<float *>(ptr) + 2,
+                                                          static_cast<float *>(ptr) + 2 + height));
+    ptr = static_cast<float *>(ptr) + (2 + height);
 }
 
 Brain::~Brain() {
@@ -80,6 +84,7 @@ int Brain::serializedSized() {
         sum += weights[i]->getHeight() * weights[i]->getWidth() * 4 + 8;//8 for the 2 int width/height of matrix
         sum += biases[i]->getHeight() * 4 + 8;
     }
+    sum += lastResult->getHeight() * 4 + 8;
     return 4 + sum;
 }
 
@@ -101,6 +106,11 @@ void Brain::serialize(void *&ptr) {
                   ((float *) ptr) + 2);// +2 only works because of same size
         ptr = static_cast<float *>(ptr) + (2 + biases[i]->getHeight());
     }
+    ((int *) ptr)[0] = lastResult->getHeight();
+    ((int *) ptr)[1] = 1;
+    std::copy(lastResult->data.begin(), lastResult->data.end(),
+              ((float *) ptr) + 2);// +2 only works because of same size
+    ptr = static_cast<float *>(ptr) + (2 + lastResult->getHeight());
 }
 
 std::ostream &operator<<(std::ostream &strm, const Brain &b) {
