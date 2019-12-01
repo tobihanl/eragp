@@ -22,13 +22,19 @@ LogData Log::data = {};
 
 void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padding);
 
+long ticks = -1;
+bool render = false;
+bool quit = false;
+
 /**
  * Event Loop that is also rendering and updating the world.
  *
  * @param   ticks   Amount of ticks to calculate
  *                  (-1) = no limitation
  */
-void renderLoop(long ticks) {
+void renderLoop() {
+    Renderer::show();
+
     // Pre-render Textures for faster copying
     SDL_Texture *border = nullptr, *pauseText = nullptr, *padding = nullptr;
     preRender(&border, &pauseText, &padding);
@@ -83,6 +89,7 @@ void renderLoop(long ticks) {
                             // QUIT
                         case SDLK_q:
                             run = false;
+                            quit = true;
                             break;
 
                             // Similarity mode
@@ -100,6 +107,12 @@ void renderLoop(long ticks) {
                             // Show padding areas
                         case SDLK_a:
                             paddings = !paddings;
+                            break;
+
+                            // Hide rendering
+                        case SDLK_h:
+                            run = false;
+                            render = false;
                             break;
 
                         default:
@@ -128,16 +141,21 @@ void renderLoop(long ticks) {
                             if (nearest) {
                                 std::cout << *nearest << std::endl;
                                 nearest->brain->printThink = true;
+                            } else {
+                                std::cout << "No nearest entity available!" << std::endl;
                             }
-                            else std::cout << "No nearest entity available!" << std::endl;
                         }
                     }
                     break;
 
                     // QUIT
                 case SDL_QUIT:
-                    if (World::getMPIRank() == 0) run = false;
-                    else std::cerr << "Simulation must be quit on ROOT node (0)!" << std::endl;
+                    if (World::getMPIRank() == 0) {
+                        run = false;
+                        quit = true;
+                    } else {
+                        std::cerr << "Simulation must be quit on ROOT node (0)!" << std::endl;
+                    }
                     break;
 
                 default:
@@ -153,6 +171,8 @@ void renderLoop(long ticks) {
             if (similarityMode) buffer |= 0x4u;
             if (borders) buffer |= 0x8u;
             if (paddings) buffer |= 0x10u;
+            if (quit) buffer |= 0x20u;
+            if (render) buffer |= 0x4u;
         }
         MPI_Bcast(&buffer, 1, MPI_UINT8_T, 0, MPI_COMM_WORLD);
         if (World::getMPIRank() != 0) {
@@ -161,6 +181,8 @@ void renderLoop(long ticks) {
             similarityMode = (buffer & 0x4u) != 0;
             borders = (buffer & 0x8u) != 0;
             paddings = (buffer & 0x10u) != 0;
+            quit = (buffer & 0x20u) != 0;
+            render = (buffer & 0x4u) != 0;
         }
 
         // Quit?
@@ -225,16 +247,20 @@ void renderLoop(long ticks) {
     for (int i = 0; i < 10; i++)
         Renderer::cleanup(LivingEntity::digits[i]);
 
-    // Destroy renderer (close window) and exit
+    // Cleanup textures
     Renderer::cleanup(Tile::GRASS.texture);
     Renderer::cleanup(Tile::STONE.texture);
     Renderer::cleanup(Tile::SAND.texture);
     Renderer::cleanup(Tile::WATER.texture);
+    Renderer::cleanup(World::background);
+    Renderer::cleanup(World::entities);
+    Renderer::cleanup(World::rankTexture);
     Renderer::cleanup(border);
     Renderer::cleanup(padding);
     Renderer::cleanup(pauseText);
     Renderer::cleanup(fps);
-    Renderer::destroy();
+
+    Renderer::hide();
 }
 
 /*
@@ -243,7 +269,7 @@ void renderLoop(long ticks) {
 * @param    ticks   Amount of ticks to calculate
  *                  (-1) = no limitation
  */
-void normalLoop(long ticks) {
+void normalLoop() {
     // Inspired from http://www.coldestgame.com/site/blog/cybertron/non-blocking-reading-stdin-c
     pollfd cin[1];
     if (World::getMPIRank() == 0) {
@@ -274,6 +300,13 @@ void normalLoop(long ticks) {
                 case 'q':
                 case 'Q':
                     run = false;
+                    quit = true;
+                    break;
+
+                case 'r':
+                case 'R':
+                    run = false;
+                    render = true;
                     break;
 
                 default:
@@ -290,10 +323,14 @@ void normalLoop(long ticks) {
         buffer = 0;
         if (World::getMPIRank() == 0) {
             if (run) buffer |= 0x1u;
+            if (quit) buffer |= 0x2u;
+            if (render) buffer |= 0x4u;
         }
         MPI_Bcast(&buffer, 1, MPI_UINT8_T, 0, MPI_COMM_WORLD);
         if (World::getMPIRank() != 0) {
             run = (buffer & 0x1u) != 0;
+            quit = (buffer & 0x2u) != 0;
+            render = (buffer & 0x4u) != 0;
         }
 
         // Quit?
@@ -322,10 +359,9 @@ int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
 
     int width = 960, height = 720;
-    bool maimuc = false, render = false;
+    bool maimuc = false;
     float foodRate = 1.f;  //food spawned per 2000 tiles per tick
     float zoom = 1.f;
-    long ticks = -1;
     long livings = 50, food = 100;
     std::string filename;
 
@@ -484,12 +520,10 @@ int main(int argc, char **argv) {
         Log::startLogging(filename + "-" + std::to_string(World::getMPIRank()) + ".csv");
 
     // Init renderer
-    if (render) {
-        if (maimuc)
-            Renderer::setup(0, 0, dim.w, dim.h, true);
-        else
-            Renderer::setup(dim.p.x, dim.p.y, dim.w, dim.h, false);
-    }
+    if (maimuc)
+        Renderer::setup(0, 0, dim.w, dim.h, true);
+    else
+        Renderer::setup(dim.p.x, dim.p.y, dim.w, dim.h, false);
 
     //============================= ADD TEST ENTITIES =============================
     long max = livings / World::getMPINodes();
@@ -522,17 +556,18 @@ int main(int argc, char **argv) {
     }
     //=========================== END ADD TEST ENTITIES ===========================
 
-    // Render simulation?
-    if (render)
-        renderLoop(ticks);
-    else
-        normalLoop(ticks);
+    while (!quit) {
+        // Render simulation?
+        if (render) renderLoop();
+        else normalLoop();
+    }
 
     // Exit application
     if (World::getMPIRank() == 0)
         std::cout << "EXITING..." << std::endl;
 
     World::finalize();
+    Renderer::destroy();
     Log::endLogging();
 
     // END MPI

@@ -3,6 +3,8 @@
 
 #include <string>
 #include <iostream>
+#include <SDL_image.h>
+#include <SDL_ttf.h>
 #include <SDL.h>
 #include "SDL/cleanup.h"
 
@@ -11,6 +13,7 @@ private:
     static SDL_Window *win;
     static SDL_Renderer *ren;
     static bool isSetup;
+    static bool hidden;
 
     Renderer() = default;
 
@@ -41,9 +44,29 @@ public:
         if (!isSetup) return;
 
         Include::cleanup(ren, win);
+        TTF_Quit();
+        IMG_Quit();
         SDL_Quit();
 
         isSetup = false;
+    }
+
+    /**
+     * Hide window
+     */
+    static void hide() {
+        if (!isSetup || hidden) return;
+        SDL_HideWindow(win);
+        hidden = true;
+    }
+
+    /**
+     * Show window
+     */
+    static void show() {
+        if (!isSetup || !hidden) return;
+        SDL_ShowWindow(win);
+        hidden = false;
     }
 
     /**

@@ -1,11 +1,10 @@
-#include <SDL_image.h>
-#include <SDL_ttf.h>
 #include "SDL/res_path.h"
 #include "Renderer.h"
 
 SDL_Window *Renderer::win = nullptr;
 SDL_Renderer *Renderer::ren = nullptr;
 bool Renderer::isSetup = false;
+bool Renderer::hidden = true;
 
 int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
     // Renderer already set up?
@@ -24,11 +23,17 @@ int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
         return 1;
     }
 
+    // Init Image Library
+    if (IMG_Init(IMG_INIT_PNG) == 0) {
+        logSDLError(std::cerr, "IMG_Init");
+        return 1;
+    }
+
     // Create Window
     if (fullscreen)
-        win = SDL_CreateWindow("Evolution", 0, 0, 1, 1, SDL_WINDOW_FULLSCREEN);
+        win = SDL_CreateWindow("Evolution", 0, 0, 1, 1, SDL_WINDOW_FULLSCREEN | SDL_WINDOW_HIDDEN);
     else
-        win = SDL_CreateWindow("Evolution", x, y, width, height, SDL_WINDOW_BORDERLESS);
+        win = SDL_CreateWindow("Evolution", x, y, width, height, SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIDDEN);
 
     if (win == nullptr) {
         logSDLError(std::cerr, "SDL_CreateWindow");
