@@ -2,7 +2,6 @@
 #include <cassert>
 #include "SimplexNoise/SimplexNoise.h"
 #include "World.h"
-#include "Renderer.h"
 #include "Rng.h"
 #include "Log.h"
 

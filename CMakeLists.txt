@@ -23,3 +23,9 @@ endif ()
 if (MPI_LINK_FLAGS)
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
 endif ()
+
+OPTION(DEFINE_RENDER "Compile with rendering" OFF) # Disabled by default
+
+IF (DEFINE_RENDER)
+    ADD_DEFINITIONS(-DRENDER)
+ENDIF (DEFINE_RENDER)

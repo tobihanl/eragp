@@ -13,8 +13,6 @@ target_sources(${PROJECT_NAME}
         ${CMAKE_CURRENT_LIST_DIR}/Main.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Matrix.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Matrix.h
-        ${CMAKE_CURRENT_LIST_DIR}/Renderer.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Renderer.h
         ${CMAKE_CURRENT_LIST_DIR}/Rng.h
         ${CMAKE_CURRENT_LIST_DIR}/Structs.h
         ${CMAKE_CURRENT_LIST_DIR}/Tile.cpp
@@ -23,12 +21,20 @@ target_sources(${PROJECT_NAME}
         ${CMAKE_CURRENT_LIST_DIR}/World.h
         )
 
-find_package(SDL2 REQUIRED)
-find_package(SDL2_image REQUIRED)
-find_package(SDL2_ttf REQUIRED)
+IF (DEFINE_RENDER)
+    target_sources(${PROJECT_NAME}
+            PUBLIC
+            ${CMAKE_CURRENT_LIST_DIR}/Renderer.cpp
+            ${CMAKE_CURRENT_LIST_DIR}/Renderer.h
+            )
 
-target_include_directories(${PROJECT_NAME} PUBLIC ${SDL2_INCLUDE_DIR})
-target_include_directories(${PROJECT_NAME} PUBLIC ${SDL2_IMAGE_INCLUDE_DIR})
-target_include_directories(${PROJECT_NAME} PUBLIC ${SDL2_TTF_INCLUDE_DIR})
+    find_package(SDL2 REQUIRED)
+    find_package(SDL2_image REQUIRED)
+    find_package(SDL2_ttf REQUIRED)
 
-target_link_libraries(${PROJECT_NAME} PUBLIC ${SDL2_LIBRARY} ${SDL2_IMAGE_LIBRARY} ${SDL2_TTF_LIBRARY})
+    target_include_directories(${PROJECT_NAME} PUBLIC ${SDL2_INCLUDE_DIR})
+    target_include_directories(${PROJECT_NAME} PUBLIC ${SDL2_IMAGE_INCLUDE_DIR})
+    target_include_directories(${PROJECT_NAME} PUBLIC ${SDL2_TTF_INCLUDE_DIR})
+
+    target_link_libraries(${PROJECT_NAME} PUBLIC ${SDL2_LIBRARY} ${SDL2_IMAGE_LIBRARY} ${SDL2_TTF_LIBRARY})
+ENDIF (DEFINE_RENDER)

@@ -1,6 +1,5 @@
 #include "FoodEntity.h"
 #include "World.h"
-#include "Renderer.h"
 
 FoodEntity::FoodEntity(int startX, int startY, int e) :
         Entity(startX, startY, {255, 0, 0, 255}, 4),

@@ -1,7 +1,6 @@
 #include <cmath>
 #include <cassert>
 #include "LivingEntity.h"
-#include "Renderer.h"
 #include "World.h"
 #include "FoodEntity.h"
 #include "Rng.h"
@@ -30,10 +29,10 @@ LivingEntity::LivingEntity(void *&ptr) :
                ((int *) ptr)[1],
                ((int *) ptr)[2],
                {
-                       (Uint8) (((Uint32 *) ptr)[3] >> 24u),
-                       (Uint8) (((Uint32 *) ptr)[3] >> 16u),
-                       (Uint8) (((Uint32 *) ptr)[3] >> 8u),
-                       (Uint8) ((Uint32 *) ptr)[3]
+                       (uint8_t) (((uint32_t *) ptr)[3] >> 24u),
+                       (uint8_t) (((uint32_t *) ptr)[3] >> 16u),
+                       (uint8_t) (((uint32_t *) ptr)[3] >> 8u),
+                       (uint8_t) ((uint32_t *) ptr)[3]
                },
                ((float *) ptr)[5]),
         speed(((float *) ptr)[4]),
@@ -59,11 +58,11 @@ void LivingEntity::tick() {
     if (cooldown > 0) cooldown--;
     if (cooldown == 0 && tempEnergy >= 60 * energyLossWithMove) {
         //tempEnergy -= 60; leaving out might give better results
-        Uint8 nr = color.r + (int) std::round(getRandomFloatBetween(0, 2.55));
+        uint8_t nr = color.r + (int) std::round(getRandomFloatBetween(0, 2.55));
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
-        Uint8 ng = color.g + (int) std::round(getRandomFloatBetween(0, 2.55));
+        uint8_t ng = color.g + (int) std::round(getRandomFloatBetween(0, 2.55));
         ng = ng < 0 ? 0 : (ng > 255 ? 255 : ng);
-        Uint8 nb = color.b + (int) std::round(getRandomFloatBetween(0, 2.55));
+        uint8_t nb = color.b + (int) std::round(getRandomFloatBetween(0, 2.55));
         nb = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
 
         // Create children
@@ -188,8 +187,9 @@ void LivingEntity::serialize(void *&ptr) {
     ((int *) ptr)[0] = id;
     ((int *) ptr)[1] = x;
     ((int *) ptr)[2] = y;
-    ((Uint32 *) ptr)[3] =
-            ((Uint32) color.r) << 24u | ((Uint32) color.g) << 16u | ((Uint32) color.b) << 8u | ((Uint32) color.a);
+    ((uint32_t *) ptr)[3] =
+            ((uint32_t) color.r) << 24u | ((uint32_t) color.g) << 16u | ((uint32_t) color.b) << 8u |
+            ((uint32_t) color.a);
     ((float *) ptr)[4] = speed;
     ((float *) ptr)[5] = size;
     ((float *) ptr)[6] = waterAgility;

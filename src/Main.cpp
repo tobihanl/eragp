@@ -3,15 +3,18 @@
 #include <iostream>
 #include <cstdlib>
 #include <poll.h>
-#include <SDL.h>
 #include <mpi.h>
 #include <unistd.h>
-#include "Renderer.h"
 #include "World.h"
 #include "Brain.h"
 #include "Tile.h"
 #include "Log.h"
 #include "Rng.h"
+
+#ifdef RENDER
+#include <SDL.h>
+#include "Renderer.h"
+#endif
 
 #define MS_PER_TICK 100
 
@@ -20,7 +23,32 @@ bool Log::logging = false;
 FILE *Log::logFile = nullptr;
 LogData Log::data = {};
 
-void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padding);
+#ifdef RENDER
+void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padding) {
+    WorldDim dim = World::getWorldDim();
+
+    Renderer::renderDigits();
+
+    *border = Renderer::renderRect(dim.w, dim.h, {255, 0, 0, 255}, false);
+    *pauseText = Renderer::renderFont("Paused", 25, {0, 0, 0, 255}, "font.ttf");
+
+    // Render padding Rects
+    *padding = Renderer::createTexture(dim.w, dim.h, SDL_TEXTUREACCESS_TARGET);
+    Renderer::setTarget(*padding);
+    SDL_SetTextureBlendMode(*padding, SDL_BLENDMODE_BLEND);
+    Renderer::clear();
+    for (const auto &p : *World::getPaddingRects())
+        Renderer::copy(Renderer::renderRect(p.rect.w, p.rect.h, {0, 0, 255, 255}, false),
+                       p.rect.p.x - dim.p.x,
+                       p.rect.p.y - dim.p.y);
+    Renderer::setTarget(nullptr);
+
+    // Render terrain and create texture for entities
+    Renderer::prerenderBackground(World::getWorldDim(), World::terrain);
+    Renderer::prerenderEntities(World::getWorldDim());
+    Renderer::prerenderRank(World::getMPIRank());
+}
+#endif
 
 long ticks = -1;
 bool render = false;
@@ -32,6 +60,7 @@ bool quit = false;
  * @param   ticks   Amount of ticks to calculate
  *                  (-1) = no limitation
  */
+#ifdef RENDER
 void renderLoop() {
     Renderer::show();
 
@@ -40,7 +69,7 @@ void renderLoop() {
     preRender(&border, &pauseText, &padding);
 
     // Debug flags and other stuff
-    Uint8 buffer = 0;
+    uint8_t buffer = 0;
     bool paused = false, similarityMode = false, borders = false, paddings = false;
     int countSelectedEntities = 0;
     LivingEntity *selectedEntities[2] = {nullptr};
@@ -252,6 +281,7 @@ void renderLoop() {
 
     Renderer::hide();
 }
+#endif
 
 /*
  * Normal loop updating the world without rendering it.
@@ -269,7 +299,7 @@ void normalLoop() {
         std::cout.flush();
     }
 
-    Uint8 buffer = 0;
+    uint8_t buffer = 0;
     bool run = ticks == -1 || ticks > 0;
     int counter = 0;
     while (run) {
@@ -509,11 +539,12 @@ int main(int argc, char **argv) {
     if (!filename.empty())
         Log::startLogging(filename + "-" + std::to_string(World::getMPIRank()) + ".csv");
 
-    // Init renderer
+#ifdef RENDER
     if (maimuc)
         Renderer::setup(0, 0, dim.w, dim.h, true);
     else
         Renderer::setup(dim.p.x, dim.p.y, dim.w, dim.h, false);
+#endif
 
     //============================= ADD TEST ENTITIES =============================
     long max = livings / World::getMPINodes();
@@ -524,9 +555,9 @@ int main(int argc, char **argv) {
                 getRandomIntBetween(0, dim.w) + dim.p.x,
                 getRandomIntBetween(0, dim.h) + dim.p.y,
                 {
-                        static_cast<Uint8>(getRandomIntBetween(0, 256)),
-                        static_cast<Uint8>(getRandomIntBetween(0, 256)),
-                        static_cast<Uint8>(getRandomIntBetween(0, 256)),
+                        static_cast<uint8_t>(getRandomIntBetween(0, 256)),
+                        static_cast<uint8_t>(getRandomIntBetween(0, 256)),
+                        static_cast<uint8_t>(getRandomIntBetween(0, 256)),
                         255},
                 (float) getRandomIntBetween(0, 10000) / 10000.0f,
                 (float) getRandomIntBetween(0, 10000) / 10000.0f,
@@ -547,45 +578,26 @@ int main(int argc, char **argv) {
     //=========================== END ADD TEST ENTITIES ===========================
 
     while (!quit) {
-        // Render simulation?
+#ifdef RENDER
         if (render) renderLoop();
         else normalLoop();
+#else
+        normalLoop();
+#endif
     }
 
-    // Exit application
     if (World::getMPIRank() == 0)
         std::cout << "EXITING..." << std::endl;
 
     World::finalize();
+
+#ifdef RENDER
     Renderer::destroy();
+#endif
+
     Log::endLogging();
 
     // END MPI
     MPI_Finalize();
     return EXIT_SUCCESS;
-}
-
-void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padding) {
-    WorldDim dim = World::getWorldDim();
-
-    Renderer::renderDigits();
-
-    *border = Renderer::renderRect(dim.w, dim.h, {255, 0, 0, 255}, false);
-    *pauseText = Renderer::renderFont("Paused", 25, {0, 0, 0, 255}, "font.ttf");
-
-    // Render padding Rects
-    *padding = Renderer::createTexture(dim.w, dim.h, SDL_TEXTUREACCESS_TARGET);
-    Renderer::setTarget(*padding);
-    SDL_SetTextureBlendMode(*padding, SDL_BLENDMODE_BLEND);
-    Renderer::clear();
-    for (const auto &p : *World::getPaddingRects())
-        Renderer::copy(Renderer::renderRect(p.rect.w, p.rect.h, {0, 0, 255, 255}, false),
-                       p.rect.p.x - dim.p.x,
-                       p.rect.p.y - dim.p.y);
-    Renderer::setTarget(nullptr);
-
-    // Render terrain and create texture for entities
-    Renderer::prerenderBackground(World::getWorldDim(), World::terrain);
-    Renderer::prerenderEntities(World::getWorldDim());
-    Renderer::prerenderRank(World::getMPIRank());
 }

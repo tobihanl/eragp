@@ -1,5 +1,4 @@
 #include "Entity.h"
-#include "Renderer.h"
 #include "World.h"
 
 int Entity::idCounter = 0;
