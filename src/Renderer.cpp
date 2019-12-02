@@ -130,11 +130,13 @@ static int getNumDigits(int x) {
     assert(false && "Too much energy");
 }
 
+// TODO: only create textures once, use i.e. lookup table
 void Renderer::renderEntity(RenderData r) {
     Renderer::copy(Renderer::renderDot(r.radius, r.color), r.x - r.worldDim.p.x - r.radius, r.y - r.worldDim.p.y -
                                                                                             r.radius);
     if (!r.isLiving) return;
 
+    // TODO: can this even happen?
     if (r.energy <= 0) {
         Renderer::copy(digits[0], r.x - r.worldDim.p.x - (ENERGY_FONT_SIZE / 2), r.y - r.worldDim.p.y - 4 -
                                                                                  ENERGY_FONT_SIZE);
