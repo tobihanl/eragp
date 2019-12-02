@@ -9,13 +9,10 @@
 #define PI 3.14159265
 #define MAX_ENERGY 9999
 
-SDL_Texture *LivingEntity::digits[10];
-
 //################################Begin object##############################################
 
-LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float si, float wa, Brain *b) :
+LivingEntity::LivingEntity(int startX, int startY, Color c, float sp, float si, float wa, Brain *b) :
         Entity(startX, startY, c, (int) ((1.0f + si) * TILE_SIZE / 2)),
-        color(c),
         speed(sp >= 0 ? sp : 0),
         size(si >= 0 ? si : 0),
         waterAgility(wa < 0 ? 0 : (wa > 1 ? 1 : wa)),
@@ -39,12 +36,6 @@ LivingEntity::LivingEntity(void *&ptr) :
                        (Uint8) ((Uint32 *) ptr)[3]
                },
                ((float *) ptr)[5]),
-        color({
-                      (Uint8) (((Uint32 *) ptr)[3] >> 24u),
-                      (Uint8) (((Uint32 *) ptr)[3] >> 16u),
-                      (Uint8) (((Uint32 *) ptr)[3] >> 8u),
-                      (Uint8) ((Uint32 *) ptr)[3]
-              }),
         speed(((float *) ptr)[4]),
         size(((float *) ptr)[5]),
         waterAgility(((float *) ptr)[6]),
@@ -57,32 +48,9 @@ LivingEntity::LivingEntity(void *&ptr) :
     brain = new Brain(ptr);
 }
 
-static int getNumDigits(int x) {
-    if (x < 10) return 1;
-    else if (x < 100) return 2;
-    else if (x < 1000) return 3;
-    else if (x < 10000) return 4;
-    assert(false && "Too much energy");
-}
-
-void LivingEntity::render() {
-    WorldDim dim = World::getWorldDim();
-    float radius = (1.0f + size) * TILE_SIZE / 2.0f;
-    int radiusI = (int) round(radius);
-    Renderer::copy(texture, x - dim.p.x - radiusI, y - dim.p.y - radiusI);
-    if (energy <= 0) {
-        Renderer::copy(digits[0], x - dim.p.x - (ENERGY_FONT_SIZE / 2), y - dim.p.y - 4 - ENERGY_FONT_SIZE);
-    } else {//max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
-        int numDigits = getNumDigits(energy);
-        int energyToDisplay = energy;
-        int baseX = x - dim.p.x + numDigits * 4 -
-                    4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
-        for (int i = 0; energyToDisplay > 0; i++) {
-            Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, y - dim.p.y - 4 - ENERGY_FONT_SIZE);
-            energyToDisplay /= 10;
-        }
-    }
-    //Renderer::renderDot(x, y, (1 + size) * TILE_SIZE / 2, color);
+RenderData LivingEntity::getRenderData() {
+    struct RenderData r = {World::getWorldDim(), radius, color, x, y, energy, true};
+    return r;
 }
 
 void LivingEntity::tick() {

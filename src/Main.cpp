@@ -242,12 +242,7 @@ void renderLoop() {
     //=============================================================================
     //                                END MAIN LOOP
     //=============================================================================
-
-    // Cleanup digits
-    for (int i = 0; i < 10; i++)
-        Renderer::cleanup(LivingEntity::digits[i]);
-
-    // Cleanup textures
+    Renderer::cleanupDigits();
     Renderer::cleanup(Tile::GRASS.texture);
     Renderer::cleanup(Tile::STONE.texture);
     Renderer::cleanup(Tile::SAND.texture);
@@ -578,16 +573,7 @@ int main(int argc, char **argv) {
 void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padding) {
     WorldDim dim = World::getWorldDim();
 
-    LivingEntity::digits[0] = Renderer::renderFont("0", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[1] = Renderer::renderFont("1", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[2] = Renderer::renderFont("2", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[3] = Renderer::renderFont("3", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[4] = Renderer::renderFont("4", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[5] = Renderer::renderFont("5", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[6] = Renderer::renderFont("6", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[7] = Renderer::renderFont("7", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[8] = Renderer::renderFont("8", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[9] = Renderer::renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    Renderer::renderDigits();
 
     Tile::GRASS.texture = Renderer::renderImage("grass.png");
     Tile::STONE.texture = Renderer::renderImage("stone.png");

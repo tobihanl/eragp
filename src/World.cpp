@@ -177,10 +177,10 @@ void World::render() {
     // Render entities
     Renderer::setTarget(entities);
     for (const auto &f : food) {
-        f->render();
+        Renderer::renderEntity(f->getRenderData());
     }
     for (const auto &e : living) {
-        e->render();
+        Renderer::renderEntity(e->getRenderData());
     }
     Renderer::setTarget(nullptr);
     Renderer::copy(entities, 0, 0);
@@ -243,7 +243,7 @@ void World::tick() {
             removeLivingEntity(e);
 
             // Render entity as it will be deleted before world will be rendered!
-            if (Renderer::getIsSetup()) e->render();
+            if (Renderer::getIsSetup()) Renderer::renderEntity(e->getRenderData());
 
             /* TODO: Re-enable! (Right now, a node NOT being a neighbor gets data sent with the code below)
             // Send entity to nodes having a padding at this position (excluding THIS node!)

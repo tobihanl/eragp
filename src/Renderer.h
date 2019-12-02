@@ -7,6 +7,9 @@
 #include <SDL_ttf.h>
 #include <SDL.h>
 #include "SDL/cleanup.h"
+#include "Structs.h"
+
+#define ENERGY_FONT_SIZE 12
 
 class Renderer {
 private:
@@ -14,6 +17,7 @@ private:
     static SDL_Renderer *ren;
     static bool isSetup;
     static bool hidden;
+    static SDL_Texture *digits[];
 
     Renderer() = default;
 
@@ -190,7 +194,13 @@ public:
      *
      * @return  A pointer to the texture with the specified dot/filled circle
      */
-    static SDL_Texture *renderDot(int radius, const SDL_Color &color);
+    static SDL_Texture *renderDot(int radius, const Color &color);
+
+    static void renderEntity(RenderData renderData);
+
+    static void renderDigits();
+
+    static void cleanupDigits();
 
     /**
      * Renders a filled or unfilled rectangle

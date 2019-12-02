@@ -1,17 +1,14 @@
 #ifndef ERAGP_MAIMUC_EVO_2019_LIVINGENTITY_H
 #define ERAGP_MAIMUC_EVO_2019_LIVINGENTITY_H
 
-#include <SDL.h>
 #include "Entity.h"
 #include "Brain.h"
 #include "Tile.h"
 
-#define ENERGY_FONT_SIZE 12
 #define AMOUNT_OF_LIVING_PARAMS 10
 
 class LivingEntity : public Entity {
 private:
-    SDL_Color color;
     float speed;
     float size;
     float waterAgility;
@@ -29,19 +26,17 @@ private:
     }
 
 public:
-    static SDL_Texture *digits[];
-
     Brain *brain;
 
-    LivingEntity(int x, int y, SDL_Color color, float speed, float size, float waterAgility, Brain *brain);
+    LivingEntity(int x, int y, Color color, float speed, float size, float waterAgility, Brain *brain);
 
     explicit LivingEntity(void *&ptr);
 
-    ~LivingEntity() override;
+    ~LivingEntity();
 
-    void render() override;
+    struct RenderData getRenderData() override;
 
-    void tick() override;
+    void tick();
 
     //TODO consider new properties when added
     float squaredDifference(const LivingEntity &e) {

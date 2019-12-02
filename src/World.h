@@ -7,6 +7,7 @@
 #include "FoodEntity.h"
 #include "LivingEntity.h"
 #include "Tile.h"
+#include "Structs.h"
 
 #define TILE_SIZE 8
 #define NUMBER_OF_MAIMUC_NODES 10
@@ -31,30 +32,10 @@ struct MPISendEntity {
     int rank;
     Entity *entity;
 };
-
-struct Point {
-    int x = 0;
-    int y = 0;
-};
-
-struct Rect {
-    struct Point p;
-    int w = 0;
-    int h = 0;
-};
-
-struct PaddingRect {
-    int rank = 0;
-    struct Rect rect;
-};
-
 struct NearestLiving {
     LivingEntity *mate;
     LivingEntity *enemy;
 };
-
-typedef struct Rect WorldDim;
-
 //=================================== Class ===================================
 class World {
 private:

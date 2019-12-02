@@ -1,10 +1,12 @@
 #include "SDL/res_path.h"
 #include "Renderer.h"
+#include <cassert>
 
 SDL_Window *Renderer::win = nullptr;
 SDL_Renderer *Renderer::ren = nullptr;
 bool Renderer::isSetup = false;
 bool Renderer::hidden = true;
+SDL_Texture *Renderer::digits[10];
 
 int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
     // Renderer already set up?
@@ -71,7 +73,7 @@ SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
     return tex;
 }
 
-SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
+SDL_Texture *Renderer::renderDot(int radius, const Color &color) {
     if (!isSetup) return nullptr;
 
     int squaredRadius = radius * radius, doubledRadius = radius + radius;
@@ -100,6 +102,52 @@ SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
 
     delete[] pixels;
     return texture;
+}
+
+void Renderer::renderDigits() {
+    digits[0] = renderFont("0", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[1] = renderFont("1", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[2] = renderFont("2", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[3] = renderFont("3", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[4] = renderFont("4", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[5] = renderFont("5", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[6] = renderFont("6", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[7] = renderFont("7", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[8] = renderFont("8", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[9] = renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+}
+
+void Renderer::cleanupDigits() {
+    for (auto &digit : digits)
+        cleanup(digit);
+}
+
+static int getNumDigits(int x) {
+    if (x < 10) return 1;
+    else if (x < 100) return 2;
+    else if (x < 1000) return 3;
+    else if (x < 10000) return 4;
+    assert(false && "Too much energy");
+}
+
+void Renderer::renderEntity(RenderData r) {
+    Renderer::copy(Renderer::renderDot(r.radius, r.color), r.x - r.worldDim.p.x - r.radius, r.y - r.worldDim.p.y -
+                                                                                            r.radius);
+    if (!r.isLiving) return;
+
+    if (r.energy <= 0) {
+        Renderer::copy(digits[0], r.x - r.worldDim.p.x - (ENERGY_FONT_SIZE / 2), r.y - r.worldDim.p.y - 4 -
+                                                                                 ENERGY_FONT_SIZE);
+    } else {//max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
+        int numDigits = getNumDigits(r.energy);
+        int energyToDisplay = r.energy;
+        int baseX = r.x - r.worldDim.p.x + numDigits * 4 -
+                    4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
+        for (int i = 0; energyToDisplay > 0; i++) {
+            Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, r.y - r.worldDim.p.y - 4 - ENERGY_FONT_SIZE);
+            energyToDisplay /= 10;
+        }
+    }
 }
 
 SDL_Texture *Renderer::renderRect(int width, int height, const SDL_Color &color, bool filled) {

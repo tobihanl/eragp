@@ -18,6 +18,7 @@ FoodEntity::FoodEntity(void *&ptr) :
     ptr = static_cast<int *>(ptr) + AMOUNT_OF_FOOD_PARAMS;
 }
 
-void FoodEntity::render() {
-    Renderer::copy(texture, x - World::getWorldDim().p.x - 4, y - World::getWorldDim().p.y - 4);
+struct RenderData FoodEntity::getRenderData() {
+    struct RenderData r = {World::getWorldDim(), radius, color, x, y, 0, false};
+    return r;
 }
