@@ -86,7 +86,7 @@ void renderLoop() {
     SDL_Event e;
     int currentTime, elapsedTime;
     int previousTime = Log::currentTime();
-    bool run = ticks == -1 || ticks > 0;
+    bool run = true;
     int counter = 0;
     while (run) {
         currentTime = Log::currentTime();
@@ -192,6 +192,12 @@ void renderLoop() {
             }
         }
 
+        if (ticks == 0) {
+            quit = true;
+            run = false;
+        } else if (ticks > 0) {
+            ticks--;
+        }
         //###################### BROADCAST APPLICATION STATUS #####################
         buffer = 0;
         if (World::getMPIRank() == 0) {
@@ -264,9 +270,6 @@ void renderLoop() {
             Log::data.delay = MS_PER_TICK - elapsedTime;
         }
 
-        // Set running status for next loop turn
-        run = ticks == -1 || (--ticks) > 0;
-
         Log::data.overall = Log::endTime(previousTime);
         Log::writeLogData();
     }
@@ -300,7 +303,7 @@ void normalLoop() {
     }
 
     uint8_t buffer = 0;
-    bool run = ticks == -1 || ticks > 0;
+    bool run = true;
     int counter = 0;
     while (run) {
         // Log new tick
@@ -339,6 +342,12 @@ void normalLoop() {
             }
         }
 
+        if (ticks == 0) {
+            quit = true;
+            run = false;
+        } else if (ticks > 0) {
+            ticks--;
+        }
         //###################### BROADCAST APPLICATION STATUS #####################
         buffer = 0;
         if (World::getMPIRank() == 0) {
@@ -361,8 +370,6 @@ void normalLoop() {
         World::tick();
         Log::data.tick = Log::endTime(tickTime);
 
-        // Set running status for next loop turn
-        run = ticks == -1 || (--ticks) > 0;
 
         Log::data.overall = Log::endTime(loopTime);
         Log::writeLogData();
