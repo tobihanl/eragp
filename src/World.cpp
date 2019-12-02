@@ -157,10 +157,16 @@ SDL_Texture *World::renderTerrain() {
     Renderer::setTarget(tex);
     Renderer::clear();
 
+    SDL_Texture *tileTex[4];
+    tileTex[0] = Renderer::renderImage("grass.png");
+    tileTex[1] = Renderer::renderImage("water.png");
+    tileTex[2] = Renderer::renderImage("stone.png");
+    tileTex[3] = Renderer::renderImage("sand.png");
+
     // Copy textures to background
     for (int py = 0; py < heightWithPadding / TILE_SIZE; py++) {
         for (int px = 0; px < widthWithPadding / TILE_SIZE; px++) {
-            Renderer::copy(terrain[py * (widthWithPadding / TILE_SIZE) + px]->texture,
+            Renderer::copy(tileTex[terrain[py * (widthWithPadding / TILE_SIZE) + px]->id],
                            px * TILE_SIZE,
                            py * TILE_SIZE);
         }

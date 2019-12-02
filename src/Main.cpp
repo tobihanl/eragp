@@ -243,10 +243,6 @@ void renderLoop() {
     //                                END MAIN LOOP
     //=============================================================================
     Renderer::cleanupDigits();
-    Renderer::cleanup(Tile::GRASS.texture);
-    Renderer::cleanup(Tile::STONE.texture);
-    Renderer::cleanup(Tile::SAND.texture);
-    Renderer::cleanup(Tile::WATER.texture);
     Renderer::cleanup(World::background);
     Renderer::cleanup(World::entities);
     Renderer::cleanup(World::rankTexture);
@@ -574,11 +570,6 @@ void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padd
     WorldDim dim = World::getWorldDim();
 
     Renderer::renderDigits();
-
-    Tile::GRASS.texture = Renderer::renderImage("grass.png");
-    Tile::STONE.texture = Renderer::renderImage("stone.png");
-    Tile::SAND.texture = Renderer::renderImage("sand.png");
-    Tile::WATER.texture = Renderer::renderImage("water.png");
 
     *border = Renderer::renderRect(dim.w, dim.h, {255, 0, 0, 255}, false);
     *pauseText = Renderer::renderFont("Paused", 25, {0, 0, 0, 255}, "font.ttf");

@@ -8,6 +8,7 @@
 #include "LivingEntity.h"
 #include "Tile.h"
 #include "Structs.h"
+#include "SDL.h"
 
 #define TILE_SIZE 8
 #define NUMBER_OF_MAIMUC_NODES 10
