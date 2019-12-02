@@ -190,7 +190,7 @@ void renderLoop() {
 
         // Calc FPS
         if (frameTime >= 1000) {
-            Renderer::cleanup(fps);
+            Renderer::cleanupTexture(fps);
 
             frameTime = 0;
             fps = Renderer::renderFont(std::to_string(frames), 25, {255, 255, 255, 255}, "font.ttf");
@@ -202,8 +202,6 @@ void renderLoop() {
         }
 
         //############################ TICK AND RENDER ############################
-        Renderer::setTarget(World::entities);
-        Renderer::clear();
         if (!paused) {
             int tickTime = Log::currentTime();
             World::tick();
@@ -214,7 +212,11 @@ void renderLoop() {
         // Render everything
         int renderTime = Log::currentTime();
         Renderer::clear();
-        World::render();
+
+        Renderer::renderBackground(World::getWorldDim());
+        Renderer::renderEntities(World::food, World::living);
+        Renderer::renderRank();
+
         if (paddings) Renderer::copy(padding, 0, 0);
         if (borders) Renderer::copy(border, 0, 0);
         if (paused) Renderer::copy(pauseText, 10, 10);
@@ -242,14 +244,11 @@ void renderLoop() {
     //=============================================================================
     //                                END MAIN LOOP
     //=============================================================================
-    Renderer::cleanupDigits();
-    Renderer::cleanup(World::background);
-    Renderer::cleanup(World::entities);
-    Renderer::cleanup(World::rankTexture);
-    Renderer::cleanup(border);
-    Renderer::cleanup(padding);
-    Renderer::cleanup(pauseText);
-    Renderer::cleanup(fps);
+    Renderer::cleanup();
+    Renderer::cleanupTexture(border);
+    Renderer::cleanupTexture(padding);
+    Renderer::cleanupTexture(pauseText);
+    Renderer::cleanupTexture(fps);
 
     Renderer::hide();
 }
@@ -586,9 +585,7 @@ void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padd
     Renderer::setTarget(nullptr);
 
     // Render terrain and create texture for entities
-    World::background = World::renderTerrain();
-    World::entities = Renderer::createTexture(dim.w, dim.h, SDL_TEXTUREACCESS_TARGET);
-    SDL_SetTextureBlendMode(World::entities, SDL_BLENDMODE_BLEND);
-    World::rankTexture = Renderer::renderFont(std::to_string(World::getMPIRank()), 25, {255, 255, 255, 255},
-                                              "font.ttf");
+    Renderer::prerenderBackground(World::getWorldDim(), World::terrain);
+    Renderer::prerenderEntities(World::getWorldDim());
+    Renderer::prerenderRank(World::getMPIRank());
 }

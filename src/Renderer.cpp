@@ -1,12 +1,52 @@
 #include "SDL/res_path.h"
 #include "Renderer.h"
 #include <cassert>
+#include <vector>
 
 SDL_Window *Renderer::win = nullptr;
 SDL_Renderer *Renderer::ren = nullptr;
 bool Renderer::isSetup = false;
 bool Renderer::hidden = true;
 SDL_Texture *Renderer::digits[10];
+
+SDL_Texture *Renderer::background = nullptr;
+SDL_Texture *Renderer::entities = nullptr;
+SDL_Texture *Renderer::rankTexture = nullptr;
+
+void Renderer::renderBackground(WorldDim dim) {
+    copy(background, -(WORLD_PADDING + (dim.p.x % TILE_SIZE)), -(WORLD_PADDING + (dim.p.y % TILE_SIZE)));
+}
+
+void Renderer::prerenderBackground(WorldDim dim, std::vector<Tile *> terrain) {
+    int heightWithPadding = dim.h + (2 * WORLD_PADDING) + (dim.p.y % TILE_SIZE) + (TILE_SIZE - (dim.p.y + dim.h) %
+                                                                                               TILE_SIZE);
+    int widthWithPadding = dim.w + (2 * WORLD_PADDING) + (dim.p.x % TILE_SIZE) + (TILE_SIZE - (dim.p.x + dim.w) %
+                                                                                              TILE_SIZE);
+
+    // Pre-render terrain for faster rendering
+    SDL_Texture *tex = Renderer::createTexture(widthWithPadding, heightWithPadding, SDL_TEXTUREACCESS_TARGET);
+    setTarget(tex);
+    clear();
+
+    SDL_Texture *tileTex[4];
+    tileTex[0] = renderImage("grass.png");
+    tileTex[1] = renderImage("water.png");
+    tileTex[2] = renderImage("stone.png");
+    tileTex[3] = renderImage("sand.png");
+
+    // Copy textures to background
+    for (int py = 0; py < heightWithPadding / TILE_SIZE; py++) {
+        for (int px = 0; px < widthWithPadding / TILE_SIZE; px++) {
+            copy(tileTex[terrain[py * (widthWithPadding / TILE_SIZE) + px]->id],
+                 px * TILE_SIZE,
+                 py * TILE_SIZE);
+        }
+    }
+
+    // Change render target back to default
+    setTarget(nullptr);
+    background = tex;
+}
 
 int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
     // Renderer already set up?
@@ -117,11 +157,6 @@ void Renderer::renderDigits() {
     digits[9] = renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
 }
 
-void Renderer::cleanupDigits() {
-    for (auto &digit : digits)
-        cleanup(digit);
-}
-
 static int getNumDigits(int x) {
     if (x < 10) return 1;
     else if (x < 100) return 2;
@@ -150,6 +185,19 @@ void Renderer::renderEntity(RenderData r) {
             energyToDisplay /= 10;
         }
     }
+}
+
+void Renderer::renderEntities(std::vector<FoodEntity *> food, std::vector<LivingEntity *> living) {
+    setTarget(entities);
+    clear();
+    for (const auto &f : food) {
+        renderEntity(f->getRenderData());
+    }
+    for (const auto &e : living) {
+        renderEntity(e->getRenderData());
+    }
+    setTarget(nullptr);
+    copy(entities, 0, 0);
 }
 
 SDL_Texture *Renderer::renderRect(int width, int height, const SDL_Color &color, bool filled) {
@@ -205,3 +253,17 @@ SDL_Texture *Renderer::renderFont(const std::string &text, int size, const SDL_C
     Include::cleanup(surface, font);
     return tex;
 }
+
+void Renderer::renderRank() {
+    copy(rankTexture, 10, 10);
+}
+
+void Renderer::prerenderRank(int rank) {
+    rankTexture = renderFont(std::to_string(rank), 25, {255, 255, 255, 255}, "font.ttf");
+}
+
+void Renderer::prerenderEntities(WorldDim dim) {
+    entities = createTexture(dim.w, dim.h, SDL_TEXTUREACCESS_TARGET);
+    SDL_SetTextureBlendMode(entities, SDL_BLENDMODE_BLEND);
+}
+

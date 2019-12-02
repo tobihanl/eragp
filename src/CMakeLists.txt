@@ -2,6 +2,7 @@ target_sources(${PROJECT_NAME}
         PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/Brain.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Brain.h
+        ${CMAKE_CURRENT_LIST_DIR}/Constants.h
         ${CMAKE_CURRENT_LIST_DIR}/Entity.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Entity.h
         ${CMAKE_CURRENT_LIST_DIR}/FoodEntity.cpp

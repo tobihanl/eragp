@@ -8,8 +8,9 @@
 #include <SDL.h>
 #include "SDL/cleanup.h"
 #include "Structs.h"
-
-#define ENERGY_FONT_SIZE 12
+#include "Tile.h"
+#include "FoodEntity.h"
+#include "LivingEntity.h"
 
 class Renderer {
 private:
@@ -24,6 +25,10 @@ private:
     ~Renderer() = default;
 
 public:
+    static SDL_Texture *background;
+    static SDL_Texture *entities;
+    static SDL_Texture *rankTexture;
+
     /**
      * Set up the renderer by creating a window with the given width
      * and height
@@ -138,12 +143,20 @@ public:
         SDL_QueryTexture(texture, nullptr, nullptr, &rect->w, &rect->h);
     }
 
+    static void cleanup() {
+        for (int i = 0; i < 10; i++)
+            cleanupTexture(digits[i]);
+        cleanupTexture(background);
+        cleanupTexture(entities);
+        cleanupTexture(rankTexture);
+    }
+
     /**
      * Cleans-up all the textures by destroying them.
      *
      * @param   texture The texture to be destroyed
      */
-    static void cleanup(SDL_Texture *texture) {
+    static void cleanupTexture(SDL_Texture *texture) {
         if (!isSetup) return;
         Include::cleanup(texture);
     }
@@ -198,9 +211,19 @@ public:
 
     static void renderEntity(RenderData renderData);
 
-    static void renderDigits();
+    static void prerenderEntities(WorldDim dim);
 
-    static void cleanupDigits();
+    static void renderEntities(std::vector<FoodEntity *> food, std::vector<LivingEntity *> living);
+
+    static void prerenderBackground(WorldDim dim, std::vector<Tile *> terrain);
+
+    static void renderBackground(WorldDim dim);
+
+    static void prerenderRank(int rank);
+
+    static void renderRank();
+
+    static void renderDigits();
 
     /**
      * Renders a filled or unfilled rectangle

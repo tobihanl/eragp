@@ -2,6 +2,7 @@
 #define EVOLUTION_TILE_H
 
 #include "Structs.h"
+#include "Constants.h"
 
 class Tile {
 private:
