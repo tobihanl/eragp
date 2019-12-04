@@ -5,6 +5,12 @@
 #include "Rng.h"
 #include "Log.h"
 
+#ifdef RENDER
+
+#include "Renderer.h"
+
+#endif
+
 // TODO [VERY IMPORTANT!] Implement checking if entity already exists in a vector to prevent duplicates!
 
 std::vector<FoodEntity *> World::food = std::vector<FoodEntity *>();
@@ -196,9 +202,11 @@ void World::tick() {
             livingEntitiesToMoveToNeighbors.push_back({static_cast<int>(rankAt(e->x, e->y)), e});
             removeLivingEntity(e);
 
+#ifdef RENDER
             // Render entity as it will be deleted before world will be rendered!
-            // TODO: what the hell?
-            //if (Renderer::getIsSetup()) Renderer::renderEntity(e->getRenderData());
+            // TODO: Improve?
+            Renderer::renderEntity(e->getRenderData());
+#endif
 
             /* TODO: Re-enable! (Right now, a node NOT being a neighbor gets data sent with the code below)
             // Send entity to nodes having a padding at this position (excluding THIS node!)

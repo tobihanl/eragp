@@ -12,8 +12,10 @@
 #include "Rng.h"
 
 #ifdef RENDER
+
 #include <SDL.h>
 #include "Renderer.h"
+
 #endif
 
 #define MS_PER_TICK 100
@@ -24,6 +26,7 @@ FILE *Log::logFile = nullptr;
 LogData Log::data = {};
 
 #ifdef RENDER
+
 void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padding) {
     WorldDim dim = World::getWorldDim();
 
@@ -44,10 +47,11 @@ void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padd
     Renderer::setTarget(nullptr);
 
     // Render terrain and create texture for entities
-    Renderer::prerenderBackground(World::getWorldDim(), World::terrain);
-    Renderer::prerenderEntities(World::getWorldDim());
-    Renderer::prerenderRank(World::getMPIRank());
+    Renderer::renderBackground(World::getWorldDim(), World::terrain);
+    Renderer::createEntitiesTexture(World::getWorldDim());
+    Renderer::renderRank(World::getMPIRank());
 }
+
 #endif
 
 long ticks = -1;
@@ -61,6 +65,7 @@ bool quit = false;
  *                  (-1) = no limitation
  */
 #ifdef RENDER
+
 void renderLoop() {
     Renderer::show();
 
@@ -238,19 +243,24 @@ void renderLoop() {
 
         //############################ TICK AND RENDER ############################
         if (!paused) {
+            Renderer::setTarget(Renderer::entities);
+            Renderer::clear();
+
             int tickTime = Log::currentTime();
             World::tick();
             Log::data.tick = Log::endTime(tickTime);
+
+            Renderer::setTarget(nullptr);
         }
-        //Renderer::setTarget(nullptr);
 
         // Render everything
         int renderTime = Log::currentTime();
         Renderer::clear();
 
-        Renderer::renderBackground(World::getWorldDim());
-        Renderer::renderEntities(World::food, World::living);
-        Renderer::renderRank();
+        Renderer::drawBackground(World::getWorldDim());
+        if (!paused) Renderer::renderEntities(World::food, World::living);
+        Renderer::copy(Renderer::entities, 0, 0);
+        Renderer::drawRank();
 
         if (paddings) Renderer::copy(padding, 0, 0);
         if (borders) Renderer::copy(border, 0, 0);
@@ -284,6 +294,7 @@ void renderLoop() {
 
     Renderer::hide();
 }
+
 #endif
 
 /*

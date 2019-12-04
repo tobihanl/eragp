@@ -3,6 +3,7 @@
 
 #include <string>
 #include <iostream>
+#include <cassert>
 #include <SDL_image.h>
 #include <SDL_ttf.h>
 #include <SDL.h>
@@ -209,22 +210,6 @@ public:
      */
     static SDL_Texture *renderDot(int radius, const Color &color);
 
-    static void renderEntity(RenderData renderData);
-
-    static void prerenderEntities(WorldDim dim);
-
-    static void renderEntities(const std::vector<FoodEntity *> &food, const std::vector<LivingEntity *> &living);
-
-    static void prerenderBackground(WorldDim dim, std::vector<Tile *> terrain);
-
-    static void renderBackground(WorldDim dim);
-
-    static void prerenderRank(int rank);
-
-    static void renderRank();
-
-    static void renderDigits();
-
     /**
      * Renders a filled or unfilled rectangle
      *
@@ -252,7 +237,40 @@ public:
     static SDL_Texture *
     renderFont(const std::string &text, int size, const SDL_Color &color, const std::string &fontFile);
 
-    //static bool getIsSetup() { return isSetup; }
+    static void renderDigits();
+
+    static void renderBackground(WorldDim dim, const std::vector<Tile *> &terrain);
+
+    static void renderEntity(RenderData renderData);
+
+    static void createEntitiesTexture(WorldDim dim) {
+        if (!isSetup) return;
+        entities = createTexture(dim.w, dim.h, SDL_TEXTUREACCESS_TARGET);
+        SDL_SetTextureBlendMode(entities, SDL_BLENDMODE_BLEND);
+    }
+
+    static void renderEntities(const std::vector<FoodEntity *> &food, const std::vector<LivingEntity *> &living) {
+        if (!isSetup) return;
+        setTarget(entities);
+        for (const auto &f : food) renderEntity(f->getRenderData());
+        for (const auto &e : living) renderEntity(e->getRenderData());
+        setTarget(nullptr);
+    }
+
+    static void renderRank(int rank) {
+        if (!isSetup) return;
+        rankTexture = renderFont(std::to_string(rank), 25, {255, 255, 255, 255}, "font.ttf");
+    }
+
+    static void drawBackground(WorldDim dim) {
+        if (!isSetup) return;
+        copy(background, -(WORLD_PADDING + (dim.p.x % TILE_SIZE)), -(WORLD_PADDING + (dim.p.y % TILE_SIZE)));
+    }
+
+    static void drawRank() {
+        if (!isSetup) return;
+        copy(rankTexture, 10, 10);
+    }
 
 private:
     /**
@@ -265,6 +283,15 @@ private:
      */
     static void logSDLError(std::ostream &os, const std::string &msg) {
         os << msg << " error: " << SDL_GetError() << std::endl;
+    }
+
+    static int getNumDigits(int x) {
+        if (x < 10) return 1;
+        else if (x < 100) return 2;
+        else if (x < 1000) return 3;
+        else if (x < 10000) return 4;
+        assert(x >= 10000 && "Too much energy");
+        return -1;
     }
 };
 

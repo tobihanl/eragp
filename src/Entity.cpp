@@ -17,7 +17,7 @@ Entity::Entity(int id, int x, int y, const Color &color, int radius) : Entity(x,
 }
 
 Entity::Entity(int i, int ix, int iy, const Color &color, float size) :
-        radius(((int) (1.0f + size) * TILE_SIZE / 2)),
+        radius((int) ((1.0f + size) * TILE_SIZE / 2)), // WARNING: Cast position is important for right radius calc!
         color(color),
         id(i),
         x(ix),
