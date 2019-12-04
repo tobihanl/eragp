@@ -162,13 +162,16 @@ static int getNumDigits(int x) {
     else if (x < 100) return 2;
     else if (x < 1000) return 3;
     else if (x < 10000) return 4;
-    assert(false && "Too much energy");
+    assert(x >= 10000 && "Too much energy");
+    return -1;
 }
 
 // TODO: only create textures once, use i.e. lookup table
 void Renderer::renderEntity(RenderData r) {
-    Renderer::copy(Renderer::renderDot(r.radius, r.color), r.x - r.worldDim.p.x - r.radius, r.y - r.worldDim.p.y -
-                                                                                            r.radius);
+    SDL_Texture *dot = Renderer::renderDot(r.radius, r.color);
+    Renderer::copy(dot, r.x - r.worldDim.p.x - r.radius, r.y - r.worldDim.p.y - r.radius);
+    cleanupTexture(dot);
+
     if (!r.isLiving) return;
 
     // TODO: can this even happen?
@@ -187,7 +190,7 @@ void Renderer::renderEntity(RenderData r) {
     }
 }
 
-void Renderer::renderEntities(std::vector<FoodEntity *> food, std::vector<LivingEntity *> living) {
+void Renderer::renderEntities(const std::vector<FoodEntity *> &food, const std::vector<LivingEntity *> &living) {
     setTarget(entities);
     clear();
     for (const auto &f : food) {

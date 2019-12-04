@@ -32,7 +32,7 @@ public:
 
     explicit LivingEntity(void *&ptr);
 
-    ~LivingEntity();
+    ~LivingEntity() override;
 
     struct RenderData getRenderData() override;
 

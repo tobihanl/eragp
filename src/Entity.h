@@ -26,6 +26,8 @@ public:
 
     Entity(int id, int x, int y, const Color &color, float size);
 
+    virtual ~Entity() = default;
+
     virtual struct RenderData getRenderData() = 0;
 
     virtual int serializedSize() = 0;

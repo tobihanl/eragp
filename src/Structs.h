@@ -30,11 +30,11 @@ struct Color {
 
 struct RenderData {
     WorldDim worldDim;
-    int radius;
-    Color color;
-    int x;
-    int y;
-    int energy;
-    bool isLiving;
+    int radius = 0;
+    Color color = {0};
+    int x = 0;
+    int y = 0;
+    int energy = 0;
+    bool isLiving = false;
 };
 #endif //EVOLUTION_STRUCTS_H

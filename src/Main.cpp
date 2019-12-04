@@ -242,7 +242,7 @@ void renderLoop() {
             World::tick();
             Log::data.tick = Log::endTime(tickTime);
         }
-        Renderer::setTarget(nullptr);
+        //Renderer::setTarget(nullptr);
 
         // Render everything
         int renderTime = Log::currentTime();
@@ -326,11 +326,13 @@ void normalLoop() {
                     quit = true;
                     break;
 
+#ifdef RENDER
                 case 'r':
                 case 'R':
                     run = false;
                     render = true;
                     break;
+#endif
 
                 default:
                     break;

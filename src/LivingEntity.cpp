@@ -48,8 +48,7 @@ LivingEntity::LivingEntity(void *&ptr) :
 }
 
 RenderData LivingEntity::getRenderData() {
-    struct RenderData r = {World::getWorldDim(), radius, color, x, y, energy, true};
-    return r;
+    return {World::getWorldDim(), radius, color, x, y, energy, true};
 }
 
 void LivingEntity::tick() {
@@ -212,5 +211,3 @@ std::ostream &operator<<(std::ostream &strm, const LivingEntity &l) {
 LivingEntity::~LivingEntity() {
     delete brain;
 }
-
-

@@ -15,6 +15,8 @@ public:
 
     explicit FoodEntity(void *&ptr);
 
+    ~FoodEntity() override = default;
+
     struct RenderData getRenderData() override;
 
     int serializedSize() override {
