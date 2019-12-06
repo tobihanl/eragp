@@ -1,6 +1,5 @@
 #include "FoodEntity.h"
 #include "World.h"
-#include "Renderer.h"
 
 FoodEntity::FoodEntity(int startX, int startY, int e) :
         Entity(startX, startY, {255, 0, 0, 255}, 4),
@@ -18,6 +17,6 @@ FoodEntity::FoodEntity(void *&ptr) :
     ptr = static_cast<int *>(ptr) + AMOUNT_OF_FOOD_PARAMS;
 }
 
-void FoodEntity::render() {
-    Renderer::copy(texture, x - World::getWorldDim().p.x - 4, y - World::getWorldDim().p.y - 4);
+struct RenderData FoodEntity::getRenderData() {
+    return {World::getWorldDim(), radius, color, x, y, 0, false};
 }

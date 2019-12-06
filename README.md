@@ -110,7 +110,7 @@ docker run --rm -p 5901:5901 -p 6901:6901 -v "//c/users/jonas/OneDrive - tum.de/
 
 Initially and after changes to cmake, cmake has to be loaded:
 ```
-docker exec -it eragp sh -c './utils/init.sh'
+docker exec -it eragp sh -c './utils/init.sh -build -render'
 ```
 Build the project and execute it:
 ```

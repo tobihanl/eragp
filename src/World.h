@@ -7,53 +7,18 @@
 #include "FoodEntity.h"
 #include "LivingEntity.h"
 #include "Tile.h"
-
-#define TILE_SIZE 8
-#define NUMBER_OF_MAIMUC_NODES 10
-
-#define VIEW_RANGE (20 * TILE_SIZE) // 160, should be a multiple of TILE_SIZE!
-#define VIEW_RANGE_SQUARED (VIEW_RANGE * VIEW_RANGE)
-
-#define WORLD_PADDING (2 * VIEW_RANGE) // must be a multiple of TILE_SIZE!
-
-#define ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD 0.0016
-
-#define MAX_FOOD_INTERVAL 1000000 //Can be much bigger because it is equally distributed
-
-#define MSGS_PER_NEIGHBOR 3
-
-#define MPI_TAG_LIVING_ENTITY 42
-#define MPI_TAG_FOOD_ENTITY 50
-#define MPI_TAG_REMOVED_FOOD_ENTITY 51
+#include "Structs.h"
+#include "Constants.h"
 
 //================================== Structs ==================================
 struct MPISendEntity {
     int rank;
     Entity *entity;
 };
-
-struct Point {
-    int x = 0;
-    int y = 0;
-};
-
-struct Rect {
-    struct Point p;
-    int w = 0;
-    int h = 0;
-};
-
-struct PaddingRect {
-    int rank = 0;
-    struct Rect rect;
-};
-
 struct NearestLiving {
     LivingEntity *mate;
     LivingEntity *enemy;
 };
-
-typedef struct Rect WorldDim;
 
 //=================================== Class ===================================
 class World {
@@ -77,9 +42,6 @@ private:
 
     static bool isSetup;
 
-    //TODO change list implementation and handle shared data
-    static std::vector<FoodEntity *> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
-    static std::vector<LivingEntity *> living;
 
     static std::vector<FoodEntity *> removeFood;
     static std::vector<LivingEntity *> removeLiving;
@@ -95,8 +57,6 @@ private:
     static std::vector<PaddingRect> paddingRects;
     static std::vector<int> paddingRanks;
 
-    static std::vector<Tile *> terrain;
-
     World() = default;
 
     ~World() = default;
@@ -105,9 +65,11 @@ public:
     static int overallWidth;
     static int overallHeight;
 
-    static SDL_Texture *background;
-    static SDL_Texture *entities;
-    static SDL_Texture *rankTexture;
+    static std::vector<Tile *> terrain;
+
+    //TODO change list implementation and handle shared data
+    static std::vector<FoodEntity *> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
+    static std::vector<LivingEntity *> living;
 
     /**
      * Initialize the world, which is part of the overall world and set
@@ -129,10 +91,6 @@ public:
     static WorldDim getWorldDim() { return getWorldDimOf(MPI_Rank); }
 
     static WorldDim getWorldDimOf(int rank) { return worlds[rank]; }
-
-    static SDL_Texture *renderTerrain();
-
-    static void render();
 
     static void tick();
 

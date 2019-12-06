@@ -2,9 +2,14 @@
 #include <cassert>
 #include "SimplexNoise/SimplexNoise.h"
 #include "World.h"
-#include "Renderer.h"
 #include "Rng.h"
 #include "Log.h"
+
+#ifdef RENDER
+
+#include "Renderer.h"
+
+#endif
 
 // TODO [VERY IMPORTANT!] Implement checking if entity already exists in a vector to prevent duplicates!
 
@@ -46,10 +51,6 @@ int World::minTicksToSkip = 0;
 int World::maxTicksToSkip = 0;
 
 bool World::isSetup = false;
-
-SDL_Texture *World::background = nullptr;
-SDL_Texture *World::entities = nullptr;
-SDL_Texture *World::rankTexture = nullptr;
 
 std::vector<Tile *> World::terrain = std::vector<Tile *>();
 
@@ -148,47 +149,6 @@ void World::generateTerrain(float zoom) {
     }
 }
 
-SDL_Texture *World::renderTerrain() {
-    int heightWithPadding = height + (2 * WORLD_PADDING) + (y % TILE_SIZE) + (TILE_SIZE - (y + height) % TILE_SIZE);
-    int widthWithPadding = width + (2 * WORLD_PADDING) + (x % TILE_SIZE) + (TILE_SIZE - (x + width) % TILE_SIZE);
-
-    // Pre-render terrain for faster rendering
-    SDL_Texture *tex = Renderer::createTexture(widthWithPadding, heightWithPadding, SDL_TEXTUREACCESS_TARGET);
-    Renderer::setTarget(tex);
-    Renderer::clear();
-
-    // Copy textures to background
-    for (int py = 0; py < heightWithPadding / TILE_SIZE; py++) {
-        for (int px = 0; px < widthWithPadding / TILE_SIZE; px++) {
-            Renderer::copy(terrain[py * (widthWithPadding / TILE_SIZE) + px]->texture,
-                           px * TILE_SIZE,
-                           py * TILE_SIZE);
-        }
-    }
-
-    // Change render target back to default
-    Renderer::setTarget(nullptr);
-    return tex;
-}
-
-void World::render() {
-    Renderer::copy(background, -(WORLD_PADDING + (x % TILE_SIZE)), -(WORLD_PADDING + (y % TILE_SIZE)));
-
-    // Render entities
-    Renderer::setTarget(entities);
-    for (const auto &f : food) {
-        f->render();
-    }
-    for (const auto &e : living) {
-        e->render();
-    }
-    Renderer::setTarget(nullptr);
-    Renderer::copy(entities, 0, 0);
-
-    // Show the rank of the node in the upper left of the window
-    Renderer::copy(rankTexture, 10, 10);
-}
-
 void World::tick() {
     if (intervalTicksLeft == 0) {
         assert(intervalFoodLeft == 0 && "Not enough food spawned!");
@@ -242,8 +202,11 @@ void World::tick() {
             livingEntitiesToMoveToNeighbors.push_back({static_cast<int>(rankAt(e->x, e->y)), e});
             removeLivingEntity(e);
 
+#ifdef RENDER
             // Render entity as it will be deleted before world will be rendered!
-            if (Renderer::getIsSetup()) e->render();
+            // TODO: Improve?
+            Renderer::renderEntity(e->getRenderData());
+#endif
 
             /* TODO: Re-enable! (Right now, a node NOT being a neighbor gets data sent with the code below)
             // Send entity to nodes having a padding at this position (excluding THIS node!)

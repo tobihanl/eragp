@@ -1,7 +1,6 @@
 #include <cmath>
 #include <cassert>
 #include "LivingEntity.h"
-#include "Renderer.h"
 #include "World.h"
 #include "FoodEntity.h"
 #include "Rng.h"
@@ -9,13 +8,10 @@
 #define PI 3.14159265
 #define MAX_ENERGY 9999
 
-SDL_Texture *LivingEntity::digits[10];
-
 //################################Begin object##############################################
 
-LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float si, float wa, Brain *b) :
+LivingEntity::LivingEntity(int startX, int startY, Color c, float sp, float si, float wa, Brain *b) :
         Entity(startX, startY, c, (int) ((1.0f + si) * TILE_SIZE / 2)),
-        color(c),
         speed(sp >= 0 ? sp : 0),
         size(si >= 0 ? si : 0),
         waterAgility(wa < 0 ? 0 : (wa > 1 ? 1 : wa)),
@@ -33,18 +29,12 @@ LivingEntity::LivingEntity(void *&ptr) :
                ((int *) ptr)[1],
                ((int *) ptr)[2],
                {
-                       (Uint8) (((Uint32 *) ptr)[3] >> 24u),
-                       (Uint8) (((Uint32 *) ptr)[3] >> 16u),
-                       (Uint8) (((Uint32 *) ptr)[3] >> 8u),
-                       (Uint8) ((Uint32 *) ptr)[3]
+                       (uint8_t) (((uint32_t *) ptr)[3] >> 24u),
+                       (uint8_t) (((uint32_t *) ptr)[3] >> 16u),
+                       (uint8_t) (((uint32_t *) ptr)[3] >> 8u),
+                       (uint8_t) ((uint32_t *) ptr)[3]
                },
                ((float *) ptr)[5]),
-        color({
-                      (Uint8) (((Uint32 *) ptr)[3] >> 24u),
-                      (Uint8) (((Uint32 *) ptr)[3] >> 16u),
-                      (Uint8) (((Uint32 *) ptr)[3] >> 8u),
-                      (Uint8) ((Uint32 *) ptr)[3]
-              }),
         speed(((float *) ptr)[4]),
         size(((float *) ptr)[5]),
         waterAgility(((float *) ptr)[6]),
@@ -57,32 +47,8 @@ LivingEntity::LivingEntity(void *&ptr) :
     brain = new Brain(ptr);
 }
 
-static int getNumDigits(int x) {
-    if (x < 10) return 1;
-    else if (x < 100) return 2;
-    else if (x < 1000) return 3;
-    else if (x < 10000) return 4;
-    assert(false && "Too much energy");
-}
-
-void LivingEntity::render() {
-    WorldDim dim = World::getWorldDim();
-    float radius = (1.0f + size) * TILE_SIZE / 2.0f;
-    int radiusI = (int) round(radius);
-    Renderer::copy(texture, x - dim.p.x - radiusI, y - dim.p.y - radiusI);
-    if (energy <= 0) {
-        Renderer::copy(digits[0], x - dim.p.x - (ENERGY_FONT_SIZE / 2), y - dim.p.y - 4 - ENERGY_FONT_SIZE);
-    } else {//max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
-        int numDigits = getNumDigits(energy);
-        int energyToDisplay = energy;
-        int baseX = x - dim.p.x + numDigits * 4 -
-                    4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
-        for (int i = 0; energyToDisplay > 0; i++) {
-            Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, y - dim.p.y - 4 - ENERGY_FONT_SIZE);
-            energyToDisplay /= 10;
-        }
-    }
-    //Renderer::renderDot(x, y, (1 + size) * TILE_SIZE / 2, color);
+RenderData LivingEntity::getRenderData() {
+    return {World::getWorldDim(), radius, color, x, y, energy, true};
 }
 
 void LivingEntity::tick() {
@@ -91,11 +57,11 @@ void LivingEntity::tick() {
     if (cooldown > 0) cooldown--;
     if (cooldown == 0 && tempEnergy >= 60 * energyLossWithMove) {
         //tempEnergy -= 60; leaving out might give better results
-        Uint8 nr = color.r + (int) std::round(getRandomFloatBetween(0, 2.55));
+        uint8_t nr = color.r + (int) std::round(getRandomFloatBetween(0, 2.55));
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
-        Uint8 ng = color.g + (int) std::round(getRandomFloatBetween(0, 2.55));
+        uint8_t ng = color.g + (int) std::round(getRandomFloatBetween(0, 2.55));
         ng = ng < 0 ? 0 : (ng > 255 ? 255 : ng);
-        Uint8 nb = color.b + (int) std::round(getRandomFloatBetween(0, 2.55));
+        uint8_t nb = color.b + (int) std::round(getRandomFloatBetween(0, 2.55));
         nb = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
 
         // Create children
@@ -220,8 +186,9 @@ void LivingEntity::serialize(void *&ptr) {
     ((int *) ptr)[0] = id;
     ((int *) ptr)[1] = x;
     ((int *) ptr)[2] = y;
-    ((Uint32 *) ptr)[3] =
-            ((Uint32) color.r) << 24u | ((Uint32) color.g) << 16u | ((Uint32) color.b) << 8u | ((Uint32) color.a);
+    ((uint32_t *) ptr)[3] =
+            ((uint32_t) color.r) << 24u | ((uint32_t) color.g) << 16u | ((uint32_t) color.b) << 8u |
+            ((uint32_t) color.a);
     ((float *) ptr)[4] = speed;
     ((float *) ptr)[5] = size;
     ((float *) ptr)[6] = waterAgility;
@@ -244,5 +211,3 @@ std::ostream &operator<<(std::ostream &strm, const LivingEntity &l) {
 LivingEntity::~LivingEntity() {
     delete brain;
 }
-
-

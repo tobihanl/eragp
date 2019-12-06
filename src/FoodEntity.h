@@ -17,9 +17,7 @@ public:
 
     ~FoodEntity() override = default;
 
-    void render() override;
-
-    void tick() override {}
+    struct RenderData getRenderData() override;
 
     int serializedSize() override {
         return AMOUNT_OF_FOOD_PARAMS * 4;
