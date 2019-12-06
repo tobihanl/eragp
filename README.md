@@ -74,6 +74,16 @@ To start running the application on MaiMUC (with MPI) use the following command/
 ./utils/run.sh
 ```
 
+## Run on HimMuc
+
+**Warning: Ask for confirmation before using more than 20 nodes!**
+
+Use `srun -N {# of nodes} {executable with options}`.
+
+[Official TUM Information](https://www.caps.in.tum.de/hw/himmuc/quick-start/) 
+
+[SLURM with MPI Documentation](https://www.open-mpi.org/faq/?category=slurm#slurm-run-jobs)
+
 ## Local Dev Env
 A docker container exists for easy local development.
 The docker container exposes a VNC server at the address `vnc://localhost:5901` with password ``vncpassword``.
