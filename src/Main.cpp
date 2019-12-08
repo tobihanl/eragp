@@ -1,4 +1,3 @@
-//TODO to disable asserts in release: #define NDEBUG
 #include <sstream>
 #include <iostream>
 #include <cstdlib>
@@ -427,7 +426,6 @@ int main(int argc, char **argv) {
                 // Height
             case 'h':
                 if (optarg) {
-                    // TODO: strtol -> std::stoi?
                     height = (int) strtol(optarg, &ptr, 10);
                     if (*ptr) {
                         std::cerr << "Option -h requires an integer!" << std::endl;
@@ -439,7 +437,6 @@ int main(int argc, char **argv) {
                 // Width
             case 'w':
                 if (optarg) {
-                    // TODO: strtol -> std::stoi?
                     width = (int) strtol(optarg, &ptr, 10);
                     if (*ptr) {
                         std::cerr << "Option -w requires an integer!" << std::endl;
@@ -451,7 +448,6 @@ int main(int argc, char **argv) {
                 // Amount of ticks for simulation
             case 't':
                 if (optarg) {
-                    // TODO: strtol -> std::stoi?
                     ticks = strtol(optarg, &ptr, 10);
                     if (*ptr) {
                         std::cerr << "Option -t requires an integer!" << std::endl;

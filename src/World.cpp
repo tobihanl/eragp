@@ -11,8 +11,6 @@
 
 #endif
 
-// TODO [VERY IMPORTANT!] Implement checking if entity already exists in a vector to prevent duplicates!
-
 std::vector<FoodEntity *> World::food = std::vector<FoodEntity *>();
 std::vector<LivingEntity *> World::living = std::vector<LivingEntity *>();
 
@@ -183,7 +181,6 @@ void World::tick() {
         // Entity dead?
         if (toRemoveLiving(e)) continue;
 
-        // TODO: Think about better solution (i.e. update entity accordingly)!
         // Was entity in padding area? -> Get's overwritten by other node!
         if (!beforeOnThisNode) {
             removeLivingEntity(e);
@@ -204,18 +201,8 @@ void World::tick() {
 
 #ifdef RENDER
             // Render entity as it will be deleted before world will be rendered!
-            // TODO: Improve?
             Renderer::renderEntity(e->getRenderData());
 #endif
-
-            /* TODO: Re-enable! (Right now, a node NOT being a neighbor gets data sent with the code below)
-            // Send entity to nodes having a padding at this position (excluding THIS node!)
-            auto *ranks = paddingRanksAt(e->x, e->y); // TODO: Not working as this only works for coordinates on THIS node!
-            for (int neighbor : *ranks) {
-                if (neighbor != MPI_Rank) livingEntitiesToMoveToNeighbors.push_back({neighbor, e});
-            }
-            delete ranks;
-            */
         }
     }
 
@@ -539,7 +526,6 @@ void World::calcPaddingRects() {
 }
 
 size_t World::rankAt(int px, int py) {
-    //TODO could cause overflow for large worlds. Use long instead?
     Point p = {(px + overallWidth) % overallWidth, (py + overallHeight) % overallHeight};
     for (size_t i = 0; i < MPI_Nodes; i++) {
         if (pointInRect(p, worlds[i]))

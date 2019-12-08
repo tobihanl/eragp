@@ -111,7 +111,6 @@ void Renderer::renderDigits() {
     digits[9] = renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
 }
 
-// TODO: only create textures once, use i.e. lookup table
 void Renderer::renderEntity(RenderData r) {
     if (!isSetup) return;
 
@@ -121,20 +120,17 @@ void Renderer::renderEntity(RenderData r) {
 
     if (!r.isLiving) return;
 
-    // TODO: can this even happen?
-    if (r.energy <= 0) {
-        Renderer::copy(digits[0], r.x - r.worldDim.p.x - (ENERGY_FONT_SIZE / 2), r.y - r.worldDim.p.y - 4 -
-                                                                                 ENERGY_FONT_SIZE);
-    } else {//max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
-        int numDigits = getNumDigits(r.energy);
-        int energyToDisplay = r.energy;
-        int baseX = r.x - r.worldDim.p.x + numDigits * 4 -
-                    4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
-        for (int i = 0; energyToDisplay > 0; i++) {
-            Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, r.y - r.worldDim.p.y - 4 - ENERGY_FONT_SIZE);
-            energyToDisplay /= 10;
-        }
+    assert(r.energy > 0 && "Energy must be greater than 0");
+    //max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
+    int numDigits = getNumDigits(r.energy);
+    int energyToDisplay = r.energy;
+    int baseX = r.x - r.worldDim.p.x + numDigits * 4 -
+                4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
+    for (int i = 0; energyToDisplay > 0; i++) {
+        Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, r.y - r.worldDim.p.y - 4 - ENERGY_FONT_SIZE);
+        energyToDisplay /= 10;
     }
+
 }
 
 SDL_Texture *Renderer::renderImage(const std::string &imagePath) {

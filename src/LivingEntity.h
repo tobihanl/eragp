@@ -9,6 +9,7 @@
 
 class LivingEntity : public Entity {
 private:
+    // when adding new properties, adapt squaredDifference() as well
     float speed;
     float size;
     float waterAgility;
@@ -38,14 +39,13 @@ public:
 
     void tick();
 
-    //TODO consider new properties when added
     float squaredDifference(const LivingEntity &e) {
         return ((float) (e.color.r - color.r) / 255.f) * ((float) (e.color.r - color.r) / 255.f)
                + ((float) (e.color.g - color.g) / 255.f) * ((float) (e.color.g - color.g) / 255.f)
                + ((float) (e.color.b - color.b) / 255.f) * ((float) (e.color.b - color.b) / 255.f)
                + (e.speed - speed) * (e.speed - speed)
                + (e.size - size) * (e.size - size)
-               + (e.waterAgility - waterAgility) * (e.waterAgility - waterAgility);//TODO consider brain
+               + (e.waterAgility - waterAgility) * (e.waterAgility - waterAgility);
     }
 
     void addEnergy(int energy);

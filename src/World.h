@@ -67,7 +67,6 @@ public:
 
     static std::vector<Tile *> terrain;
 
-    //TODO change list implementation and handle shared data
     static std::vector<FoodEntity *> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
     static std::vector<LivingEntity *> living;
 

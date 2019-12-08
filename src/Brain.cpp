@@ -58,7 +58,6 @@ Brain::~Brain() {
     delete[] biases;
 }
 
-//TODO optimize dotProduct() and usage of Matrix (not that bad, because it only stores pointers to the data), implement normalization
 ThinkResult Brain::think(Matrix input, Matrix normalizedInput) {
     assert(input.getWidth() == 1 && input.getHeight() == weights[0]->getWidth() &&
            "Wrong size of continuous input Matrix in Brain::think()");

@@ -117,7 +117,7 @@ void LivingEntity::tick() {
         if (World::toRemoveLiving(nearest.enemy)) {
             LivingEntity *temp = World::findNearestLiving(this, true).enemy;
             nearest.enemy = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp
-                                                                                            : nullptr; //TODO synchronize from here
+                                                                                             : nullptr;
         }
         if (nearest.enemy) {
             if (size > nearest.enemy->size) {
@@ -135,7 +135,7 @@ void LivingEntity::tick() {
         if (World::toRemoveLiving(nearest.mate)) {
             LivingEntity *temp = World::findNearestLiving(this, true).mate;
             nearest.mate = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp
-                                                                                           : nullptr; //TODO synchronize from here
+                                                                                            : nullptr;
         }
         if (nearest.mate) {
             nearest.mate->addEnergy(60);
@@ -148,7 +148,7 @@ void LivingEntity::tick() {
         if (World::toRemoveFood(nearestFood)) {
             FoodEntity *temp = World::findNearestFood(x, y, true);
             nearestFood = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp
-                                                                                           : nullptr; //TODO synchronize from here
+                                                                                           : nullptr;
         }
         if (nearestFood) {
             World::removeFoodEntity(nearestFood, false); //don't forget to synchronize
