@@ -37,7 +37,7 @@ public:
 
     struct RenderData getRenderData() override;
 
-    void tick();
+    void tick() override;
 
     float squaredDifference(const LivingEntity &e) {
         return ((float) (e.color.r - color.r) / 255.f) * ((float) (e.color.r - color.r) / 255.f)

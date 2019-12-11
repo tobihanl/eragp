@@ -30,6 +30,8 @@ public:
 
     virtual struct RenderData getRenderData() = 0;
 
+    virtual void tick() = 0;
+
     virtual int serializedSize() = 0;
 
     virtual void serialize(void *&ptr) = 0;

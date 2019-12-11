@@ -148,6 +148,7 @@ void World::generateTerrain(float zoom) {
 }
 
 void World::tick() {
+    //################################ ADD FOOD ###############################
     if (intervalTicksLeft == 0) {
         assert(intervalFoodLeft == 0 && "Not enough food spawned!");
         intervalFoodLeft = foodPerFoodInterval;
@@ -171,7 +172,12 @@ void World::tick() {
         ticksToSkip--;
     }
 
+    //############################### TICK FOOD ###############################
+    for (const auto &e : food) {
+        e->tick();
+    }
 
+    //############################## TICK LIVINGS #############################
     for (const auto &e : living) {
         // Before moving: Is entity on THIS node?
         bool beforeOnThisNode = pointInRect({e->x, e->y}, {{x, y}, width, height});
