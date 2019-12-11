@@ -1,12 +1,10 @@
 #include "FoodEntity.h"
-#include "Renderer.h"
 #include "World.h"
-
-#define AMOUNT_OF_PARAMS 4
 
 FoodEntity::FoodEntity(int startX, int startY, int e) :
         Entity(startX, startY, {255, 0, 0, 255}, 4),
-        energy(e) {
+        energy(e),
+        expire(FOOD_EXPIRATION_TIME) {
 
 }
 
@@ -16,24 +14,16 @@ FoodEntity::FoodEntity(void *&ptr) :
                ((int *) ptr)[2],
                {255, 0, 0, 255},
                4),
-        energy(((int *) ptr)[3]) {
-    ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
+        energy(((int *) ptr)[3]),
+        expire(((int *) ptr)[4]) {
+    ptr = static_cast<int *>(ptr) + AMOUNT_OF_FOOD_PARAMS;
 }
 
-void FoodEntity::render() {
-    Renderer::copy(texture, x - World::getWorldDim().p.x - 4, y - World::getWorldDim().p.y - 4);
+struct RenderData FoodEntity::getRenderData() {
+    return {World::getWorldDim(), radius, color, x, y, 0, false};
 }
 
-void FoodEntity::tick() {}
-
-int FoodEntity::serializedSize() {
-    return AMOUNT_OF_PARAMS * 4;
-}
-
-void FoodEntity::serialize(void *&ptr) {
-    ((int *) ptr)[0] = id;
-    ((int *) ptr)[1] = x;
-    ((int *) ptr)[2] = y;
-    ((int *) ptr)[3] = energy;
-    ptr = static_cast<int *>(ptr) + AMOUNT_OF_PARAMS;
+void FoodEntity::tick() {
+    if (--expire < 0)
+        World::removeFoodEntity(this, false);
 }

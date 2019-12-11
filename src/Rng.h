@@ -3,10 +3,16 @@
 
 #include <random>
 
-extern std::mt19937 rng;
+static std::mt19937 rng(1);
 
-extern int getRandomIntBetween(int from, int to);
+static int getRandomIntBetween(int from, int to) {
+    std::uniform_int_distribution<int> distribution(from, to);
+    return distribution(rng);
+}
 
-extern float getRandomFloatBetween(float from, float to);
+static float getRandomFloatBetween(float from, float to) {
+    std::normal_distribution<float> distribution(from, to);
+    return distribution(rng);
+}
 
 #endif //EVOLUTION_RNG_H

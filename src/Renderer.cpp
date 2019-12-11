@@ -1,30 +1,17 @@
-#include <iostream>
-#include <string>
-#include <SDL.h>
-#include <SDL_image.h>
-#include <SDL_ttf.h>
 #include "SDL/res_path.h"
-#include "SDL/cleanup.h"
 #include "Renderer.h"
+#include <vector>
 
 SDL_Window *Renderer::win = nullptr;
 SDL_Renderer *Renderer::ren = nullptr;
 bool Renderer::isSetup = false;
+bool Renderer::hidden = true;
+SDL_Texture *Renderer::digits[10];
 
-/**
- * Set up the renderer by creating a window with the given width
- * and height
- *
- * @param   x           Position of the window (x coordinate)
- * @param   y           Position of the window (y coordinate)
- * @param   width       Width of the new window
- * @param   height      Height of the new window
- * @param   fullscreen  Decide, whether the application should be run in
- *                      fullscreen mode or not
- *
- * @return  0 if successful, 1 if not successful, -1 if the
- *          renderer is already setup
- */
+SDL_Texture *Renderer::background = nullptr;
+SDL_Texture *Renderer::entities = nullptr;
+SDL_Texture *Renderer::rankTexture = nullptr;
+
 int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
     // Renderer already set up?
     if (isSetup)
@@ -42,11 +29,17 @@ int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
         return 1;
     }
 
+    // Init Image Library
+    if (IMG_Init(IMG_INIT_PNG) == 0) {
+        logSDLError(std::cerr, "IMG_Init");
+        return 1;
+    }
+
     // Create Window
     if (fullscreen)
-        win = SDL_CreateWindow("Evolution", 0, 0, 1, 1, SDL_WINDOW_FULLSCREEN);
+        win = SDL_CreateWindow("Evolution", 0, 0, 1, 1, SDL_WINDOW_FULLSCREEN | SDL_WINDOW_HIDDEN);
     else
-        win = SDL_CreateWindow("Evolution", x, y, width, height, SDL_WINDOW_BORDERLESS);
+        win = SDL_CreateWindow("Evolution", x, y, width, height, SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIDDEN);
 
     if (win == nullptr) {
         logSDLError(std::cerr, "SDL_CreateWindow");
@@ -64,124 +57,82 @@ int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
     }
 
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(ren, 255, 255, 255, 0);
 
     // Renderer successfully set up
     isSetup = true;
     return 0;
 }
 
-/**
- * Destroys the renderer by cleaning up all the SDL components and
- * quitting SDL
- */
-void Renderer::destroy() {
+void Renderer::renderBackground(WorldDim dim, const std::vector<Tile *> &terrain) {
     if (!isSetup) return;
 
-    Include::cleanup(ren, win);
-    SDL_Quit();
+    int heightWithPadding = dim.h + (2 * WORLD_PADDING) + (dim.p.y % TILE_SIZE) + (TILE_SIZE - (dim.p.y + dim.h) %
+                                                                                               TILE_SIZE);
+    int widthWithPadding = dim.w + (2 * WORLD_PADDING) + (dim.p.x % TILE_SIZE) + (TILE_SIZE - (dim.p.x + dim.w) %
+                                                                                              TILE_SIZE);
 
-    isSetup = false;
+    // Pre-render terrain for faster rendering
+    SDL_Texture *tex = Renderer::createTexture(widthWithPadding, heightWithPadding, SDL_TEXTUREACCESS_TARGET);
+    setTarget(tex);
+    clear();
+
+    SDL_Texture *tileTex[4];
+    tileTex[0] = renderImage("grass.png");
+    tileTex[1] = renderImage("water.png");
+    tileTex[2] = renderImage("stone.png");
+    tileTex[3] = renderImage("sand.png");
+
+    // Copy textures to background
+    for (int py = 0; py < heightWithPadding / TILE_SIZE; py++) {
+        for (int px = 0; px < widthWithPadding / TILE_SIZE; px++) {
+            copy(tileTex[terrain[py * (widthWithPadding / TILE_SIZE) + px]->id],
+                 px * TILE_SIZE,
+                 py * TILE_SIZE);
+        }
+    }
+
+    // Change render target back to default
+    setTarget(nullptr);
+    background = tex;
 }
 
-/**
- * Clears the SDL renderer
- */
-void Renderer::clear() {
+void Renderer::renderDigits() {
     if (!isSetup) return;
-    SDL_RenderClear(ren);
+    digits[0] = renderFont("0", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[1] = renderFont("1", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[2] = renderFont("2", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[3] = renderFont("3", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[4] = renderFont("4", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[5] = renderFont("5", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[6] = renderFont("6", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[7] = renderFont("7", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[8] = renderFont("8", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[9] = renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
 }
 
-/**
- * Shows all components on the window
- */
-void Renderer::present() {
-    if (!isSetup) return;
-    SDL_RenderPresent(ren);
-}
-
-/**
- * Renders a textures by copying it into the SDL renderer at the
- * specified location.
- *
- * @param   texture Pointer to the texture being copied into the
- *                  renderer
- *
- * @param   dst     Destination rectangle, where the texture has
- *                  to be drawn
- */
-void Renderer::copy(SDL_Texture *texture, const SDL_Rect *dst) {
-    if (!isSetup) return;
-    SDL_RenderCopy(ren, texture, nullptr, dst);
-}
-
-/**
- * Renders a texture by copying it into the SDL renderer at the
- * specified x and y position. The width and height of the
- * texture will be automatically evaluated.
- *
- * @param   texture Pointer to the texture being copied into the
- *                  renderer
- *
- * @param   x       The x position of the texture on the renderer
- * @param   y       The y position of the texture on the renderer
- */
-void Renderer::copy(SDL_Texture *texture, int x, int y) {
+void Renderer::renderEntity(RenderData r) {
     if (!isSetup) return;
 
-    SDL_Rect dst;
-    dst.x = x;
-    dst.y = y;
+    SDL_Texture *dot = Renderer::renderDot(r.radius, r.color);
+    Renderer::copy(dot, r.x - r.worldDim.p.x - r.radius, r.y - r.worldDim.p.y - r.radius);
+    cleanupTexture(dot);
 
-    SDL_QueryTexture(texture, nullptr, nullptr, &dst.w, &dst.h);
-    SDL_RenderCopy(ren, texture, nullptr, &dst);
+    if (!r.isLiving) return;
+
+    assert(r.energy > 0 && "Energy must be greater than 0");
+    //max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
+    int numDigits = getNumDigits(r.energy);
+    int energyToDisplay = r.energy;
+    int baseX = r.x - r.worldDim.p.x + numDigits * 4 -
+                4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
+    for (int i = 0; energyToDisplay > 0; i++) {
+        Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, r.y - r.worldDim.p.y - 4 - ENERGY_FONT_SIZE);
+        energyToDisplay /= 10;
+    }
+
 }
 
-/**
- * Cleans-up all the textures by destroying them.
- *
- * @param   texture The texture to be destroyed
- */
-void Renderer::cleanup(SDL_Texture *texture) {
-    if (!isSetup) return;
-    Include::cleanup(texture);
-}
-
-/**
- * Set a new target for the Renderer
- *
- * @param   target  The texture to be the new render target.
- *                  Default target when nullptr.
- *
- * @attention   The texture must have an applicable access flag
- *              (SDL_TEXTUREACCESS_TARGET)!
- */
-void Renderer::setTarget(SDL_Texture *target) {
-    if (!isSetup) return;
-    SDL_SetRenderTarget(ren, target);
-}
-
-/**
- * Creates a tetxure.
- *
- * @param   width   Width of the new texture
- * @param   height  Height of the new texture
- * @param   access  Access flag for the texture (i.e. important for
- *                  settings as a render target)
- *
- * @return  Pointer to the created SDL_Texture
- */
-SDL_Texture *Renderer::createTexture(int width, int height, int access) {
-    if (!isSetup) return nullptr;
-    return SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, access, width, height);
-}
-
-/**
- * Renders an image.
- *
- * @param   imagePath   Path to the image relative to the resource folder
- *
- * @return  Pointer to the created SDL_Texture
- */
 SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
     if (!isSetup) return nullptr;
 
@@ -195,15 +146,7 @@ SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
     return tex;
 }
 
-/**
- * Renders a dot/filled circle
- *
- * @param   radius  The radius of the circle
- * @param   color   The color of the circle (SDL_Color structure)
- *
- * @return  A pointer to the texture with the specified dot/filled circle
- */
-SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
+SDL_Texture *Renderer::renderDot(int radius, const Color &color) {
     if (!isSetup) return nullptr;
 
     int squaredRadius = radius * radius, doubledRadius = radius + radius;
@@ -230,21 +173,10 @@ SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
     SDL_UpdateTexture(texture, nullptr, pixels, doubledRadius * (int) sizeof(Uint32));
 
-    free(pixels);
+    delete[] pixels;
     return texture;
 }
 
-/**
- * Renders a filled or unfilled rectangle
- *
- * @param   width   Width of the new rectangle
- * @param   height  Height of the new rectangle
- * @param   color   Drawing color for the rectangle
- * @param   filled  Decides, whether the rectangle will be drawn filled
- *                  or not (filled area will be transparent)
- *
- * @return  Pointer to the texture with the specified rectangle.
- */
 SDL_Texture *Renderer::renderRect(int width, int height, const SDL_Color &color, bool filled) {
     if (!isSetup) return nullptr;
 
@@ -266,21 +198,10 @@ SDL_Texture *Renderer::renderRect(int width, int height, const SDL_Color &color,
     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
     SDL_UpdateTexture(texture, nullptr, pixels, width * (int) sizeof(Uint32));
 
-    free(pixels);
+    delete[] pixels;
     return texture;
 }
 
-/**
- * Renders a text on the window
- *
- * @param   text        The text to be displayed
- * @param   size        The font size
- * @param   color       Text's color
- * @param   fontFile    Path to the file where the font is stored,
- *                      relative to resource folder (TTF-File)
- *
- * @return Pointer to the created SDL_Texture
- */
 SDL_Texture *Renderer::renderFont(const std::string &text, int size, const SDL_Color &color,
                                   const std::string &fontFile) {
     if (!isSetup) return nullptr;
@@ -310,14 +231,3 @@ SDL_Texture *Renderer::renderFont(const std::string &text, int size, const SDL_C
     return tex;
 }
 
-/**
- * Log an SDL error with some error message to the output stream
- * of your choice
- *
- * @param   os  The output stream to write the message to
- * @param   msg The error message to write, format will be
- *              "msg error: SDL_GetError()"
- */
-void Renderer::logSDLError(std::ostream &os, const std::string &msg) {
-    os << msg << " error: " << SDL_GetError() << std::endl;
-}

@@ -1,18 +1,15 @@
 #ifndef ERAGP_MAIMUC_EVO_2019_LIVINGENTITY_H
 #define ERAGP_MAIMUC_EVO_2019_LIVINGENTITY_H
 
-#define ENERGY_FONT_SIZE 12
-
 #include "Entity.h"
-#include <SDL.h>
 #include "Brain.h"
-#include <SDL.h>
-#include "Rng.h"
 #include "Tile.h"
+
+#define AMOUNT_OF_LIVING_PARAMS 10
 
 class LivingEntity : public Entity {
 private:
-    SDL_Color color;
+    // when adding new properties, adapt squaredDifference() as well
     float speed;
     float size;
     float waterAgility;
@@ -22,28 +19,48 @@ private:
     int cooldown;
 
     int energyLossWithMove, energyLossWithoutMove;
-    static int energyLossPerTick(bool move, float speed, float size);
 
     friend std::ostream &operator<<(std::ostream &strm, const LivingEntity &e);
-public:
-    static SDL_Texture *digits[];
 
+    static int energyLossPerTick(bool move, float speed, float size) {
+        return (int) round((move ? speed * 8 : 0) + size * 4 + 1);
+    }
+
+public:
     Brain *brain;
 
-    LivingEntity(int x, int y, SDL_Color color, float speed, float size, float waterAgility, Brain *brain);
+    LivingEntity(int x, int y, Color color, float speed, float size, float waterAgility, Brain *brain);
 
     explicit LivingEntity(void *&ptr);
 
     ~LivingEntity() override;
-    void render() override;
+
+    struct RenderData getRenderData() override;
+
     void tick() override;
 
-    bool visibleOn(Tile *tile);
-    float difference(const LivingEntity &e);
+    float squaredDifference(const LivingEntity &e) {
+        return ((float) (e.color.r - color.r) / 255.f) * ((float) (e.color.r - color.r) / 255.f)
+               + ((float) (e.color.g - color.g) / 255.f) * ((float) (e.color.g - color.g) / 255.f)
+               + ((float) (e.color.b - color.b) / 255.f) * ((float) (e.color.b - color.b) / 255.f)
+               + (e.speed - speed) * (e.speed - speed)
+               + (e.size - size) * (e.size - size)
+               + (e.waterAgility - waterAgility) * (e.waterAgility - waterAgility);
+    }
 
-    int serializedSize() override;
+    void addEnergy(int energy);
 
     void serialize(void *&ptr) override;
+
+    int serializedSize() override {
+        return AMOUNT_OF_LIVING_PARAMS * 4 + brain->serializedSized();
+    }
+
+    bool visibleOn(Tile *tile) {
+        return (color.r - tile->color.r) * (color.r - tile->color.r)
+               + (color.g - tile->color.g) * (color.g - tile->color.g)
+               + (color.b - tile->color.b) * (color.b - tile->color.b) >= 200;
+    }
 
 };
 
