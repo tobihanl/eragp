@@ -5,7 +5,7 @@
 FoodEntity::FoodEntity(int startX, int startY, int e) :
         Entity(startX, startY, {255, 0, 0, 255}, 4),
         energy(e),
-        expire(180) {
+        expire(FOOD_EXPIRATION_TIME) {
 
 }
 
@@ -25,9 +25,6 @@ void FoodEntity::render() {
 }
 
 void FoodEntity::tick() {
-    expire--;
-
-    // Food not edible anymore?
-    if (expire < 0)
+    if (--expire < 0)
         World::removeFoodEntity(this, false);
 }

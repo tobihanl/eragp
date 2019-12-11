@@ -4,6 +4,7 @@
 #include "Entity.h"
 
 #define AMOUNT_OF_FOOD_PARAMS 5
+#define FOOD_EXPIRATION_TIME 180
 
 class FoodEntity : public Entity {
 private:
