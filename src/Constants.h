@@ -22,5 +22,7 @@
 
 #define TILE_SIZE 8
 
+#define LOG_DATA_BUFFER_SIZE 100
+#define LOG_TICKS_2_PAUSE 10
 
 #endif //EVOLUTION_CONSTANTS_H
