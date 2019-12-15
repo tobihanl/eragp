@@ -83,6 +83,14 @@ void LivingEntity::render() {
     //Renderer::renderDot(x, y, (1 + size) * TILE_SIZE / 2, color);
 }
 
+float LivingEntity::calculateDanger() {
+    int min = x;
+    if(y < min) min = y;
+    if(World::overallWidth - x < min) min = World::overallWidth - x;
+    if(World::overallHeight - y < min) min = World::overallHeight - y;
+    return min > World::dangerZone ? -1.f : 1.f - (min / (float) World::dangerZone);
+}
+
 void LivingEntity::tick() {
     //################################# Breed ################################# at the beginning, so spawning happens before move ->on the right node
     int tempEnergy = this->energy;
@@ -121,8 +129,9 @@ void LivingEntity::tick() {
             (float) (nearest.enemy ? std::atan2(nearest.enemy->y - y, nearest.enemy->x - x) / PI : rotation),
             (float) (nearest.mate ? std::atan2(nearest.mate->y - y, nearest.mate->x - x) / PI : rotation),
             *World::tileAt(x + (int) std::round(std::cos(rotation * PI) * TILE_SIZE),
-                           y + (int) std::round(std::sin(rotation * PI) * TILE_SIZE)) == Tile::WATER ? -1.f : 1.f
-
+                           y + (int) std::round(std::sin(rotation * PI) * TILE_SIZE)) == Tile::WATER ? -1.f : 1.f,
+            std::atan2(World::overallHeight / 2.f - y, World::overallWidth / 2.f - x),
+            calculateDanger()
     });
     ThinkResult thoughts = brain->think(input);
     rotation = thoughts.rotation;
@@ -130,10 +139,10 @@ void LivingEntity::tick() {
     float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
     int xTo = x + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * 2 * std::cos(rotation * PI));
     int yTo = y + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * 2 * std::sin(rotation * PI));
-    if (xTo < 0) xTo = 0;
-    if (yTo < 0) yTo = 0;
-    if (xTo >= World::overallWidth) xTo = World::overallWidth - 1;
-    if (yTo >= World::overallHeight) yTo = World::overallHeight - 1;
+    if (xTo < 0 || yTo < 0 || xTo >= World::overallWidth || yTo >= World::overallHeight) {
+        World::removeLivingEntity(this);
+        return;
+    }
     if(brain->printThink) std::cout << "xDif: " << (xTo - x) << " yDif: " << (yTo-y) << std::endl;
     if ((*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2)
         || (*World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8)) {

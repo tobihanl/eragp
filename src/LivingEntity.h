@@ -28,6 +28,8 @@ private:
         return (int) round(size * 4 + 1);
     }
 
+    float calculateDanger();
+
 public:
     static SDL_Texture *digits[];
 

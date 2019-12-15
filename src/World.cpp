@@ -27,6 +27,7 @@ std::vector<int> World::paddingRanks = std::vector<int>();
 // Init static attributes
 int World::overallWidth = 0;
 int World::overallHeight = 0;
+int World::dangerZone = 0;
 
 int World::MPI_Rank = 0;
 int World::MPI_Nodes = 0;
@@ -108,6 +109,9 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
 
     minTicksToSkip = (int) floor((float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
     maxTicksToSkip = (int) ceil((float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
+
+    dangerZone = (overallWidth + overallHeight) / 20;
+    if(dangerZone > 200) dangerZone = 200;
 
     // Setup done
     isSetup = true;
