@@ -23,8 +23,7 @@ LivingEntity::LivingEntity(int startX, int startY, SDL_Color c, float sp, float 
         energy(60 * 2),
         cooldown(60),
         rotation(0.0f),
-        energyLossWithMove(energyLossPerTick(true, sp, si)),
-        energyLossWithoutMove(energyLossPerTick(false, sp, si)) {
+        energyLossBase(energyLossPerTick(si)) {
 
 }
 
@@ -51,8 +50,7 @@ LivingEntity::LivingEntity(void *&ptr) :
         rotation(((float *) ptr)[7]),
         energy(((int *) ptr)[8]),
         cooldown(((int *) ptr)[9]),
-        energyLossWithMove(energyLossPerTick(true, ((float *) ptr)[4], ((float *) ptr)[5])),
-        energyLossWithoutMove(energyLossPerTick(false, ((float *) ptr)[4], ((float *) ptr)[5])) {
+        energyLossBase(energyLossPerTick(((float *) ptr)[5])) {
     ptr = static_cast<int *>(ptr) + AMOUNT_OF_LIVING_PARAMS;
     brain = new Brain(ptr);
 }
@@ -89,7 +87,7 @@ void LivingEntity::tick() {
     //################################# Breed ################################# at the beginning, so spawning happens before move ->on the right node
     int tempEnergy = this->energy;
     if (cooldown > 0) cooldown--;
-    if (cooldown == 0 && tempEnergy >= 60 * energyLossWithMove) {
+    if (cooldown == 0 && tempEnergy >= 60 * (energyLossBase + speed * 8)) {
         //tempEnergy -= 60; leaving out might give better results
         Uint8 nr = color.r + (int) std::round(getRandomFloatBetween(0, 2.55));
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
@@ -128,20 +126,18 @@ void LivingEntity::tick() {
     ThinkResult thoughts = brain->think(input);
     rotation = thoughts.rotation;
     //################################# Move ##################################
-    if (thoughts.move) {
-        float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
-        int xTo = x + (int) std::round(TILE_SIZE * speed * agility * 2 * std::cos(rotation * PI));
-        int yTo = y + (int) std::round(TILE_SIZE * speed * agility * 2 * std::sin(rotation * PI));
-        if (xTo < 0) xTo = 0;
-        if (yTo < 0) yTo = 0;
-        if (xTo >= World::overallWidth) xTo = World::overallWidth - 1;
-        if (yTo >= World::overallHeight) yTo = World::overallHeight - 1;
-        if(brain->printThink) std::cout << "xDif: " << (xTo - x) << " yDif: " << (yTo-y) << std::endl;
-        if ((*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2)
-            || (*World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8)) {
-            x = (xTo + World::overallWidth) % World::overallWidth;
-            y = (yTo + World::overallHeight) % World::overallHeight;
-        }
+    float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
+    int xTo = x + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * 2 * std::cos(rotation * PI));
+    int yTo = y + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * 2 * std::sin(rotation * PI));
+    if (xTo < 0) xTo = 0;
+    if (yTo < 0) yTo = 0;
+    if (xTo >= World::overallWidth) xTo = World::overallWidth - 1;
+    if (yTo >= World::overallHeight) yTo = World::overallHeight - 1;
+    if(brain->printThink) std::cout << "xDif: " << (xTo - x) << " yDif: " << (yTo-y) << std::endl;
+    if ((*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2)
+        || (*World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8)) {
+        x = (xTo + World::overallWidth) % World::overallWidth;
+        y = (yTo + World::overallHeight) % World::overallHeight;
     }
     //################################## Attack ##################################
     if (thoughts.attack && nearest.enemy && nearest.enemy->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
@@ -188,8 +184,8 @@ void LivingEntity::tick() {
     }
 
     //################################# Energy ################################
-    tempEnergy -= thoughts.move ? energyLossWithMove : energyLossWithoutMove;
-    assert(thoughts.move ? energyLossWithMove : energyLossWithoutMove > 0 && "Entity not losing Energy");
+    tempEnergy -= round(energyLossBase + 8 * speed * thoughts.speed);
+    assert(round(energyLossBase + 8 * speed * thoughts.speed) > 0 && "Entity not losing Energy");
     if (tempEnergy <= 0) World::removeLivingEntity(this);
     if (tempEnergy > MAX_ENERGY) {
         this->energy = MAX_ENERGY;

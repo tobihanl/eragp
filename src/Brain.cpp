@@ -85,7 +85,7 @@ ThinkResult Brain::think(Matrix input) {
         if(printThink) std::cout << "After layer " << i << ":\n" << input << std::endl;
     }
     lastResult = new Matrix(input); //TODO quickfix, make more efficient/avoid copy
-    ThinkResult res = {input(0, 0), input(1, 0) > -0.5, input(2, 0) > 0, input(3, 0) > 0};
+    ThinkResult res = {input(0, 0), (input(1, 0) + 1) * 0.5, input(2, 0) > 0, input(3, 0) > 0};
     if(printThink) std::cout << "Result:\n" << input << std::endl;
     return res;
 }

@@ -5,7 +5,7 @@
 
 struct ThinkResult {
     float rotation;
-    bool move;
+    float speed;
     bool attack;
     bool share;
 };

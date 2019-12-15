@@ -20,12 +20,12 @@ private:
     int energy;
     int cooldown;
 
-    int energyLossWithMove, energyLossWithoutMove;
+    float energyLossBase;
 
     friend std::ostream &operator<<(std::ostream &strm, const LivingEntity &e);
 
-    static int energyLossPerTick(bool move, float speed, float size) {
-        return (int) round((move ? speed * 8 : 0) + size * 4 + 1);
+    static float energyLossPerTick(float size) {
+        return (int) round(size * 4 + 1);
     }
 
 public:
