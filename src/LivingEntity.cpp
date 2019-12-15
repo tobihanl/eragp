@@ -110,18 +110,19 @@ void LivingEntity::tick() {
     NearestLiving nearest = World::findNearestLiving(this, false);
 
 
-    Matrix input(10, 1, {
+    Matrix input(12, 1, {
             (nearestFood ? nearestFood->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
             (nearest.enemy ? nearest.enemy->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
             (nearest.mate ? nearest.mate->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
             (float) tempEnergy / MAX_ENERGY,
             (nearest.mate ? (float) nearest.mate->energy / MAX_ENERGY * 0.8f : 1.f),
             nearest.enemy ? (float) nearest.enemy->size : 0.f,
-            (float) (nearestFood ? std::atan2(nearestFood->x - x, nearestFood->y - y) / PI : rotation),
-            (float) (nearest.enemy ? std::atan2(nearest.enemy->x - x, nearest.enemy->y - y) / PI : rotation),
-            (float) (nearest.mate ? std::atan2(nearest.mate->x - x, nearest.mate->y - y) / PI : rotation),
+            (float) (nearestFood ? std::atan2(nearestFood->y - y, nearestFood->x - x) / PI : rotation),
+            (float) (nearest.enemy ? std::atan2(nearest.enemy->y - y, nearest.enemy->x - x) / PI : rotation),
+            (float) (nearest.mate ? std::atan2(nearest.mate->y - y, nearest.mate->x - x) / PI : rotation),
             *World::tileAt(x + (int) std::round(std::cos(rotation * PI) * TILE_SIZE),
                            y + (int) std::round(std::sin(rotation * PI) * TILE_SIZE)) == Tile::WATER ? -1.f : 1.f
+
     });
     ThinkResult thoughts = brain->think(input);
     rotation = thoughts.rotation;
