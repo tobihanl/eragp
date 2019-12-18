@@ -211,7 +211,7 @@ void renderLoop() {
             if (borders) buffer |= 0x8u;
             if (paddings) buffer |= 0x10u;
             if (quit) buffer |= 0x20u;
-            if (render) buffer |= 0x4u;
+            if (render) buffer |= 0x40u;
         }
         MPI_Bcast(&buffer, 1, MPI_UINT8_T, 0, MPI_COMM_WORLD);
         if (World::getMPIRank() != 0) {
@@ -221,7 +221,7 @@ void renderLoop() {
             borders = (buffer & 0x8u) != 0;
             paddings = (buffer & 0x10u) != 0;
             quit = (buffer & 0x20u) != 0;
-            render = (buffer & 0x4u) != 0;
+            render = (buffer & 0x40u) != 0;
         }
 
         // Quit?
