@@ -71,19 +71,49 @@ can be done with the following command:
 
 To start running the application on MaiMUC (with MPI) use the following command/script:
 ```
-./utils/run.sh
+./utils/run.sh ./build/Evolution -m -r
 ```
 
 ## Run on HimMuc
 
 **Warning: Ask for confirmation before using more than 20 nodes!**
 
-Use `srun -N {# of nodes} {executable with options}`.
+Use `srun -N <number of nodes> <executable with options>`.
 
 [Official TUM Information](https://www.caps.in.tum.de/hw/himmuc/quick-start/) 
 
 [SLURM with MPI Documentation](https://www.open-mpi.org/faq/?category=slurm#slurm-run-jobs)
 
+
+## Profiling
+**Application must be built in debug mode**
+
+### MaiMUC
+**Application must deployed**
+
+Profile and generate flame graphs:
+```
+./utils/run.sh ./utils/profile-maimuc.sh <optional parameters>
+```
+Copy all svg files to the mai02 node:
+```
+./utils/collect-svg.sh
+```
+To get the generated svg files, run the following command **on your local machine**:
+```
+scp -oProxyCommand="ssh -W %h:%p <login>@himmuc.caps.in.tum.de" login@maimuc.caps.in.tum.de:~/evolution/eragp-maimuc-evo-2019/perf/*.svg .
+```
+
+### HimMUC
+Profile and generate flame graphs:
+```
+srun -N <number of nodes> ./utils/profile-himmuc.sh <optional parameters>
+```
+
+To get the generated svg files, run the following command **on your local machine**:
+```
+scp <login>@himmuc.caps.in.tum.de:~/eragp-maimuc-evo-2019/perf/*.svg .
+```
 ## Local Dev Env
 A docker container exists for easy local development.
 The docker container exposes a VNC server at the address `vnc://localhost:5901` with password ``vncpassword``.

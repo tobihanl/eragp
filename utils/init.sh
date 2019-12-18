@@ -20,7 +20,7 @@ elif [[ "$1" == "-debug" ]]; then
       cmake -DCMAKE_BUILD_TYPE=Debug -DDEFINE_RENDER=ON ./..
     else
       echo "Parameters: debug"
-      cmake ./..
+      cmake -DCMAKE_BUILD_TYPE=Debug ./..
     fi
 else
     echo "First parameter must be '-build' or '-debug'"
