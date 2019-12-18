@@ -173,7 +173,8 @@ void renderLoop() {
                         } else {
                             if (nearest) {
                                 std::cout << *nearest << std::endl;
-                                nearest->brain->printThink = true;
+                                if (nearest->brain != nullptr)
+                                    nearest->brain->printThink = true;
                             } else {
                                 std::cout << "No nearest entity available!" << std::endl;
                             }
@@ -242,14 +243,9 @@ void renderLoop() {
 
         //############################ TICK AND RENDER ############################
         if (!paused) {
-            Renderer::setTarget(Renderer::entities);
-            Renderer::clear();
-
             int tickTime = Log::currentTime();
             World::tick();
             Log::data.tick = Log::endTime(tickTime);
-
-            Renderer::setTarget(nullptr);
         }
 
         // Render everything
@@ -257,7 +253,7 @@ void renderLoop() {
         Renderer::clear();
 
         Renderer::drawBackground(World::getWorldDim());
-        if (!paused) Renderer::renderEntities(World::food, World::living);
+        if (!paused) Renderer::renderEntities(World::food, World::living, World::livingsInPadding);
         Renderer::copy(Renderer::entities, 0, 0);
         Renderer::drawRank();
 
@@ -579,7 +575,7 @@ int main(int argc, char **argv) {
                 (float) getRandomIntBetween(0, 10000) / 10000.0f,
                 (float) getRandomIntBetween(0, 10000) / 10000.0f, brain);
 
-        World::addLivingEntity(entity, false);
+        World::addLivingEntity(entity);
     }
     max = food / World::getMPINodes();
     if (World::getMPIRank() >= World::getMPINodes() - food % World::getMPINodes()) max++;

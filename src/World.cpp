@@ -5,14 +5,9 @@
 #include "Rng.h"
 #include "Log.h"
 
-#ifdef RENDER
-
-#include "Renderer.h"
-
-#endif
-
 std::vector<FoodEntity *> World::food = std::vector<FoodEntity *>();
 std::vector<LivingEntity *> World::living = std::vector<LivingEntity *>();
+std::vector<LivingEntity *> World::livingsInPadding = std::vector<LivingEntity *>();
 
 std::vector<LivingEntity *> World::removeLiving = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::removeFood = std::vector<FoodEntity *>();
@@ -115,9 +110,11 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
 void World::finalize() {
     for (const auto &e : food) delete e;
     for (const auto &e : living) delete e;
+    for (const auto &e : livingsInPadding) delete e;
 
     food.clear();
     living.clear();
+    livingsInPadding.clear();
 
     delete[] worlds;
 }
@@ -178,37 +175,23 @@ void World::tick() {
     }
 
     //############################## TICK LIVINGS #############################
+    std::vector<LivingEntity *> outgoingEntities = std::vector<LivingEntity *>();
     for (const auto &e : living) {
-        // Before moving: Is entity on THIS node?
-        bool beforeOnThisNode = pointInRect({e->x, e->y}, {{x, y}, width, height});
-
         e->tick();
 
         // Entity dead?
         if (toRemoveLiving(e)) continue;
 
-        // Was entity in padding area? -> Get's overwritten by other node!
-        if (!beforeOnThisNode) {
-            removeLivingEntity(e);
-            continue;
-        }
-
         // After moving: Entity on THIS node?
         if (pointInRect({e->x, e->y}, {{x, y}, width, height})) {
-            // Send entity if needed
             auto *ranks = paddingRanksAt(e->x, e->y);
             for (int neighbor : *ranks)
-                livingEntitiesToMoveToNeighbors.push_back({neighbor, e});
+                livingEntitiesToMoveToNeighbors.push_back({neighbor, true, e});
             delete ranks;
         } else {
-            // Send entity to other node
-            livingEntitiesToMoveToNeighbors.push_back({static_cast<int>(rankAt(e->x, e->y)), e});
+            livingEntitiesToMoveToNeighbors.push_back({static_cast<int>(rankAt(e->x, e->y)), false, e});
+            outgoingEntities.push_back(e);
             removeLivingEntity(e);
-
-#ifdef RENDER
-            // Render entity as it will be deleted before world will be rendered!
-            Renderer::renderEntity(e->getRenderData());
-#endif
         }
     }
 
@@ -231,6 +214,16 @@ void World::tick() {
         buffers[MSGS_PER_NEIGHBOR * i + 2] = sendEntities(removedFoodToSendToNeighbors, paddingRanks[i],
                                                           MPI_TAG_REMOVED_FOOD_ENTITY,
                                                           &reqs[MSGS_PER_NEIGHBOR * i + 2]);
+    }
+
+    for (const auto &e : livingsInPadding) delete e;
+    livingsInPadding.clear();
+    for (const auto &e : outgoingEntities) {
+        void *start, *buffer = start = malloc(e->minimalSerializedSize());
+        e->minimalSerialize(buffer);
+        buffer = start;
+        livingsInPadding.push_back(new LivingEntity(buffer, true));
+        free(start);
     }
 
     // Clear sending storage
@@ -273,15 +266,35 @@ void World::tick() {
 
 void *World::sendEntities(const std::vector<MPISendEntity> &entityVec, int rank, int tag, MPI_Request *request) {
     int totalSize = 0;
-    for (const auto &e : entityVec)
-        if (e.rank == rank) totalSize += e.entity->serializedSize();
+    for (const auto &e : entityVec) {
+        if (e.rank == rank) {
+            if (e.entity->energy <= 0) continue;
+
+            if (e.minimal) totalSize += e.entity->minimalSerializedSize();
+            else totalSize += e.entity->fullSerializedSize();
+
+            totalSize += 4; // + 4 for minimal flag
+        }
+    }
 
     void *buffer = malloc(totalSize);
     void *start = buffer;
 
-    for (const auto &e : entityVec)
-        if (e.rank == rank)
-            e.entity->serialize(buffer);
+    for (const auto &e : entityVec) {
+        if (e.rank == rank) {
+            if (e.entity->energy <= 0) continue;
+
+            if (e.minimal) {
+                ((int *) buffer)[0] = -1;
+                buffer = static_cast<int *>(buffer) + 1;
+                e.entity->minimalSerialize(buffer);
+            } else {
+                ((int *) buffer)[0] = 0;
+                buffer = static_cast<int *>(buffer) + 1;
+                e.entity->fullSerialize(buffer);
+            }
+        }
+    }
 
     MPI_Isend(start, totalSize, MPI_BYTE, rank, tag, MPI_COMM_WORLD, request);
     return start;
@@ -303,10 +316,16 @@ void World::receiveEntities(int rank, int tag) {
 
     while (buffer < (char *) start + receivedBytes) {
         Entity *e;
+        // Don't put this into the case statement as the first byte must always be read!
+        bool minimal = ((int *) buffer)[0] == -1;
+        buffer = static_cast<int *>(buffer) + 1;
         switch (tag) {
             case MPI_TAG_LIVING_ENTITY:
-                e = new LivingEntity(buffer);
-                addLivingEntity((LivingEntity *) e, true);
+                e = new LivingEntity(buffer, minimal);
+
+                if (minimal) livingsInPadding.push_back((LivingEntity *) e);
+                else addLivingEntity((LivingEntity *) e);
+
                 break;
 
             case MPI_TAG_FOOD_ENTITY:
@@ -350,47 +369,50 @@ NearestLiving World::findNearestLiving(LivingEntity *le, bool surviving) {
     int distEnemy = VIEW_RANGE_SQUARED + 1;
     int distMate = VIEW_RANGE_SQUARED + 1;
 
-    for (const auto &e : living) {
-        if (*e == *le || (surviving && toRemoveLiving(e))) continue;
+    std::vector<LivingEntity *> lists[] = {living, livingsInPadding};
+    for (const auto &list : lists) {
+        for (const auto &e : list) {
+            if (*e == *le || (surviving && toRemoveLiving(e))) continue;
 
-        bool isEnemy = le->squaredDifference(*e) >= ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD;
-        if (isEnemy && !e->visibleOn(tileAt(le->x, le->y))) continue;
+            bool isEnemy = le->squaredDifference(*e) >= ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD;
+            if (isEnemy && !e->visibleOn(tileAt(le->x, le->y))) continue;
 
-        int dist = e->getSquaredDistance(le->x, le->y);
-        if (dist <= VIEW_RANGE_SQUARED) {
-            if (isEnemy && dist < distEnemy) {
-                nearest.enemy = e;
-                distEnemy = dist;
-            } else if (dist < distMate) {
-                nearest.mate = e;
-                distMate = dist;
+            int dist = e->getSquaredDistance(le->x, le->y);
+            if (dist <= VIEW_RANGE_SQUARED) {
+                if (isEnemy && dist < distEnemy) {
+                    nearest.enemy = e;
+                    distEnemy = dist;
+                } else if (dist < distMate) {
+                    nearest.mate = e;
+                    distMate = dist;
+                }
             }
         }
     }
+
     return nearest;
 }
 
 LivingEntity *World::findNearestLivingToPoint(int px, int py) {
     LivingEntity *n = nullptr;
     int dist = VIEW_RANGE_SQUARED + 1;
-    for (const auto &e : living) {
-        int tempDist = e->getSquaredDistance(px, py);
-        if (tempDist <= VIEW_RANGE_SQUARED && tempDist < dist) {
-            n = e;
-            dist = tempDist;
+
+    std::vector<LivingEntity *> lists[] = {living, livingsInPadding};
+    for (const auto &list : lists) {
+        for (const auto &e : list) {
+            int tempDist = e->getSquaredDistance(px, py);
+            if (tempDist <= VIEW_RANGE_SQUARED && tempDist < dist) {
+                n = e;
+                dist = tempDist;
+            }
         }
     }
+
     return n;
 }
 
-bool World::addLivingEntity(LivingEntity *e, bool received) {
+bool World::addLivingEntity(LivingEntity *e) {
     if (toAddLiving(e)) return false;
-
-    // Received via MPI? -> Always add!
-    if (received) {
-        addLiving.push_back(e);
-        return true;
-    }
 
     // Only add and broadcast to other nodes when laying on THIS node
     if (pointInRect({e->x, e->y}, {{x, y}, width, height})) {
@@ -398,7 +420,7 @@ bool World::addLivingEntity(LivingEntity *e, bool received) {
 
         auto *ranks = paddingRanksAt(e->x, e->y);
         for (int neighbor : *ranks)
-            livingEntitiesToMoveToNeighbors.push_back({neighbor, e});
+            livingEntitiesToMoveToNeighbors.push_back({neighbor, true, e});
         delete ranks;
 
         return true;
@@ -422,7 +444,7 @@ bool World::addFoodEntity(FoodEntity *e, bool received) {
 
         auto *ranks = paddingRanksAt(e->x, e->y);
         for (int neighbor : *ranks)
-            foodToSendToNeighbors.push_back({neighbor, e});
+            foodToSendToNeighbors.push_back({neighbor, false, e});
         delete ranks;
 
         return true;
@@ -432,7 +454,9 @@ bool World::addFoodEntity(FoodEntity *e, bool received) {
 }
 
 bool World::removeLivingEntity(LivingEntity *e) {
-    if (!toRemoveLiving(e)) {
+    if (toRemoveLiving(e)) return false;
+
+    if (std::find(living.begin(), living.end(), e) != living.end()) {
         removeLiving.push_back(e);
         return true;
     }
@@ -455,7 +479,7 @@ bool World::removeFoodEntity(FoodEntity *e, bool received) {
 
         auto *ranks = paddingRanksAt(e->x, e->y);
         for (int neighbor : *ranks)
-            removedFoodToSendToNeighbors.push_back({neighbor, e});
+            removedFoodToSendToNeighbors.push_back({neighbor, false, e});
         delete ranks;
 
         return true;

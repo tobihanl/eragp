@@ -19,12 +19,13 @@ protected:
 
 public:
     int x, y;
+    int energy;
 
-    Entity(int x, int y, const Color &color, int radius);
+    Entity(int x, int y, const Color &color, int radius, int energy);
 
-    Entity(int id, int x, int y, const Color &color, int radius);
+    Entity(int id, int x, int y, const Color &color, int radius, int energy);
 
-    Entity(int id, int x, int y, const Color &color, float size);
+    Entity(int id, int x, int y, const Color &color, float size, int energy);
 
     virtual ~Entity() = default;
 
@@ -32,9 +33,13 @@ public:
 
     virtual void tick() = 0;
 
-    virtual int serializedSize() = 0;
+    virtual int minimalSerializedSize() = 0;
 
-    virtual void serialize(void *&ptr) = 0;
+    virtual int fullSerializedSize() = 0;
+
+    virtual void minimalSerialize(void *&ptr) = 0;
+
+    virtual void fullSerialize(void *&ptr) = 0;
 
     /**
      * Calculates distance to a given position

@@ -11,8 +11,6 @@ private:
     int expire;
 
 public:
-    int energy;
-
     FoodEntity(int x, int y, int energy);
 
     explicit FoodEntity(void *&ptr);
@@ -23,11 +21,15 @@ public:
 
     void tick() override;
 
-    int serializedSize() override {
+    int minimalSerializedSize() override { return fullSerializedSize(); }
+
+    void minimalSerialize(void *&ptr) override { fullSerialize(ptr); }
+
+    int fullSerializedSize() override {
         return AMOUNT_OF_FOOD_PARAMS * 4;
     }
 
-    void serialize(void *&ptr) override {
+    void fullSerialize(void *&ptr) override {
         ((int *) ptr)[0] = id;
         ((int *) ptr)[1] = x;
         ((int *) ptr)[2] = y;

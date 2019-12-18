@@ -13,8 +13,10 @@
 //================================== Structs ==================================
 struct MPISendEntity {
     int rank;
+    bool minimal;
     Entity *entity;
 };
+
 struct NearestLiving {
     LivingEntity *mate;
     LivingEntity *enemy;
@@ -69,6 +71,7 @@ public:
 
     static std::vector<FoodEntity *> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
     static std::vector<LivingEntity *> living;
+    static std::vector<LivingEntity *> livingsInPadding;
 
     /**
      * Initialize the world, which is part of the overall world and set
@@ -100,7 +103,7 @@ public:
 
     static LivingEntity *findNearestLivingToPoint(int px, int py);
 
-    static bool addLivingEntity(LivingEntity *e, bool received);
+    static bool addLivingEntity(LivingEntity *e);
 
     static bool addFoodEntity(FoodEntity *e, bool received);
 

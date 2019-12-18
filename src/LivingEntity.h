@@ -15,7 +15,6 @@ private:
     float waterAgility;
     float rotation;
 
-    int energy;
     int cooldown;
 
     int energyLossWithMove, energyLossWithoutMove;
@@ -31,7 +30,7 @@ public:
 
     LivingEntity(int x, int y, Color color, float speed, float size, float waterAgility, Brain *brain);
 
-    explicit LivingEntity(void *&ptr);
+    LivingEntity(void *&ptr, bool minimal);
 
     ~LivingEntity() override;
 
@@ -50,9 +49,18 @@ public:
 
     void addEnergy(int energy);
 
-    void serialize(void *&ptr) override;
+    void minimalSerialize(void *&ptr) override;
 
-    int serializedSize() override {
+    void fullSerialize(void *&ptr) override;
+
+    int minimalSerializedSize() override {
+        return AMOUNT_OF_LIVING_PARAMS * 4;
+    }
+
+    int fullSerializedSize() override {
+        if (brain == nullptr)
+            return minimalSerializedSize();
+
         return AMOUNT_OF_LIVING_PARAMS * 4 + brain->serializedSized();
     }
 

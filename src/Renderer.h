@@ -249,11 +249,14 @@ public:
         SDL_SetTextureBlendMode(entities, SDL_BLENDMODE_BLEND);
     }
 
-    static void renderEntities(const std::vector<FoodEntity *> &food, const std::vector<LivingEntity *> &living) {
+    static void renderEntities(const std::vector<FoodEntity *> &food, const std::vector<LivingEntity *> &living,
+                               const std::vector<LivingEntity *> &livingsInPadding) {
         if (!isSetup) return;
         setTarget(entities);
+        clear();
         for (const auto &f : food) renderEntity(f->getRenderData());
         for (const auto &e : living) renderEntity(e->getRenderData());
+        for (const auto &e : livingsInPadding) renderEntity(e->getRenderData());
         setTarget(nullptr);
     }
 

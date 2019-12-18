@@ -11,12 +11,11 @@
 //################################Begin object##############################################
 
 LivingEntity::LivingEntity(int startX, int startY, Color c, float sp, float si, float wa, Brain *b) :
-        Entity(startX, startY, c, (int) ((1.0f + si) * TILE_SIZE / 2)),
+        Entity(startX, startY, c, (int) ((1.0f + si) * TILE_SIZE / 2), 60 * 2),
         speed(sp >= 0 ? sp : 0),
         size(si >= 0 ? si : 0),
         waterAgility(wa < 0 ? 0 : (wa > 1 ? 1 : wa)),
         brain(b),
-        energy(60 * 2),
         cooldown(60),
         rotation(0.0f),
         energyLossWithMove(energyLossPerTick(true, sp, si)),
@@ -24,7 +23,7 @@ LivingEntity::LivingEntity(int startX, int startY, Color c, float sp, float si, 
 
 }
 
-LivingEntity::LivingEntity(void *&ptr) :
+LivingEntity::LivingEntity(void *&ptr, bool minimal) :
         Entity(((int *) ptr)[0],
                ((int *) ptr)[1],
                ((int *) ptr)[2],
@@ -34,17 +33,19 @@ LivingEntity::LivingEntity(void *&ptr) :
                        (uint8_t) (((uint32_t *) ptr)[3] >> 8u),
                        (uint8_t) ((uint32_t *) ptr)[3]
                },
-               ((float *) ptr)[5]),
+               ((float *) ptr)[5],
+               ((int *) ptr)[8]),
         speed(((float *) ptr)[4]),
         size(((float *) ptr)[5]),
         waterAgility(((float *) ptr)[6]),
         rotation(((float *) ptr)[7]),
-        energy(((int *) ptr)[8]),
         cooldown(((int *) ptr)[9]),
         energyLossWithMove(energyLossPerTick(true, ((float *) ptr)[4], ((float *) ptr)[5])),
         energyLossWithoutMove(energyLossPerTick(false, ((float *) ptr)[4], ((float *) ptr)[5])) {
     ptr = static_cast<int *>(ptr) + AMOUNT_OF_LIVING_PARAMS;
-    brain = new Brain(ptr);
+
+    if (!minimal) brain = new Brain(ptr);
+    else brain = nullptr;
 }
 
 RenderData LivingEntity::getRenderData() {
@@ -68,7 +69,7 @@ void LivingEntity::tick() {
         auto child = new LivingEntity(x, y, {nr, ng, nb, 255}, speed + getRandomFloatBetween(0, 0.01),
                                       size + getRandomFloatBetween(0, 0.01),
                                       waterAgility + getRandomFloatBetween(0, 0.01), brain->createMutatedCopy());
-        if (!World::addLivingEntity(child, false)) // Not added?
+        if (!World::addLivingEntity(child)) // Not added?
             delete child;
 
         cooldown += 60;
@@ -179,9 +180,14 @@ void LivingEntity::addEnergy(int e) {
 /**
  * Writes the data to the given point in memory and sets the pointer to point to the next free byte after the written data
  * Only works on platforms with sizeof(int) = sizeof(float) = 32 bit
- * @param ptr Where to write the data. Use serializedSize() before, to determine the required space for allocation
+ * @param ptr Where to write the data. Use fullSerializedSize() before, to determine the required space for allocation
  */
-void LivingEntity::serialize(void *&ptr) {
+void LivingEntity::fullSerialize(void *&ptr) {
+    if (brain == nullptr) {
+        minimalSerialize(ptr);
+        return;
+    }
+
     //continuous counting only works due to sizeof(int) = sizeof(float)
     ((int *) ptr)[0] = id;
     ((int *) ptr)[1] = x;
@@ -199,11 +205,29 @@ void LivingEntity::serialize(void *&ptr) {
     brain->serialize(ptr);
 }
 
+void LivingEntity::minimalSerialize(void *&ptr) {
+    //continuous counting only works due to sizeof(int) = sizeof(float)
+    ((int *) ptr)[0] = id;
+    ((int *) ptr)[1] = x;
+    ((int *) ptr)[2] = y;
+    ((uint32_t *) ptr)[3] =
+            ((uint32_t) color.r) << 24u | ((uint32_t) color.g) << 16u | ((uint32_t) color.b) << 8u |
+            ((uint32_t) color.a);
+    ((float *) ptr)[4] = speed;
+    ((float *) ptr)[5] = size;
+    ((float *) ptr)[6] = waterAgility;
+    ((float *) ptr)[7] = rotation;
+    ((int *) ptr)[8] = energy;
+    ((int *) ptr)[9] = cooldown;
+    ptr = static_cast<int *>(ptr) + AMOUNT_OF_LIVING_PARAMS;
+}
+
 std::ostream &operator<<(std::ostream &strm, const LivingEntity &l) {
+    int brainLayers = (l.brain != nullptr) ? l.brain->getNumLayers() : -1;
     strm << "Entity:[id: " << l.id << ", x: " << l.x << ", y: " << l.y << ", color:{r: " << ((int) l.color.r) << ", g: "
          << ((int) l.color.g) << ", b: " << ((int) l.color.b) << "}, speed: " << l.speed << ", size: " << l.size
-         << ", waterAgility: " << l.waterAgility << ", brainLayers: " << l.brain->getNumLayers() << "]";
-    strm << *l.brain;
+         << ", waterAgility: " << l.waterAgility << ", brainLayers: " << brainLayers << "]";
+    if (l.brain != nullptr) strm << *l.brain;
     return strm;
 }
 
