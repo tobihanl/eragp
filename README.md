@@ -89,7 +89,7 @@ Use `srun -N <number of nodes> <executable with options>`.
 **Application must be built in debug mode**
 
 ### MaiMUC
-**Application must deployed**
+> **WARNING**: perf on maimuc is really slow and takes very long even for as little as 5 ticks
 
 Profile and generate flame graphs:
 ```
