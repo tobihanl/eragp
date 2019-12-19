@@ -183,26 +183,10 @@ void LivingEntity::addEnergy(int e) {
  * @param ptr Where to write the data. Use fullSerializedSize() before, to determine the required space for allocation
  */
 void LivingEntity::fullSerialize(void *&ptr) {
-    if (brain == nullptr) {
-        minimalSerialize(ptr);
-        return;
-    }
+    minimalSerialize(ptr);
 
-    //continuous counting only works due to sizeof(int) = sizeof(float)
-    ((int *) ptr)[0] = id;
-    ((int *) ptr)[1] = x;
-    ((int *) ptr)[2] = y;
-    ((uint32_t *) ptr)[3] =
-            ((uint32_t) color.r) << 24u | ((uint32_t) color.g) << 16u | ((uint32_t) color.b) << 8u |
-            ((uint32_t) color.a);
-    ((float *) ptr)[4] = speed;
-    ((float *) ptr)[5] = size;
-    ((float *) ptr)[6] = waterAgility;
-    ((float *) ptr)[7] = rotation;
-    ((int *) ptr)[8] = energy;
-    ((int *) ptr)[9] = cooldown;
-    ptr = static_cast<int *>(ptr) + AMOUNT_OF_LIVING_PARAMS;
-    brain->serialize(ptr);
+    if (brain != nullptr)
+        brain->serialize(ptr);
 }
 
 void LivingEntity::minimalSerialize(void *&ptr) {
