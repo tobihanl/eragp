@@ -1,3 +1,3 @@
 #!/bin/bash
-cd ./build/ || exit
-cmake --build . --target Evolution
+
+cmake --build ./build --target Evolution
