@@ -60,15 +60,17 @@ All commands should be executed in the project root folder unless stated otherwi
 
 ### Init Cmake
 The following build types are available: Debug, Release, RelWithDebInfo and MinSizeRel.
-
 For profiling, RelWithDebInfo should be used.
+
+Render mode can be ON or OFF.
+
 ```
-cmake -DCMAKE_BUILD_TYPE=<build type> -DDEFINE_RENDER=<ON/OFF>
+./utils/init.sh <build type> <render mode>
 ```
 
 ### Build application
 ```
-cmake --build . --target Evolution
+./utils/build.sh
 ```
 
 ## Running
