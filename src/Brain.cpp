@@ -71,7 +71,6 @@ Brain::~Brain() {
     delete lastResult;
 }
 
-//TODO optimize dotProduct() and usage of Matrix (not that bad, because it only stores pointers to the data)
 ThinkResult Brain::think(Matrix input) {
     assert(input.getWidth() == 1 && input.getHeight() == weights[0]->getWidth() &&
            "Wrong size of input Matrix in Brain::think()");

@@ -1,10 +1,16 @@
 #include "SDL/res_path.h"
 #include "Renderer.h"
+#include <vector>
 
 SDL_Window *Renderer::win = nullptr;
 SDL_Renderer *Renderer::ren = nullptr;
 bool Renderer::isSetup = false;
 bool Renderer::hidden = true;
+SDL_Texture *Renderer::digits[10];
+
+SDL_Texture *Renderer::background = nullptr;
+SDL_Texture *Renderer::entities = nullptr;
+SDL_Texture *Renderer::rankTexture = nullptr;
 
 int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
     // Renderer already set up?
@@ -58,6 +64,75 @@ int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
     return 0;
 }
 
+void Renderer::renderBackground(WorldDim dim, const std::vector<Tile *> &terrain) {
+    if (!isSetup) return;
+
+    int heightWithPadding = dim.h + (2 * WORLD_PADDING) + (dim.p.y % TILE_SIZE) + (TILE_SIZE - (dim.p.y + dim.h) %
+                                                                                               TILE_SIZE);
+    int widthWithPadding = dim.w + (2 * WORLD_PADDING) + (dim.p.x % TILE_SIZE) + (TILE_SIZE - (dim.p.x + dim.w) %
+                                                                                              TILE_SIZE);
+
+    // Pre-render terrain for faster rendering
+    SDL_Texture *tex = Renderer::createTexture(widthWithPadding, heightWithPadding, SDL_TEXTUREACCESS_TARGET);
+    setTarget(tex);
+    clear();
+
+    SDL_Texture *tileTex[4];
+    tileTex[0] = renderImage("grass.png");
+    tileTex[1] = renderImage("water.png");
+    tileTex[2] = renderImage("stone.png");
+    tileTex[3] = renderImage("sand.png");
+
+    // Copy textures to background
+    for (int py = 0; py < heightWithPadding / TILE_SIZE; py++) {
+        for (int px = 0; px < widthWithPadding / TILE_SIZE; px++) {
+            copy(tileTex[terrain[py * (widthWithPadding / TILE_SIZE) + px]->id],
+                 px * TILE_SIZE,
+                 py * TILE_SIZE);
+        }
+    }
+
+    // Change render target back to default
+    setTarget(nullptr);
+    background = tex;
+}
+
+void Renderer::renderDigits() {
+    if (!isSetup) return;
+    digits[0] = renderFont("0", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[1] = renderFont("1", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[2] = renderFont("2", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[3] = renderFont("3", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[4] = renderFont("4", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[5] = renderFont("5", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[6] = renderFont("6", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[7] = renderFont("7", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[8] = renderFont("8", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    digits[9] = renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+}
+
+void Renderer::renderEntity(RenderData r) {
+    if (!isSetup) return;
+
+    SDL_Texture *dot = Renderer::renderDot(r.radius, r.color);
+    Renderer::copy(dot, r.x - r.worldDim.p.x - r.radius, r.y - r.worldDim.p.y - r.radius);
+    cleanupTexture(dot);
+
+    if (!r.isLiving) return;
+
+    assert(r.energy > 0 && "Energy must be greater than 0");
+    //max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
+    int numDigits = getNumDigits(r.energy);
+    int energyToDisplay = r.energy;
+    int baseX = r.x - r.worldDim.p.x + numDigits * 4 -
+                4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
+    for (int i = 0; energyToDisplay > 0; i++) {
+        Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, r.y - r.worldDim.p.y - 4 - ENERGY_FONT_SIZE);
+        energyToDisplay /= 10;
+    }
+
+}
+
 SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
     if (!isSetup) return nullptr;
 
@@ -71,7 +146,7 @@ SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
     return tex;
 }
 
-SDL_Texture *Renderer::renderDot(int radius, const SDL_Color &color) {
+SDL_Texture *Renderer::renderDot(int radius, const Color &color) {
     if (!isSetup) return nullptr;
 
     int squaredRadius = radius * radius, doubledRadius = radius + radius;
@@ -155,3 +230,4 @@ SDL_Texture *Renderer::renderFont(const std::string &text, int size, const SDL_C
     Include::cleanup(surface, font);
     return tex;
 }
+

@@ -74,6 +74,16 @@ To start running the application on MaiMUC (with MPI) use the following command/
 ./utils/run.sh
 ```
 
+## Run on HimMuc
+
+**Warning: Ask for confirmation before using more than 20 nodes!**
+
+Use `srun -N {# of nodes} {executable with options}`.
+
+[Official TUM Information](https://www.caps.in.tum.de/hw/himmuc/quick-start/) 
+
+[SLURM with MPI Documentation](https://www.open-mpi.org/faq/?category=slurm#slurm-run-jobs)
+
 ## Local Dev Env
 A docker container exists for easy local development.
 The docker container exposes a VNC server at the address `vnc://localhost:5901` with password ``vncpassword``.
@@ -100,7 +110,7 @@ docker run --rm -p 5901:5901 -p 6901:6901 -v "//c/users/jonas/OneDrive - tum.de/
 
 Initially and after changes to cmake, cmake has to be loaded:
 ```
-docker exec -it eragp sh -c './utils/init.sh'
+docker exec -it eragp sh -c './utils/init.sh -build -render'
 ```
 Build the project and execute it:
 ```

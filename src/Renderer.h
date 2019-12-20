@@ -3,10 +3,15 @@
 
 #include <string>
 #include <iostream>
+#include <cassert>
 #include <SDL_image.h>
 #include <SDL_ttf.h>
 #include <SDL.h>
 #include "SDL/cleanup.h"
+#include "Structs.h"
+#include "Tile.h"
+#include "FoodEntity.h"
+#include "LivingEntity.h"
 
 class Renderer {
 private:
@@ -14,12 +19,17 @@ private:
     static SDL_Renderer *ren;
     static bool isSetup;
     static bool hidden;
+    static SDL_Texture *digits[];
 
     Renderer() = default;
 
     ~Renderer() = default;
 
 public:
+    static SDL_Texture *background;
+    static SDL_Texture *entities;
+    static SDL_Texture *rankTexture;
+
     /**
      * Set up the renderer by creating a window with the given width
      * and height
@@ -134,12 +144,20 @@ public:
         SDL_QueryTexture(texture, nullptr, nullptr, &rect->w, &rect->h);
     }
 
+    static void cleanup() {
+        for (int i = 0; i < 10; i++)
+            cleanupTexture(digits[i]);
+        cleanupTexture(background);
+        cleanupTexture(entities);
+        cleanupTexture(rankTexture);
+    }
+
     /**
      * Cleans-up all the textures by destroying them.
      *
      * @param   texture The texture to be destroyed
      */
-    static void cleanup(SDL_Texture *texture) {
+    static void cleanupTexture(SDL_Texture *texture) {
         if (!isSetup) return;
         Include::cleanup(texture);
     }
@@ -190,7 +208,7 @@ public:
      *
      * @return  A pointer to the texture with the specified dot/filled circle
      */
-    static SDL_Texture *renderDot(int radius, const SDL_Color &color);
+    static SDL_Texture *renderDot(int radius, const Color &color);
 
     /**
      * Renders a filled or unfilled rectangle
@@ -219,7 +237,43 @@ public:
     static SDL_Texture *
     renderFont(const std::string &text, int size, const SDL_Color &color, const std::string &fontFile);
 
-    static bool getIsSetup() { return isSetup; }
+    static void renderDigits();
+
+    static void renderBackground(WorldDim dim, const std::vector<Tile *> &terrain);
+
+    static void renderEntity(RenderData renderData);
+
+    static void createEntitiesTexture(WorldDim dim) {
+        if (!isSetup) return;
+        entities = createTexture(dim.w, dim.h, SDL_TEXTUREACCESS_TARGET);
+        SDL_SetTextureBlendMode(entities, SDL_BLENDMODE_BLEND);
+    }
+
+    static void renderEntities(const std::vector<FoodEntity *> &food, const std::vector<LivingEntity *> &living,
+                               const std::vector<LivingEntity *> &livingsInPadding) {
+        if (!isSetup) return;
+        setTarget(entities);
+        clear();
+        for (const auto &f : food) renderEntity(f->getRenderData());
+        for (const auto &e : living) renderEntity(e->getRenderData());
+        for (const auto &e : livingsInPadding) renderEntity(e->getRenderData());
+        setTarget(nullptr);
+    }
+
+    static void renderRank(int rank) {
+        if (!isSetup) return;
+        rankTexture = renderFont(std::to_string(rank), 25, {255, 255, 255, 255}, "font.ttf");
+    }
+
+    static void drawBackground(WorldDim dim) {
+        if (!isSetup) return;
+        copy(background, -(WORLD_PADDING + (dim.p.x % TILE_SIZE)), -(WORLD_PADDING + (dim.p.y % TILE_SIZE)));
+    }
+
+    static void drawRank() {
+        if (!isSetup) return;
+        copy(rankTexture, 10, 10);
+    }
 
 private:
     /**
@@ -232,6 +286,15 @@ private:
      */
     static void logSDLError(std::ostream &os, const std::string &msg) {
         os << msg << " error: " << SDL_GetError() << std::endl;
+    }
+
+    static int getNumDigits(int x) {
+        if (x < 10) return 1;
+        else if (x < 100) return 2;
+        else if (x < 1000) return 3;
+        else if (x < 10000) return 4;
+        assert(x >= 10000 && "Too much energy");
+        return -1;
     }
 };
 

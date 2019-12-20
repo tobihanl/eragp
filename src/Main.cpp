@@ -1,27 +1,62 @@
-//TODO to disable asserts in release: #define NDEBUG
 #include <sstream>
 #include <iostream>
 #include <cstdlib>
 #include <poll.h>
-#include <SDL.h>
 #include <mpi.h>
 #include <unistd.h>
-#include "Renderer.h"
 #include "World.h"
 #include "Brain.h"
 #include "Tile.h"
 #include "Log.h"
 #include "Rng.h"
 
+#ifdef RENDER
+
+#include <SDL.h>
+#include "Renderer.h"
+
+#endif
+
 #define MS_PER_TICK 100
 
 // Init class Log attributes
 bool Log::logging = false;
 FILE *Log::logFile = nullptr;
+int Log::occupied = 0;
+LogData Log::buffer[] = {};
 LogData Log::data = {};
+bool Log::paused = true;
 
-void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padding);
+#ifdef RENDER
 
+void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padding) {
+    WorldDim dim = World::getWorldDim();
+
+    Renderer::renderDigits();
+
+    *border = Renderer::renderRect(dim.w, dim.h, {255, 0, 0, 255}, false);
+    *pauseText = Renderer::renderFont("Paused", 25, {0, 0, 0, 255}, "font.ttf");
+
+    // Render padding Rects
+    *padding = Renderer::createTexture(dim.w, dim.h, SDL_TEXTUREACCESS_TARGET);
+    Renderer::setTarget(*padding);
+    SDL_SetTextureBlendMode(*padding, SDL_BLENDMODE_BLEND);
+    Renderer::clear();
+    for (const auto &p : *World::getPaddingRects())
+        Renderer::copy(Renderer::renderRect(p.rect.w, p.rect.h, {0, 0, 255, 255}, false),
+                       p.rect.p.x - dim.p.x,
+                       p.rect.p.y - dim.p.y);
+    Renderer::setTarget(nullptr);
+
+    // Render terrain and create texture for entities
+    Renderer::renderBackground(World::getWorldDim(), World::terrain);
+    Renderer::createEntitiesTexture(World::getWorldDim());
+    Renderer::renderRank(World::getMPIRank());
+}
+
+#endif
+
+int counter = 0;
 long ticks = -1;
 bool render = false;
 bool quit = false;
@@ -32,6 +67,8 @@ bool quit = false;
  * @param   ticks   Amount of ticks to calculate
  *                  (-1) = no limitation
  */
+#ifdef RENDER
+
 void renderLoop() {
     Renderer::show();
 
@@ -40,7 +77,7 @@ void renderLoop() {
     preRender(&border, &pauseText, &padding);
 
     // Debug flags and other stuff
-    Uint8 buffer = 0;
+    uint8_t buffer = 0;
     bool paused = false, similarityMode = false, borders = false, paddings = false;
     int countSelectedEntities = 0;
     LivingEntity *selectedEntities[2] = {nullptr};
@@ -57,17 +94,20 @@ void renderLoop() {
     SDL_Event e;
     int currentTime, elapsedTime;
     int previousTime = Log::currentTime();
-    bool run = ticks == -1 || ticks > 0;
-    int counter = 0;
+    bool run = true;
     while (run) {
         currentTime = Log::currentTime();
         frameTime += currentTime - previousTime;
         previousTime = currentTime;
 
         // Log new tick
-        Log::data.turn = counter++;
-        Log::data.food = World::getAmountOfFood();
-        Log::data.livings = World::getAmountOfLivings();
+        Log::paused = counter % LOG_TICKS_2_PAUSE != 0;
+        if (!Log::paused) {
+            Log::data.turn = counter;
+            Log::data.food = World::getAmountOfFood();
+            Log::data.livings = World::getAmountOfLivings();
+        }
+        counter++;
 
         //############################# PROCESS INPUT #############################
         while (SDL_PollEvent(&e)) {
@@ -140,7 +180,8 @@ void renderLoop() {
                         } else {
                             if (nearest) {
                                 std::cout << *nearest << std::endl;
-                                nearest->brain->printThink = true;
+                                if (nearest->brain != nullptr)
+                                    nearest->brain->printThink = true;
                             } else {
                                 std::cout << "No nearest entity available!" << std::endl;
                             }
@@ -163,6 +204,12 @@ void renderLoop() {
             }
         }
 
+        if (ticks == 0) {
+            quit = true;
+            run = false;
+        } else if (ticks > 0) {
+            ticks--;
+        }
         //###################### BROADCAST APPLICATION STATUS #####################
         buffer = 0;
         if (World::getMPIRank() == 0) {
@@ -172,7 +219,7 @@ void renderLoop() {
             if (borders) buffer |= 0x8u;
             if (paddings) buffer |= 0x10u;
             if (quit) buffer |= 0x20u;
-            if (render) buffer |= 0x4u;
+            if (render) buffer |= 0x40u;
         }
         MPI_Bcast(&buffer, 1, MPI_UINT8_T, 0, MPI_COMM_WORLD);
         if (World::getMPIRank() != 0) {
@@ -182,7 +229,7 @@ void renderLoop() {
             borders = (buffer & 0x8u) != 0;
             paddings = (buffer & 0x10u) != 0;
             quit = (buffer & 0x20u) != 0;
-            render = (buffer & 0x4u) != 0;
+            render = (buffer & 0x40u) != 0;
         }
 
         // Quit?
@@ -190,7 +237,7 @@ void renderLoop() {
 
         // Calc FPS
         if (frameTime >= 1000) {
-            Renderer::cleanup(fps);
+            Renderer::cleanupTexture(fps);
 
             frameTime = 0;
             fps = Renderer::renderFont(std::to_string(frames), 25, {255, 255, 255, 255}, "font.ttf");
@@ -201,67 +248,63 @@ void renderLoop() {
             fpsRect.x = dim.w - fpsRect.w - 10;
         }
 
-        //############################ TICK AND RENDER ############################
-        Renderer::setTarget(World::entities);
-        Renderer::clear();
+        //################################## TICK #################################
         if (!paused) {
-            int tickTime = Log::currentTime();
-            World::tick();
-            Log::data.tick = Log::endTime(tickTime);
+            if (!Log::paused) {
+                int tickTime = Log::currentTime();
+                World::tick();
+                Log::data.tick = Log::endTime(tickTime);
+            } else {
+                World::tick();
+            }
         }
-        Renderer::setTarget(nullptr);
 
-        // Render everything
-        int renderTime = Log::currentTime();
+        //################################# RENDER ################################
+        int renderTime = (!Log::paused) ? Log::currentTime() : 0;
         Renderer::clear();
-        World::render();
+
+        Renderer::drawBackground(World::getWorldDim());
+        if (!paused) Renderer::renderEntities(World::food, World::living, World::livingsInPadding);
+        Renderer::copy(Renderer::entities, 0, 0);
+        Renderer::drawRank();
+
         if (paddings) Renderer::copy(padding, 0, 0);
         if (borders) Renderer::copy(border, 0, 0);
         if (paused) Renderer::copy(pauseText, 10, 10);
         Renderer::copy(fps, &fpsRect);
         Renderer::present();
         frames++;
-        Log::data.render = Log::endTime(renderTime);
+
+        if (!Log::paused)
+            Log::data.render = Log::endTime(renderTime);
 
         //########################### WAIT IF TOO FAST ############################
         currentTime = Log::currentTime();
         elapsedTime = (currentTime - previousTime);
 
         // Delay loop turn
-        if (elapsedTime <= MS_PER_TICK) {
+        if (elapsedTime <= MS_PER_TICK)
             SDL_Delay(MS_PER_TICK - elapsedTime);
-            Log::data.delay = MS_PER_TICK - elapsedTime;
+
+        if (!Log::paused) {
+            Log::data.delay = (elapsedTime <= MS_PER_TICK) ? MS_PER_TICK - elapsedTime : 0;
+            Log::data.overall = Log::endTime(previousTime);
+            Log::saveLogData();
         }
-
-        // Set running status for next loop turn
-        run = ticks == -1 || (--ticks) > 0;
-
-        Log::data.overall = Log::endTime(previousTime);
-        Log::writeLogData();
     }
     //=============================================================================
     //                                END MAIN LOOP
     //=============================================================================
-
-    // Cleanup digits
-    for (int i = 0; i < 10; i++)
-        Renderer::cleanup(LivingEntity::digits[i]);
-
-    // Cleanup textures
-    Renderer::cleanup(Tile::GRASS.texture);
-    Renderer::cleanup(Tile::STONE.texture);
-    Renderer::cleanup(Tile::SAND.texture);
-    Renderer::cleanup(Tile::WATER.texture);
-    Renderer::cleanup(World::background);
-    Renderer::cleanup(World::entities);
-    Renderer::cleanup(World::rankTexture);
-    Renderer::cleanup(border);
-    Renderer::cleanup(padding);
-    Renderer::cleanup(pauseText);
-    Renderer::cleanup(fps);
+    Renderer::cleanup();
+    Renderer::cleanupTexture(border);
+    Renderer::cleanupTexture(padding);
+    Renderer::cleanupTexture(pauseText);
+    Renderer::cleanupTexture(fps);
 
     Renderer::hide();
 }
+
+#endif
 
 /*
  * Normal loop updating the world without rendering it.
@@ -279,15 +322,18 @@ void normalLoop() {
         std::cout.flush();
     }
 
-    Uint8 buffer = 0;
-    bool run = ticks == -1 || ticks > 0;
-    int counter = 0;
+    uint8_t buffer = 0;
+    bool run = true;
     while (run) {
-        // Log new tick
-        int loopTime = Log::currentTime();
-        Log::data.turn = counter++;
-        Log::data.food = World::getAmountOfFood();
-        Log::data.livings = World::getAmountOfLivings();
+        Log::paused = counter % LOG_TICKS_2_PAUSE != 0;
+
+        int loopTime = (!Log::paused) ? Log::currentTime() : 0;
+        if (!Log::paused) {
+            Log::data.turn = counter;
+            Log::data.food = World::getAmountOfFood();
+            Log::data.livings = World::getAmountOfLivings();
+        }
+        counter++;
 
         //############################# PROCESS INPUT #############################
         if (World::getMPIRank() == 0 && poll(cin, 1, 1)) {
@@ -303,11 +349,13 @@ void normalLoop() {
                     quit = true;
                     break;
 
+#ifdef RENDER
                 case 'r':
                 case 'R':
                     run = false;
                     render = true;
                     break;
+#endif
 
                 default:
                     break;
@@ -319,6 +367,12 @@ void normalLoop() {
             }
         }
 
+        if (ticks == 0) {
+            quit = true;
+            run = false;
+        } else if (ticks > 0) {
+            ticks--;
+        }
         //###################### BROADCAST APPLICATION STATUS #####################
         buffer = 0;
         if (World::getMPIRank() == 0) {
@@ -337,15 +391,16 @@ void normalLoop() {
         if (!run) break;
 
         //################################## TICK #################################
-        int tickTime = Log::currentTime();
-        World::tick();
-        Log::data.tick = Log::endTime(tickTime);
+        if (!Log::paused) {
+            int tickTime = Log::currentTime();
+            World::tick();
+            Log::data.tick = Log::endTime(tickTime);
 
-        // Set running status for next loop turn
-        run = ticks == -1 || (--ticks) > 0;
-
-        Log::data.overall = Log::endTime(loopTime);
-        Log::writeLogData();
+            Log::data.overall = Log::endTime(loopTime);
+            Log::saveLogData();
+        } else {
+            World::tick();
+        }
     }
 }
 
@@ -387,7 +442,6 @@ int main(int argc, char **argv) {
                 // Height
             case 'h':
                 if (optarg) {
-                    // TODO: strtol -> std::stoi?
                     height = (int) strtol(optarg, &ptr, 10);
                     if (*ptr) {
                         std::cerr << "Option -h requires an integer!" << std::endl;
@@ -399,7 +453,6 @@ int main(int argc, char **argv) {
                 // Width
             case 'w':
                 if (optarg) {
-                    // TODO: strtol -> std::stoi?
                     width = (int) strtol(optarg, &ptr, 10);
                     if (*ptr) {
                         std::cerr << "Option -w requires an integer!" << std::endl;
@@ -411,7 +464,6 @@ int main(int argc, char **argv) {
                 // Amount of ticks for simulation
             case 't':
                 if (optarg) {
-                    // TODO: strtol -> std::stoi?
                     ticks = strtol(optarg, &ptr, 10);
                     if (*ptr) {
                         std::cerr << "Option -t requires an integer!" << std::endl;
@@ -519,11 +571,12 @@ int main(int argc, char **argv) {
     if (!filename.empty())
         Log::startLogging(filename + "-" + std::to_string(World::getMPIRank()) + ".csv");
 
-    // Init renderer
+#ifdef RENDER
     if (maimuc)
         Renderer::setup(0, 0, dim.w, dim.h, true);
     else
         Renderer::setup(dim.p.x, dim.p.y, dim.w, dim.h, false);
+#endif
 
     //============================= ADD TEST ENTITIES =============================
     long max = livings / World::getMPINodes();
@@ -535,15 +588,15 @@ int main(int argc, char **argv) {
                 getRandomIntBetween(0, dim.w) + dim.p.x,
                 getRandomIntBetween(0, dim.h) + dim.p.y,
                 {
-                        static_cast<Uint8>(getRandomIntBetween(0, 256)),
-                        static_cast<Uint8>(getRandomIntBetween(0, 256)),
-                        static_cast<Uint8>(getRandomIntBetween(0, 256)),
+                        static_cast<uint8_t>(getRandomIntBetween(0, 256)),
+                        static_cast<uint8_t>(getRandomIntBetween(0, 256)),
+                        static_cast<uint8_t>(getRandomIntBetween(0, 256)),
                         255},
                 (float) getRandomIntBetween(0, 10000) / 10000.0f,
                 (float) getRandomIntBetween(0, 10000) / 10000.0f,
                 (float) getRandomIntBetween(0, 10000) / 10000.0f, brain);
 
-        World::addLivingEntity(entity, false);
+        World::addLivingEntity(entity);
     }
     max = food / World::getMPINodes();
     if (World::getMPIRank() >= World::getMPINodes() - food % World::getMPINodes()) max++;
@@ -558,61 +611,26 @@ int main(int argc, char **argv) {
     //=========================== END ADD TEST ENTITIES ===========================
 
     while (!quit) {
-        // Render simulation?
+#ifdef RENDER
         if (render) renderLoop();
         else normalLoop();
+#else
+        normalLoop();
+#endif
     }
 
-    // Exit application
     if (World::getMPIRank() == 0)
         std::cout << "EXITING..." << std::endl;
 
     World::finalize();
+
+#ifdef RENDER
     Renderer::destroy();
+#endif
+
     Log::endLogging();
 
     // END MPI
     MPI_Finalize();
     return EXIT_SUCCESS;
-}
-
-void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padding) {
-    WorldDim dim = World::getWorldDim();
-
-    LivingEntity::digits[0] = Renderer::renderFont("0", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[1] = Renderer::renderFont("1", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[2] = Renderer::renderFont("2", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[3] = Renderer::renderFont("3", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[4] = Renderer::renderFont("4", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[5] = Renderer::renderFont("5", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[6] = Renderer::renderFont("6", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[7] = Renderer::renderFont("7", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[8] = Renderer::renderFont("8", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    LivingEntity::digits[9] = Renderer::renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-
-    Tile::GRASS.texture = Renderer::renderImage("grass.png");
-    Tile::STONE.texture = Renderer::renderImage("stone.png");
-    Tile::SAND.texture = Renderer::renderImage("sand.png");
-    Tile::WATER.texture = Renderer::renderImage("water.png");
-
-    *border = Renderer::renderRect(dim.w, dim.h, {255, 0, 0, 255}, false);
-    *pauseText = Renderer::renderFont("Paused", 25, {0, 0, 0, 255}, "font.ttf");
-
-    // Render padding Rects
-    *padding = Renderer::createTexture(dim.w, dim.h, SDL_TEXTUREACCESS_TARGET);
-    Renderer::setTarget(*padding);
-    SDL_SetTextureBlendMode(*padding, SDL_BLENDMODE_BLEND);
-    Renderer::clear();
-    for (const auto &p : *World::getPaddingRects())
-        Renderer::copy(Renderer::renderRect(p.rect.w, p.rect.h, {0, 0, 255, 255}, false),
-                       p.rect.p.x - dim.p.x,
-                       p.rect.p.y - dim.p.y);
-    Renderer::setTarget(nullptr);
-
-    // Render terrain and create texture for entities
-    World::background = World::renderTerrain();
-    World::entities = Renderer::createTexture(dim.w, dim.h, SDL_TEXTUREACCESS_TARGET);
-    SDL_SetTextureBlendMode(World::entities, SDL_BLENDMODE_BLEND);
-    World::rankTexture = Renderer::renderFont(std::to_string(World::getMPIRank()), 25, {255, 255, 255, 255},
-                                              "font.ttf");
 }
