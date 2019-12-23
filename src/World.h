@@ -2,6 +2,7 @@
 #define ERAGP_MAIMUC_EVO_2019_WORLD_H
 
 #include <algorithm>
+#include <list>
 #include <vector>
 #include <mpi.h>
 #include "FoodEntity.h"
@@ -71,6 +72,7 @@ public:
 
     static std::vector<FoodEntity *> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
     static std::vector<LivingEntity *> living;
+    static std::list<LivingEntity *> *livings;
     static std::vector<LivingEntity *> livingsInPadding;
 
     /**
@@ -154,6 +156,10 @@ private:
     static void *sendEntities(const std::vector<MPISendEntity> &entityVec, int rank, int tag, MPI_Request *request);
 
     static void receiveEntities(int rank, int tag);
+
+    static int getBucket(const Point &p) {
+        return (p.x / CHUNK_SIZE) * (width / CHUNK_SIZE) + (p.y / CHUNK_SIZE);
+    }
 
     static long gcd(long a, long b) {
         if (a == 0) return b;

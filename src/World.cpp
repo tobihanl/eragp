@@ -7,6 +7,7 @@
 
 std::vector<FoodEntity *> World::food = std::vector<FoodEntity *>();
 std::vector<LivingEntity *> World::living = std::vector<LivingEntity *>();
+std::list<LivingEntity *> *World::livings = nullptr;
 std::vector<LivingEntity *> World::livingsInPadding = std::vector<LivingEntity *>();
 
 std::vector<LivingEntity *> World::removeLiving = std::vector<LivingEntity *>();
@@ -103,6 +104,13 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
     minTicksToSkip = (int) floor((float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
     maxTicksToSkip = (int) ceil((float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
 
+    // Create buckets for Living Entities
+    int xChunks = width / CHUNK_SIZE, yChunks = height / CHUNK_SIZE;
+    livings = (std::list<LivingEntity *> *) malloc(xChunks * yChunks * sizeof(std::list<LivingEntity *>));
+    for (int i = 0; i < xChunks; i++)
+        for (int j = 0; j < yChunks; j++)
+            livings[i * xChunks + j] = std::list<LivingEntity *>();
+
     // Setup done
     isSetup = true;
 }
@@ -116,6 +124,7 @@ void World::finalize() {
     living.clear();
     livingsInPadding.clear();
 
+    free(livings);
     delete[] worlds;
 }
 
