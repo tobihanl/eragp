@@ -6,6 +6,7 @@
 #include "Log.h"
 
 std::vector<FoodEntity *> World::food = std::vector<FoodEntity *>();
+std::list<FoodEntity *> **World::foodBuckets = nullptr;
 std::vector<LivingEntity *> World::living = std::vector<LivingEntity *>();
 std::list<LivingEntity *> **World::livingBuckets = nullptr;
 std::vector<LivingEntity *> World::livingsInPadding = std::vector<LivingEntity *>();
@@ -107,12 +108,15 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
     minTicksToSkip = (int) floor((float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
     maxTicksToSkip = (int) ceil((float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
 
-    // Create buckets for Living Entities
+    // Create buckets for Living Entities and Food Entities
     xChunks = (width + 2 * WORLD_PADDING) / CHUNK_SIZE + 1;
     yChunks = (height + 2 * WORLD_PADDING) / CHUNK_SIZE + 1;
     livingBuckets = new std::list<LivingEntity *> *[xChunks];
-    for (int i = 0; i < xChunks; i++)
+    foodBuckets = new std::list<FoodEntity *> *[xChunks];
+    for (int i = 0; i < xChunks; i++) {
         livingBuckets[i] = new std::list<LivingEntity *>[yChunks];
+        foodBuckets[i] = new std::list<FoodEntity *>[yChunks];
+    }
 
     // Setup done
     isSetup = true;
@@ -127,8 +131,12 @@ void World::finalize() {
     living.clear();
     livingsInPadding.clear();
 
-    for (int i = 0; i < xChunks; i++) delete[] livingBuckets[i];
+    for (int i = 0; i < xChunks; i++) {
+        delete[] livingBuckets[i];
+        delete[] foodBuckets[i];
+    }
     delete[] livingBuckets;
+    delete[] foodBuckets;
     delete[] worlds;
 }
 
@@ -275,7 +283,9 @@ void World::tick() {
     //=============================================================================
 
     for (const auto &e : removeLiving) getLivingBucket({e->x, e->y})->remove(e);
+    for (const auto &e : removeFood) getFoodBucket({e->x, e->y})->remove(e);
     for (const auto &e : addLiving) getLivingBucket({e->x, e->y})->push_back(e);
+    for (const auto &e : addFood) getFoodBucket({e->x, e->y})->push_back(e);
 
     living.erase(std::remove_if(living.begin(), living.end(), toRemoveLiving), living.end());
     living.insert(living.end(), addLiving.begin(), addLiving.end());
@@ -386,14 +396,46 @@ void World::receiveEntities(int rank, int tag) {
 FoodEntity *World::findNearestFood(int px, int py, bool surviving) {
     FoodEntity *f = nullptr;
     int dist = VIEW_RANGE_SQUARED + 1;
-    for (const auto &e : food) {
-        if (surviving && toRemoveFood(e)) continue;
-        int tempDist = e->getSquaredDistance(px, py);
-        if (tempDist <= VIEW_RANGE_SQUARED && tempDist < dist) {
-            f = e;
-            dist = tempDist;
-        }
+
+    int ix = (px + WORLD_PADDING - x) / CHUNK_SIZE, iy = (py + WORLD_PADDING - y) / CHUNK_SIZE;
+    int rowSize = 1;
+    int maxLevel = (int) ceil((float) VIEW_RANGE / CHUNK_SIZE);
+    // Go through buckets in concentric circles
+    for (int level = 0; level < maxLevel; level++) {
+        int yOffset, xOffset = yOffset = -level;
+
+        // Walk in a circle around the bucket the entity lays in
+        int i = 0;
+        do {
+            if (ix + xOffset >= 0 && iy + yOffset >= 0 && ix + xOffset < xChunks && iy + yOffset < yChunks) {
+                for (const auto &e : foodBuckets[ix + xOffset][iy + yOffset]) {
+                    if (surviving && toRemoveFood(e)) continue;
+                    int tempDist = e->getSquaredDistance(px, py);
+                    if (tempDist <= VIEW_RANGE_SQUARED && tempDist < dist) {
+                        f = e;
+                        dist = tempDist;
+                    }
+                }
+            }
+
+            if (i < rowSize) {
+                // top lane (->)
+                xOffset++;
+            } else if (i >= rowSize && i < 2 * rowSize - 1) {
+                // right lane (down)
+                yOffset++;
+            } else if (i >= 2 * rowSize - 1 && i < 3 * rowSize - 2) {
+                // bottom lane (<-)
+                xOffset--;
+            } else {
+                // left lane (up)
+                yOffset--;
+            }
+        } while (++i < 4 * rowSize - 4); // (-4), because the lanes have 4 intersecting points
+
+        rowSize += 2;
     }
+
     return f;
 }
 

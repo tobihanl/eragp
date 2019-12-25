@@ -74,6 +74,7 @@ public:
     static std::vector<Tile *> terrain;
 
     static std::vector<FoodEntity *> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
+    static std::list<FoodEntity *> **foodBuckets;
     static std::vector<LivingEntity *> living;
     static std::vector<LivingEntity *> livingsInPadding;
     static std::list<LivingEntity *> **livingBuckets;
@@ -166,6 +167,14 @@ private:
             return nullptr;
         else
             return &livingBuckets[ix][iy];
+    }
+
+    static std::list<FoodEntity *> *getFoodBucket(const Point &p) {
+        int ix = (p.x + WORLD_PADDING - x) / CHUNK_SIZE, iy = (p.y + WORLD_PADDING - y) / CHUNK_SIZE;
+        if (ix < 0 || iy < 0 || ix >= xChunks || iy >= yChunks)
+            return nullptr;
+        else
+            return &foodBuckets[ix][iy];
     }
 
     static long gcd(long a, long b) {
