@@ -198,9 +198,9 @@ void World::tick() {
     //############################## TICK LIVINGS #############################
     std::vector<LivingEntity *> outgoingEntities = std::vector<LivingEntity *>();
     for (const auto &e : living) {
-        auto bucketBefore = getLivingBucket({e->x, e->y});
+        auto bucketBefore = getEntityBucket({e->x, e->y}, livingBuckets);
         e->tick();
-        auto bucketAfter = getLivingBucket({e->x, e->y});
+        auto bucketAfter = getEntityBucket({e->x, e->y}, livingBuckets);
 
         if (bucketBefore != bucketAfter) {
             bucketBefore->remove(e);
@@ -245,7 +245,7 @@ void World::tick() {
     }
 
     for (const auto &e : livingsInPadding) {
-        getLivingBucket({e->x, e->y})->remove(e);
+        getEntityBucket({e->x, e->y}, livingBuckets)->remove(e);
         delete e;
     }
     livingsInPadding.clear();
@@ -255,7 +255,7 @@ void World::tick() {
         buffer = start;
         auto *entity = new LivingEntity(buffer, true);
         livingsInPadding.push_back(entity);
-        getLivingBucket({entity->x, entity->y})->push_back(entity);
+        getEntityBucket({entity->x, entity->y}, livingBuckets)->push_back(entity);
         free(start);
     }
 
@@ -282,10 +282,10 @@ void World::tick() {
     //                             END MPI SEND/RECEIVE
     //=============================================================================
 
-    for (const auto &e : removeLiving) getLivingBucket({e->x, e->y})->remove(e);
-    for (const auto &e : removeFood) getFoodBucket({e->x, e->y})->remove(e);
-    for (const auto &e : addLiving) getLivingBucket({e->x, e->y})->push_back(e);
-    for (const auto &e : addFood) getFoodBucket({e->x, e->y})->push_back(e);
+    for (const auto &e : removeLiving) getEntityBucket({e->x, e->y}, livingBuckets)->remove(e);
+    for (const auto &e : removeFood) getEntityBucket({e->x, e->y}, foodBuckets)->remove(e);
+    for (const auto &e : addLiving) getEntityBucket({e->x, e->y}, livingBuckets)->push_back(e);
+    for (const auto &e : addFood) getEntityBucket({e->x, e->y}, foodBuckets)->push_back(e);
 
     living.erase(std::remove_if(living.begin(), living.end(), toRemoveLiving), living.end());
     living.insert(living.end(), addLiving.begin(), addLiving.end());
@@ -364,7 +364,7 @@ void World::receiveEntities(int rank, int tag) {
 
                 if (minimal) {
                     livingsInPadding.push_back((LivingEntity *) e);
-                    getLivingBucket({e->x, e->y})->push_back((LivingEntity *) e);
+                    getEntityBucket({e->x, e->y}, livingBuckets)->push_back((LivingEntity *) e);
                 } else {
                     addLivingEntity((LivingEntity *) e);
                 }
@@ -393,11 +393,9 @@ void World::receiveEntities(int rank, int tag) {
     free(start);
 }
 
-FoodEntity *World::findNearestFood(int px, int py, bool surviving) {
-    FoodEntity *f = nullptr;
-    int dist = VIEW_RANGE_SQUARED + 1;
-
-    int ix = (px + WORLD_PADDING - x) / CHUNK_SIZE, iy = (py + WORLD_PADDING - y) / CHUNK_SIZE;
+template<typename T>
+void World::searchBucketsForNearestEntity(Point entityPos, T searchBucketFunc) {
+    int ix = (entityPos.x + WORLD_PADDING - x) / CHUNK_SIZE, iy = (entityPos.y + WORLD_PADDING - y) / CHUNK_SIZE;
     int rowSize = 1;
     int maxLevel = (int) ceil((float) VIEW_RANGE / CHUNK_SIZE);
     // Go through buckets in concentric circles
@@ -407,15 +405,9 @@ FoodEntity *World::findNearestFood(int px, int py, bool surviving) {
         // Walk in a circle around the bucket the entity lays in
         int i = 0;
         do {
+            // Only search through valid buckets
             if (ix + xOffset >= 0 && iy + yOffset >= 0 && ix + xOffset < xChunks && iy + yOffset < yChunks) {
-                for (const auto &e : foodBuckets[ix + xOffset][iy + yOffset]) {
-                    if (surviving && toRemoveFood(e)) continue;
-                    int tempDist = e->getSquaredDistance(px, py);
-                    if (tempDist <= VIEW_RANGE_SQUARED && tempDist < dist) {
-                        f = e;
-                        dist = tempDist;
-                    }
-                }
+                searchBucketFunc(ix + xOffset, iy + yOffset);
             }
 
             if (i < rowSize) {
@@ -435,6 +427,22 @@ FoodEntity *World::findNearestFood(int px, int py, bool surviving) {
 
         rowSize += 2;
     }
+}
+
+FoodEntity *World::findNearestFood(int px, int py, bool surviving) {
+    FoodEntity *f = nullptr;
+    int dist = VIEW_RANGE_SQUARED + 1;
+
+    searchBucketsForNearestEntity({px, py}, [&f, &dist, surviving, px, py](int ix, int iy) {
+        for (const auto &e : foodBuckets[ix][iy]) {
+            if (surviving && toRemoveFood(e)) continue;
+            int tempDist = e->getSquaredDistance(px, py);
+            if (tempDist <= VIEW_RANGE_SQUARED && tempDist < dist) {
+                f = e;
+                dist = tempDist;
+            }
+        }
+    });
 
     return f;
 }
@@ -444,53 +452,26 @@ NearestLiving World::findNearestLiving(LivingEntity *le, bool surviving) {
     int distEnemy = VIEW_RANGE_SQUARED + 1;
     int distMate = VIEW_RANGE_SQUARED + 1;
 
-    int ix = (le->x + WORLD_PADDING - x) / CHUNK_SIZE, iy = (le->y + WORLD_PADDING - y) / CHUNK_SIZE;
-    int rowSize = 1;
-    int maxLevel = (int) ceil((float) VIEW_RANGE / CHUNK_SIZE);
-    // Go through buckets in concentric circles
-    for (int level = 0; level < maxLevel; level++) {
-        int yOffset, xOffset = yOffset = -level;
+    searchBucketsForNearestEntity({le->x, le->y}, [&nearest, &distEnemy, &distMate, surviving, le](int ix, int iy) {
+        for (const auto &e : livingBuckets[ix][iy]) {
+            if (*e == *le || (surviving && toRemoveLiving(e))) continue;
 
-        // Walk in a circle around the bucket the entity lays in
-        int i = 0;
-        do {
-            if (ix + xOffset >= 0 && iy + yOffset >= 0 && ix + xOffset < xChunks && iy + yOffset < yChunks) {
-                for (const auto &e : livingBuckets[ix + xOffset][iy + yOffset]) {
-                    if (*e == *le || (surviving && toRemoveLiving(e))) continue;
+            bool isEnemy =
+                    le->squaredDifference(*e) >= ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD;
+            if (isEnemy && !e->visibleOn(tileAt(le->x, le->y))) continue;
 
-                    bool isEnemy = le->squaredDifference(*e) >= ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD;
-                    if (isEnemy && !e->visibleOn(tileAt(le->x, le->y))) continue;
-
-                    int dist = e->getSquaredDistance(le->x, le->y);
-                    if (dist <= VIEW_RANGE_SQUARED) {
-                        if (isEnemy && dist < distEnemy) {
-                            nearest.enemy = e;
-                            distEnemy = dist;
-                        } else if (dist < distMate) {
-                            nearest.mate = e;
-                            distMate = dist;
-                        }
-                    }
+            int dist = e->getSquaredDistance(le->x, le->y);
+            if (dist <= VIEW_RANGE_SQUARED) {
+                if (isEnemy && dist < distEnemy) {
+                    nearest.enemy = e;
+                    distEnemy = dist;
+                } else if (dist < distMate) {
+                    nearest.mate = e;
+                    distMate = dist;
                 }
             }
-
-            if (i < rowSize) {
-                // top lane (->)
-                xOffset++;
-            } else if (i >= rowSize && i < 2 * rowSize - 1) {
-                // right lane (down)
-                yOffset++;
-            } else if (i >= 2 * rowSize - 1 && i < 3 * rowSize - 2) {
-                // bottom lane (<-)
-                xOffset--;
-            } else {
-                // left lane (up)
-                yOffset--;
-            }
-        } while (++i < 4 * rowSize - 4); // (-4), because the lanes have 4 intersecting points
-
-        rowSize += 2;
-    }
+        }
+    });
 
     return nearest;
 }

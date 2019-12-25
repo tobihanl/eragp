@@ -45,11 +45,13 @@ private:
 
     static bool isSetup;
 
-
     static std::vector<FoodEntity *> removeFood;
     static std::vector<LivingEntity *> removeLiving;
     static std::vector<FoodEntity *> addFood;
     static std::vector<LivingEntity *> addLiving;
+
+    static std::list<LivingEntity *> **livingBuckets;
+    static std::list<FoodEntity *> **foodBuckets;
 
     // MPI Sending storage
     static std::vector<MPISendEntity> livingEntitiesToMoveToNeighbors;
@@ -74,10 +76,8 @@ public:
     static std::vector<Tile *> terrain;
 
     static std::vector<FoodEntity *> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
-    static std::list<FoodEntity *> **foodBuckets;
     static std::vector<LivingEntity *> living;
     static std::vector<LivingEntity *> livingsInPadding;
-    static std::list<LivingEntity *> **livingBuckets;
 
     /**
      * Initialize the world, which is part of the overall world and set
@@ -161,21 +161,14 @@ private:
 
     static void receiveEntities(int rank, int tag);
 
-    static std::list<LivingEntity *> *getLivingBucket(const Point &p) {
+    template<typename T>
+    static T getEntityBucket(const Point &p, const T *buckets) {
         int ix = (p.x + WORLD_PADDING - x) / CHUNK_SIZE, iy = (p.y + WORLD_PADDING - y) / CHUNK_SIZE;
-        if (ix < 0 || iy < 0 || ix >= xChunks || iy >= yChunks)
-            return nullptr;
-        else
-            return &livingBuckets[ix][iy];
+        return (ix < 0 || iy < 0 || ix >= xChunks || iy >= yChunks) ? nullptr : &buckets[ix][iy];
     }
 
-    static std::list<FoodEntity *> *getFoodBucket(const Point &p) {
-        int ix = (p.x + WORLD_PADDING - x) / CHUNK_SIZE, iy = (p.y + WORLD_PADDING - y) / CHUNK_SIZE;
-        if (ix < 0 || iy < 0 || ix >= xChunks || iy >= yChunks)
-            return nullptr;
-        else
-            return &foodBuckets[ix][iy];
-    }
+    template<typename T>
+    static void searchBucketsForNearestEntity(Point entityPos, T searchBucketFunc);
 
     static long gcd(long a, long b) {
         if (a == 0) return b;
