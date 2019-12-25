@@ -60,6 +60,9 @@ private:
     static std::vector<PaddingRect> paddingRects;
     static std::vector<int> paddingRanks;
 
+    static int xChunks;
+    static int yChunks;
+
     World() = default;
 
     ~World() = default;
@@ -72,8 +75,8 @@ public:
 
     static std::vector<FoodEntity *> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
     static std::vector<LivingEntity *> living;
-    static std::list<LivingEntity *> *livings;
     static std::vector<LivingEntity *> livingsInPadding;
+    static std::list<LivingEntity *> **livingBuckets;
 
     /**
      * Initialize the world, which is part of the overall world and set
@@ -157,8 +160,12 @@ private:
 
     static void receiveEntities(int rank, int tag);
 
-    static int getBucket(const Point &p) {
-        return (p.x / CHUNK_SIZE) * (width / CHUNK_SIZE) + (p.y / CHUNK_SIZE);
+    static std::list<LivingEntity *> *getLivingBucket(const Point &p) {
+        int ix = (p.x + WORLD_PADDING - x) / CHUNK_SIZE, iy = (p.y + WORLD_PADDING - y) / CHUNK_SIZE;
+        if (ix < 0 || iy < 0 || ix >= xChunks || iy >= yChunks)
+            return nullptr;
+        else
+            return &livingBuckets[ix][iy];
     }
 
     static long gcd(long a, long b) {

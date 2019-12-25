@@ -7,7 +7,7 @@
 
 std::vector<FoodEntity *> World::food = std::vector<FoodEntity *>();
 std::vector<LivingEntity *> World::living = std::vector<LivingEntity *>();
-std::list<LivingEntity *> *World::livings = nullptr;
+std::list<LivingEntity *> **World::livingBuckets = nullptr;
 std::vector<LivingEntity *> World::livingsInPadding = std::vector<LivingEntity *>();
 
 std::vector<LivingEntity *> World::removeLiving = std::vector<LivingEntity *>();
@@ -43,6 +43,9 @@ int World::foodEveryTick = 0;
 int World::ticksToSkip = 0;
 int World::minTicksToSkip = 0;
 int World::maxTicksToSkip = 0;
+
+int World::xChunks = 0;
+int World::yChunks = 0;
 
 bool World::isSetup = false;
 
@@ -105,11 +108,11 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
     maxTicksToSkip = (int) ceil((float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
 
     // Create buckets for Living Entities
-    int xChunks = width / CHUNK_SIZE, yChunks = height / CHUNK_SIZE;
-    livings = (std::list<LivingEntity *> *) malloc(xChunks * yChunks * sizeof(std::list<LivingEntity *>));
+    xChunks = (width + 2 * WORLD_PADDING) / CHUNK_SIZE + 1;
+    yChunks = (height + 2 * WORLD_PADDING) / CHUNK_SIZE + 1;
+    livingBuckets = new std::list<LivingEntity *> *[xChunks];
     for (int i = 0; i < xChunks; i++)
-        for (int j = 0; j < yChunks; j++)
-            livings[i * xChunks + j] = std::list<LivingEntity *>();
+        livingBuckets[i] = new std::list<LivingEntity *>[yChunks];
 
     // Setup done
     isSetup = true;
@@ -124,7 +127,8 @@ void World::finalize() {
     living.clear();
     livingsInPadding.clear();
 
-    free(livings);
+    for (int i = 0; i < xChunks; i++) delete[] livingBuckets[i];
+    delete[] livingBuckets;
     delete[] worlds;
 }
 
@@ -186,7 +190,14 @@ void World::tick() {
     //############################## TICK LIVINGS #############################
     std::vector<LivingEntity *> outgoingEntities = std::vector<LivingEntity *>();
     for (const auto &e : living) {
+        auto bucketBefore = getLivingBucket({e->x, e->y});
         e->tick();
+        auto bucketAfter = getLivingBucket({e->x, e->y});
+
+        if (bucketBefore != bucketAfter) {
+            bucketBefore->remove(e);
+            bucketAfter->push_back(e);
+        }
 
         // Entity dead?
         if (toRemoveLiving(e)) continue;
@@ -225,13 +236,18 @@ void World::tick() {
                                                           &reqs[MSGS_PER_NEIGHBOR * i + 2]);
     }
 
-    for (const auto &e : livingsInPadding) delete e;
+    for (const auto &e : livingsInPadding) {
+        getLivingBucket({e->x, e->y})->remove(e);
+        delete e;
+    }
     livingsInPadding.clear();
     for (const auto &e : outgoingEntities) {
         void *start, *buffer = start = malloc(e->minimalSerializedSize());
         e->minimalSerialize(buffer);
         buffer = start;
-        livingsInPadding.push_back(new LivingEntity(buffer, true));
+        auto *entity = new LivingEntity(buffer, true);
+        livingsInPadding.push_back(entity);
+        getLivingBucket({entity->x, entity->y})->push_back(entity);
         free(start);
     }
 
@@ -257,6 +273,9 @@ void World::tick() {
     //=============================================================================
     //                             END MPI SEND/RECEIVE
     //=============================================================================
+
+    for (const auto &e : removeLiving) getLivingBucket({e->x, e->y})->remove(e);
+    for (const auto &e : addLiving) getLivingBucket({e->x, e->y})->push_back(e);
 
     living.erase(std::remove_if(living.begin(), living.end(), toRemoveLiving), living.end());
     living.insert(living.end(), addLiving.begin(), addLiving.end());
@@ -333,8 +352,12 @@ void World::receiveEntities(int rank, int tag) {
             case MPI_TAG_LIVING_ENTITY:
                 e = new LivingEntity(buffer, minimal);
 
-                if (minimal) livingsInPadding.push_back((LivingEntity *) e);
-                else addLivingEntity((LivingEntity *) e);
+                if (minimal) {
+                    livingsInPadding.push_back((LivingEntity *) e);
+                    getLivingBucket({e->x, e->y})->push_back((LivingEntity *) e);
+                } else {
+                    addLivingEntity((LivingEntity *) e);
+                }
 
                 break;
 
@@ -379,46 +402,68 @@ NearestLiving World::findNearestLiving(LivingEntity *le, bool surviving) {
     int distEnemy = VIEW_RANGE_SQUARED + 1;
     int distMate = VIEW_RANGE_SQUARED + 1;
 
-    std::vector<LivingEntity *> lists[] = {living, livingsInPadding};
-    for (const auto &list : lists) {
-        for (const auto &e : list) {
-            if (*e == *le || (surviving && toRemoveLiving(e))) continue;
+    int ix = (le->x + WORLD_PADDING - x) / CHUNK_SIZE, iy = (le->y + WORLD_PADDING - y) / CHUNK_SIZE;
+    int rowSize = 1;
+    int maxLevel = (int) ceil((float) VIEW_RANGE / CHUNK_SIZE);
+    // Go through buckets in concentric circles
+    for (int level = 0; level < maxLevel; level++) {
+        int yOffset, xOffset = yOffset = -level;
 
-            bool isEnemy = le->squaredDifference(*e) >= ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD;
-            if (isEnemy && !e->visibleOn(tileAt(le->x, le->y))) continue;
+        // Walk in a circle around the bucket the entity lays in
+        int i = 0;
+        do {
+            if (ix + xOffset >= 0 && iy + yOffset >= 0 && ix + xOffset < xChunks && iy + yOffset < yChunks) {
+                for (const auto &e : livingBuckets[ix + xOffset][iy + yOffset]) {
+                    if (*e == *le || (surviving && toRemoveLiving(e))) continue;
 
-            int dist = e->getSquaredDistance(le->x, le->y);
-            if (dist <= VIEW_RANGE_SQUARED) {
-                if (isEnemy && dist < distEnemy) {
-                    nearest.enemy = e;
-                    distEnemy = dist;
-                } else if (dist < distMate) {
-                    nearest.mate = e;
-                    distMate = dist;
+                    bool isEnemy = le->squaredDifference(*e) >= ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD;
+                    if (isEnemy && !e->visibleOn(tileAt(le->x, le->y))) continue;
+
+                    int dist = e->getSquaredDistance(le->x, le->y);
+                    if (dist <= VIEW_RANGE_SQUARED) {
+                        if (isEnemy && dist < distEnemy) {
+                            nearest.enemy = e;
+                            distEnemy = dist;
+                        } else if (dist < distMate) {
+                            nearest.mate = e;
+                            distMate = dist;
+                        }
+                    }
                 }
             }
-        }
+
+            if (i < rowSize) {
+                // top lane (->)
+                xOffset++;
+            } else if (i >= rowSize && i < 2 * rowSize - 1) {
+                // right lane (down)
+                yOffset++;
+            } else if (i >= 2 * rowSize - 1 && i < 3 * rowSize - 2) {
+                // bottom lane (<-)
+                xOffset--;
+            } else {
+                // left lane (up)
+                yOffset--;
+            }
+        } while (++i < 4 * rowSize - 4); // (-4), because the lanes have 4 intersecting points
+
+        rowSize += 2;
     }
 
     return nearest;
 }
 
 LivingEntity *World::findNearestLivingToPoint(int px, int py) {
-    LivingEntity *n = nullptr;
-    int dist = VIEW_RANGE_SQUARED + 1;
+    LivingEntity dummy = LivingEntity(px, py, {}, 0, 0, 0, nullptr);
+    NearestLiving nearest = findNearestLiving(&dummy, false);
 
-    std::vector<LivingEntity *> lists[] = {living, livingsInPadding};
-    for (const auto &list : lists) {
-        for (const auto &e : list) {
-            int tempDist = e->getSquaredDistance(px, py);
-            if (tempDist <= VIEW_RANGE_SQUARED && tempDist < dist) {
-                n = e;
-                dist = tempDist;
-            }
-        }
-    }
+    if (nearest.enemy == nullptr) return nearest.mate;
+    if (nearest.mate == nullptr) return nearest.enemy;
 
-    return n;
+    if (nearest.enemy->getSquaredDistance(px, py) > nearest.mate->getSquaredDistance(px, py))
+        return nearest.mate;
+    else
+        return nearest.enemy;
 }
 
 bool World::addLivingEntity(LivingEntity *e) {
