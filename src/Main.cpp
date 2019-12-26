@@ -14,6 +14,7 @@
 
 #include <SDL.h>
 #include "Renderer.h"
+#include "Lfsr.h"
 
 #endif
 
@@ -404,6 +405,112 @@ void normalLoop() {
     }
 }
 
+void createEntities(long livings, long food, uint32_t seed) {
+    long nodes = static_cast<long>(World::getMPINodes());
+    long livingsThresholdRank = nodes - livings % nodes;
+    long foodThresholdRank = nodes - food % nodes;
+
+    if (World::getMPIRank() == 0) {
+        //================================== ROOT NODE =================================
+        MPI_Request requests[2 * (nodes - 1)];
+        void *buffers[2 * (nodes - 1)];
+        LFSR random = LFSR(seed);
+        for (int rank = 0; rank < nodes; rank++) {
+            long maxLivings = livings / nodes + ((rank >= livingsThresholdRank) ? 1 : 0);
+            long maxFoods = food / nodes + ((rank >= foodThresholdRank) ? 1 : 0);
+            int sendLivingBytes = 0;
+            int sendFoodBytes = 0;
+
+            LivingEntity *sendLivings[maxLivings];
+            FoodEntity *sendFood[maxFoods];
+
+            WorldDim dim = World::getWorldDimOf(rank);
+
+            // Create Entities
+            for (long i = 0; i < maxLivings; i++) {
+                sendLivings[i] = new LivingEntity(
+                        static_cast<int>(random.getNextIntBetween(0, dim.w)) + dim.p.x,
+                        static_cast<int>(random.getNextIntBetween(0, dim.h)) + dim.p.y,
+                        {
+                                static_cast<uint8_t>(random.getNextIntBetween(0, 256)),
+                                static_cast<uint8_t>(random.getNextIntBetween(0, 256)),
+                                static_cast<uint8_t>(random.getNextIntBetween(0, 256)),
+                                255},
+                        random.getNextFloatBetween(0.0f, 1.0f),
+                        random.getNextFloatBetween(0.0f, 1.0f),
+                        random.getNextFloatBetween(0.0f, 1.0f),
+                        new Brain(6, 8, 4, 4, 10, 4));
+                sendLivingBytes += sendLivings[i]->fullSerializedSize();
+            }
+            for (long i = 0; i < maxFoods; i++) {
+                sendFood[i] = new FoodEntity(
+                        static_cast<int>(random.getNextIntBetween(0, dim.w)) + dim.p.x,
+                        static_cast<int>(random.getNextIntBetween(0, dim.h)) + dim.p.y,
+                        8 * 60);
+                sendFoodBytes += sendFood[i]->fullSerializedSize();
+            }
+
+            // No send to ROOT!
+            if (rank == 0) {
+                for (int i = 0; i < maxLivings; i++) World::addLivingEntity(sendLivings[i]);
+                for (int i = 0; i < maxFoods; i++) World::addFoodEntity(sendFood[i], false);
+                continue;
+            }
+
+            // Serialize entities
+            void *livingBuf = buffers[2 * (rank - 1)] = malloc(sendLivingBytes);
+            void *foodBuf = buffers[2 * (rank - 1) + 1] = malloc(sendFoodBytes);
+            for (int i = 0; i < maxLivings; i++) {
+                sendLivings[i]->fullSerialize(livingBuf);
+                delete sendLivings[i];
+            }
+            for (int i = 0; i < maxFoods; i++) {
+                sendFood[i]->fullSerialize(foodBuf);
+                delete sendFood[i];
+            }
+
+            // Send entities NON-BLOCKING
+            MPI_Isend(buffers[2 * (rank - 1)], sendLivingBytes, MPI_BYTE, rank, MPI_TAG_STARTUP_LIVING_ENTITY,
+                      MPI_COMM_WORLD, &requests[2 * (rank - 1)]);
+            MPI_Isend(buffers[2 * (rank - 1) + 1], sendFoodBytes, MPI_BYTE, rank, MPI_TAG_STARTUP_FOOD_ENTITY,
+                      MPI_COMM_WORLD, &requests[2 * (rank - 1) + 1]);
+        }
+
+        MPI_Waitall(2 * static_cast<int>(nodes - 1), requests, nullptr);
+        for (void *buf : buffers)
+            free(buf);
+    } else {
+        //================================= OTHER NODE =================================
+        int recvLivingBytes, recvFoodBytes;
+
+        // Get Size of entities
+        MPI_Status probeLivingsStat, probeFoodStat;
+        MPI_Probe(0, MPI_TAG_STARTUP_LIVING_ENTITY, MPI_COMM_WORLD, &probeLivingsStat);
+        MPI_Get_count(&probeLivingsStat, MPI_BYTE, &recvLivingBytes);
+        MPI_Probe(0, MPI_TAG_STARTUP_FOOD_ENTITY, MPI_COMM_WORLD, &probeFoodStat);
+        MPI_Get_count(&probeFoodStat, MPI_BYTE, &recvFoodBytes);
+
+        // Receive entities
+        void *startLivingBuf, *livingsBuf = startLivingBuf = malloc(recvLivingBytes);
+        void *startFoodBuf, *foodBuf = startFoodBuf = malloc(recvFoodBytes);
+        MPI_Recv(livingsBuf, recvLivingBytes, MPI_BYTE, 0, MPI_TAG_STARTUP_LIVING_ENTITY, MPI_COMM_WORLD, nullptr);
+        MPI_Recv(foodBuf, recvFoodBytes, MPI_BYTE, 0, MPI_TAG_STARTUP_FOOD_ENTITY, MPI_COMM_WORLD, nullptr);
+
+        // Add Entities
+        while (livingsBuf < static_cast<char *>(startLivingBuf) + recvLivingBytes) {
+            auto *e = new LivingEntity(livingsBuf, false);
+            World::addLivingEntity(e);
+        }
+        while (foodBuf < static_cast<char *>(startFoodBuf) + recvFoodBytes) {
+            auto *e = new FoodEntity(foodBuf);
+            World::addFoodEntity(e, true);
+        }
+
+        free(startLivingBuf);
+        free(startFoodBuf);
+    }
+}
+
 /**
  * =============================================================================
  *                                 MAIN FUNCTION
@@ -578,36 +685,8 @@ int main(int argc, char **argv) {
         Renderer::setup(dim.p.x, dim.p.y, dim.w, dim.h, false);
 #endif
 
-    //============================= ADD TEST ENTITIES =============================
-    long max = livings / World::getMPINodes();
-    if (World::getMPIRank() >= World::getMPINodes() - livings % World::getMPINodes()) max++;
-    for (long i = 0; i < max; i++) {
-        auto *brain = new Brain(6, 8, 4, 4, 10, 4);
-        auto *entity = new LivingEntity(
-                getRandomIntBetween(0, dim.w) + dim.p.x,
-                getRandomIntBetween(0, dim.h) + dim.p.y,
-                {
-                        static_cast<uint8_t>(getRandomIntBetween(0, 256)),
-                        static_cast<uint8_t>(getRandomIntBetween(0, 256)),
-                        static_cast<uint8_t>(getRandomIntBetween(0, 256)),
-                        255},
-                (float) getRandomIntBetween(0, 10000) / 10000.0f,
-                (float) getRandomIntBetween(0, 10000) / 10000.0f,
-                (float) getRandomIntBetween(0, 10000) / 10000.0f, brain);
-
-        World::addLivingEntity(entity);
-    }
-    max = food / World::getMPINodes();
-    if (World::getMPIRank() >= World::getMPINodes() - food % World::getMPINodes()) max++;
-    for (long i = 0; i < max; i++) {
-        World::addFoodEntity(
-                new FoodEntity(
-                        getRandomIntBetween(0, dim.w) + dim.p.x,
-                        getRandomIntBetween(0, dim.h) + dim.p.y,
-                        8 * 60),
-                false);
-    }
-    //=========================== END ADD TEST ENTITIES ===========================
+    // Add entities
+    createEntities(livings, food, static_cast<uint32_t>(randomSeed));
 
     while (!quit) {
 #ifdef RENDER
