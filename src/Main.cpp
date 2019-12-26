@@ -13,6 +13,7 @@
 #ifdef RENDER
 
 #include <SDL.h>
+#include <list>
 #include "Renderer.h"
 #include "Lfsr.h"
 
@@ -406,68 +407,65 @@ void normalLoop() {
 }
 
 void createEntities(long livings, long food, uint32_t seed) {
-    long nodes = static_cast<long>(World::getMPINodes());
-    long livingsThresholdRank = nodes - livings % nodes;
-    long foodThresholdRank = nodes - food % nodes;
-
+    int nodes = World::getMPINodes();
     if (World::getMPIRank() == 0) {
         //================================== ROOT NODE =================================
         MPI_Request requests[2 * (nodes - 1)];
         void *buffers[2 * (nodes - 1)];
         LFSR random = LFSR(seed);
+
+        std::list<LivingEntity *> sendLivings[nodes];
+        std::list<FoodEntity *> sendFood[nodes];
+
+        // Create Entities
+        for (long i = 0; i < livings; i++) {
+            Point p = {static_cast<int>(random.getNextIntBetween(0, World::overallWidth)),
+                       static_cast<int>(random.getNextIntBetween(0, World::overallHeight))};
+            auto *entity = new LivingEntity(
+                    p.x, p.y,
+                    {
+                            static_cast<uint8_t>(random.getNextIntBetween(0, 256)),
+                            static_cast<uint8_t>(random.getNextIntBetween(0, 256)),
+                            static_cast<uint8_t>(random.getNextIntBetween(0, 256)),
+                            255
+                    },
+                    random.getNextFloatBetween(0.0f, 1.0f),
+                    random.getNextFloatBetween(0.0f, 1.0f),
+                    random.getNextFloatBetween(0.0f, 1.0f),
+                    new Brain(6, 8, 4, 4, 10, 4, &random),
+                    random.getNextInt());
+            sendLivings[World::rankAt(p.x, p.y)].push_back(entity);
+        }
+        for (long i = 0; i < food; i++) {
+            Point p = {static_cast<int>(random.getNextIntBetween(0, World::overallWidth)),
+                       static_cast<int>(random.getNextIntBetween(0, World::overallHeight))};
+            sendFood[World::rankAt(p.x, p.y)].push_back(new FoodEntity(p.x, p.y, 8 * 60));
+        }
+
         for (int rank = 0; rank < nodes; rank++) {
-            long maxLivings = livings / nodes + ((rank >= livingsThresholdRank) ? 1 : 0);
-            long maxFoods = food / nodes + ((rank >= foodThresholdRank) ? 1 : 0);
+            // No send to ROOT!
+            if (rank == 0) {
+                for (const auto &e : sendLivings[0]) World::addLivingEntity(e);
+                for (const auto &e : sendFood[0]) World::addFoodEntity(e, false);
+                continue;
+            }
+
             int sendLivingBytes = 0;
             int sendFoodBytes = 0;
 
-            LivingEntity *sendLivings[maxLivings];
-            FoodEntity *sendFood[maxFoods];
-
-            WorldDim dim = World::getWorldDimOf(rank);
-
-            // Create Entities
-            for (long i = 0; i < maxLivings; i++) {
-                sendLivings[i] = new LivingEntity(
-                        static_cast<int>(random.getNextIntBetween(0, dim.w)) + dim.p.x,
-                        static_cast<int>(random.getNextIntBetween(0, dim.h)) + dim.p.y,
-                        {
-                                static_cast<uint8_t>(random.getNextIntBetween(0, 256)),
-                                static_cast<uint8_t>(random.getNextIntBetween(0, 256)),
-                                static_cast<uint8_t>(random.getNextIntBetween(0, 256)),
-                                255},
-                        random.getNextFloatBetween(0.0f, 1.0f),
-                        random.getNextFloatBetween(0.0f, 1.0f),
-                        random.getNextFloatBetween(0.0f, 1.0f),
-                        new Brain(6, 8, 4, 4, 10, 4, &random),
-                        random.getNextInt());
-                sendLivingBytes += sendLivings[i]->fullSerializedSize();
-            }
-            for (long i = 0; i < maxFoods; i++) {
-                sendFood[i] = new FoodEntity(
-                        static_cast<int>(random.getNextIntBetween(0, dim.w)) + dim.p.x,
-                        static_cast<int>(random.getNextIntBetween(0, dim.h)) + dim.p.y,
-                        8 * 60);
-                sendFoodBytes += sendFood[i]->fullSerializedSize();
-            }
-
-            // No send to ROOT!
-            if (rank == 0) {
-                for (int i = 0; i < maxLivings; i++) World::addLivingEntity(sendLivings[i]);
-                for (int i = 0; i < maxFoods; i++) World::addFoodEntity(sendFood[i], false);
-                continue;
-            }
+            for (const auto &e : sendLivings[rank]) sendLivingBytes += e->fullSerializedSize();
+            for (const auto &e : sendFood[rank]) sendFoodBytes += e->fullSerializedSize();
 
             // Serialize entities
             void *livingBuf = buffers[2 * (rank - 1)] = malloc(sendLivingBytes);
             void *foodBuf = buffers[2 * (rank - 1) + 1] = malloc(sendFoodBytes);
-            for (int i = 0; i < maxLivings; i++) {
-                sendLivings[i]->fullSerialize(livingBuf);
-                delete sendLivings[i];
+            for (const auto &e : sendLivings[rank]) {
+                e->fullSerialize(livingBuf);
+                delete e;
             }
-            for (int i = 0; i < maxFoods; i++) {
-                sendFood[i]->fullSerialize(foodBuf);
-                delete sendFood[i];
+            for (const auto &e : sendFood[rank]) {
+                e->fullSerialize(foodBuf);
+                delete e;
             }
 
             // Send entities NON-BLOCKING

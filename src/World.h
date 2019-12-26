@@ -119,6 +119,8 @@ public:
         return std::find(removeLiving.begin(), removeLiving.end(), e) != removeLiving.end();
     }
 
+    static size_t rankAt(int px, int py);
+
     static Tile *tileAt(int px, int py);
 
     static std::vector<PaddingRect> *getPaddingRects() { return &paddingRects; }
@@ -141,8 +143,6 @@ private:
     static bool toAddFood(FoodEntity *e) {
         return std::find(addFood.begin(), addFood.end(), e) != addFood.end();
     }
-
-    static size_t rankAt(int px, int py);
 
     /**
      * @return      Ranks having a padding on the given coordinates
