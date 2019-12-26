@@ -439,7 +439,8 @@ void createEntities(long livings, long food, uint32_t seed) {
                         random.getNextFloatBetween(0.0f, 1.0f),
                         random.getNextFloatBetween(0.0f, 1.0f),
                         random.getNextFloatBetween(0.0f, 1.0f),
-                        new Brain(6, 8, 4, 4, 10, 4));
+                        new Brain(6, 8, 4, 4, 10, 4, &random),
+                        random.getNextInt());
                 sendLivingBytes += sendLivings[i]->fullSerializedSize();
             }
             for (long i = 0; i < maxFoods; i++) {

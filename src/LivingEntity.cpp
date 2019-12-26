@@ -10,7 +10,7 @@
 
 //################################Begin object##############################################
 
-LivingEntity::LivingEntity(int startX, int startY, Color c, float sp, float si, float wa, Brain *b) :
+LivingEntity::LivingEntity(int startX, int startY, Color c, float sp, float si, float wa, Brain *b, uint32_t seed) :
         Entity(startX, startY, c, (int) ((1.0f + si) * TILE_SIZE / 2), 60 * 2),
         speed(sp >= 0 ? sp : 0),
         size(si >= 0 ? si : 0),
@@ -18,6 +18,7 @@ LivingEntity::LivingEntity(int startX, int startY, Color c, float sp, float si, 
         brain(b),
         cooldown(60),
         rotation(0.0f),
+        random(LFSR(seed)),
         energyLossWithMove(energyLossPerTick(true, sp, si)),
         energyLossWithoutMove(energyLossPerTick(false, sp, si)) {
 
@@ -34,12 +35,13 @@ LivingEntity::LivingEntity(void *&ptr, bool minimal) :
                        (uint8_t) ((uint32_t *) ptr)[3]
                },
                ((float *) ptr)[5],
-               ((int *) ptr)[8]),
+               ((int *) ptr)[10]),
         speed(((float *) ptr)[4]),
         size(((float *) ptr)[5]),
         waterAgility(((float *) ptr)[6]),
         rotation(((float *) ptr)[7]),
-        cooldown(((int *) ptr)[9]),
+        random(LFSR(((uint64_t *) ptr)[4])),
+        cooldown(((int *) ptr)[11]),
         energyLossWithMove(energyLossPerTick(true, ((float *) ptr)[4], ((float *) ptr)[5])),
         energyLossWithoutMove(energyLossPerTick(false, ((float *) ptr)[4], ((float *) ptr)[5])) {
     ptr = static_cast<int *>(ptr) + AMOUNT_OF_LIVING_PARAMS;
@@ -58,17 +60,20 @@ void LivingEntity::tick() {
     if (cooldown > 0) cooldown--;
     if (cooldown == 0 && tempEnergy >= 60 * energyLossWithMove) {
         //tempEnergy -= 60; leaving out might give better results
-        uint8_t nr = color.r + (int) std::round(getRandomFloatBetween(0, 2.55));
+        uint8_t nr = color.r + (int) std::round(random.getNextFloatBetween(0, 2.55));
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
-        uint8_t ng = color.g + (int) std::round(getRandomFloatBetween(0, 2.55));
+        uint8_t ng = color.g + (int) std::round(random.getNextFloatBetween(0, 2.55));
         ng = ng < 0 ? 0 : (ng > 255 ? 255 : ng);
-        uint8_t nb = color.b + (int) std::round(getRandomFloatBetween(0, 2.55));
+        uint8_t nb = color.b + (int) std::round(random.getNextFloatBetween(0, 2.55));
         nb = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
 
         // Create children
-        auto child = new LivingEntity(x, y, {nr, ng, nb, 255}, speed + getRandomFloatBetween(0, 0.01),
-                                      size + getRandomFloatBetween(0, 0.01),
-                                      waterAgility + getRandomFloatBetween(0, 0.01), brain->createMutatedCopy());
+        auto child = new LivingEntity(
+                x, y, {nr, ng, nb, 255},
+                speed + random.getNextFloatBetween(0, 0.01),
+                size + random.getNextFloatBetween(0, 0.01),
+                waterAgility + random.getNextFloatBetween(0, 0.01), brain->createMutatedCopy(&random),
+                random.getNextInt());
         if (!World::addLivingEntity(child)) // Not added?
             delete child;
 
@@ -106,7 +111,7 @@ void LivingEntity::tick() {
         if (yTo < 0) yTo = 0;
         if (xTo >= World::overallWidth) xTo = World::overallWidth - 1;
         if (yTo >= World::overallHeight) yTo = World::overallHeight - 1;
-        if(brain->printThink) std::cout << "xDif: " << (xTo - x) << " yDif: " << (yTo-y) << std::endl;
+        if (brain->printThink) std::cout << "xDif: " << (xTo - x) << " yDif: " << (yTo - y) << std::endl;
         if ((*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2)
             || (*World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8)) {
             x = (xTo + World::overallWidth) % World::overallWidth;
@@ -170,7 +175,7 @@ void LivingEntity::tick() {
 }
 
 void LivingEntity::addEnergy(int e) {
-    if(energy + e > MAX_ENERGY) {
+    if (energy + e > MAX_ENERGY) {
         energy = MAX_ENERGY;
     } else {
         energy += e;
@@ -201,8 +206,9 @@ void LivingEntity::minimalSerialize(void *&ptr) {
     ((float *) ptr)[5] = size;
     ((float *) ptr)[6] = waterAgility;
     ((float *) ptr)[7] = rotation;
-    ((int *) ptr)[8] = energy;
-    ((int *) ptr)[9] = cooldown;
+    ((uint64_t *) ptr)[4] = random.getLfsrRegister(); // 4 = (8 * 4) / 8
+    ((int *) ptr)[10] = energy; // 8 and 9 occupied by LFSR register
+    ((int *) ptr)[11] = cooldown;
     ptr = static_cast<int *>(ptr) + AMOUNT_OF_LIVING_PARAMS;
 }
 

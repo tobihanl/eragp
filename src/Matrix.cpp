@@ -1,12 +1,9 @@
 #include <algorithm>
 #include "Matrix.h"
-#include "Rng.h"
 
-Matrix::Matrix(int h, int w, float from, float to) : height(h), width(w) {
-    std::uniform_real_distribution<float> dist(from, to);
-
-    auto gen = [&dist]() { //lambda expression
-        return dist(rng);
+Matrix::Matrix(int h, int w, float from, float to, LFSR *random) : height(h), width(w) {
+    auto gen = [&random, from, to]() { //lambda expression
+        return random->getNextFloatBetween(from, to);
     };
     data.resize(w * h);
     generate(data.begin(), data.end(), gen);

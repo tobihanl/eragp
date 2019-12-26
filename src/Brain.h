@@ -22,6 +22,7 @@ private:
     explicit Brain(Brain *b);
 
     friend std::ostream &operator<<(std::ostream &strm, const Brain &b);
+
 public:
     /**
      * Amount of layers is now fixed for simplicity with exactly one hidden layer for preprocessing and one for actual.
@@ -32,9 +33,10 @@ public:
      * @param normalizedInSize amount of inputs in range -1 to 1 (rotation, landInFront)
      * @param hiddenSize amount of hidden neurons in the actual thinking
      * @param outSize amount of decisions to be made
+     * @param random Random Generator to use
      */
     Brain(int continuousInSize, int hiddenPreSize, int processedInSize, int normalizedInSize, int hiddenSize,
-          int outSize);
+          int outSize, LFSR *random);
 
     /**
      * Deserialization
@@ -51,7 +53,7 @@ public:
      * @return pointer to the mutated copy
      */
 
-    Brain *createMutatedCopy();
+    Brain *createMutatedCopy(LFSR *random);
 
     int serializedSized();
 
