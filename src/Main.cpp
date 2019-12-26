@@ -411,6 +411,7 @@ void createEntities(long livings, long food, LFSR &random) {
     if (World::getMPIRank() == 0) {
         //================================== ROOT NODE =================================
         MPI_Request requests[2 * (nodes - 1)];
+        MPI_Status stats[2 * (nodes - 1)];
         void *buffers[2 * (nodes - 1)];
 
         std::list<LivingEntity *> sendLivings[nodes];
@@ -474,7 +475,7 @@ void createEntities(long livings, long food, LFSR &random) {
                       MPI_COMM_WORLD, &requests[2 * (rank - 1) + 1]);
         }
 
-        MPI_Waitall(2 * static_cast<int>(nodes - 1), requests, nullptr);
+        MPI_Waitall(2 * static_cast<int>(nodes - 1), requests, stats);
         for (void *buf : buffers) free(buf);
     } else {
         //================================= OTHER NODE =================================
@@ -488,10 +489,11 @@ void createEntities(long livings, long food, LFSR &random) {
         MPI_Get_count(&probeFoodStat, MPI_BYTE, &recvFoodBytes);
 
         // Receive entities
+        MPI_Status livingStat, foodStat;
         void *startLivingBuf, *livingsBuf = startLivingBuf = malloc(recvLivingBytes);
         void *startFoodBuf, *foodBuf = startFoodBuf = malloc(recvFoodBytes);
-        MPI_Recv(livingsBuf, recvLivingBytes, MPI_BYTE, 0, MPI_TAG_STARTUP_LIVING_ENTITY, MPI_COMM_WORLD, nullptr);
-        MPI_Recv(foodBuf, recvFoodBytes, MPI_BYTE, 0, MPI_TAG_STARTUP_FOOD_ENTITY, MPI_COMM_WORLD, nullptr);
+        MPI_Recv(livingsBuf, recvLivingBytes, MPI_BYTE, 0, MPI_TAG_STARTUP_LIVING_ENTITY, MPI_COMM_WORLD, &livingStat);
+        MPI_Recv(foodBuf, recvFoodBytes, MPI_BYTE, 0, MPI_TAG_STARTUP_FOOD_ENTITY, MPI_COMM_WORLD, &foodStat);
 
         // Add Entities
         while (livingsBuf < static_cast<char *>(startLivingBuf) + recvLivingBytes) {

@@ -188,6 +188,7 @@ void World::fillFoodBuffer() {
         }
 
         MPI_Request requests[MPI_Nodes - 1];
+        MPI_Status stats[MPI_Nodes - 1];
         void *buffers[MPI_Nodes - 1];
         for (int rank = 0; rank < MPI_Nodes; rank++) {
             // No send to ROOT!
@@ -211,7 +212,7 @@ void World::fillFoodBuffer() {
                       &requests[rank - 1]);
         }
 
-        MPI_Waitall(MPI_Nodes - 1, requests, nullptr);
+        MPI_Waitall(MPI_Nodes - 1, requests, stats);
         for (void *e : buffers) free(e);
     } else {
         //================================= OTHER NODE =================================
@@ -222,8 +223,9 @@ void World::fillFoodBuffer() {
         MPI_Get_count(&probeStat, MPI_BYTE, &recvBytes);
 
         // Receive and deserialize food entities
+        MPI_Status stat;
         void *start, *buffer = start = malloc(recvBytes);
-        MPI_Recv(buffer, recvBytes, MPI_BYTE, 0, MPI_TAG_SPAWN_FOOD_ENTITY, MPI_COMM_WORLD, nullptr);
+        MPI_Recv(buffer, recvBytes, MPI_BYTE, 0, MPI_TAG_SPAWN_FOOD_ENTITY, MPI_COMM_WORLD, &stat);
         while (buffer < static_cast<char *>(start) + recvBytes) {
             int tick = ((int *) buffer)[0];
             buffer = static_cast<int *>(buffer) + 1;
