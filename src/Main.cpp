@@ -4,18 +4,18 @@
 #include <poll.h>
 #include <mpi.h>
 #include <unistd.h>
+#include <list>
+#include <random>
 #include "World.h"
 #include "Brain.h"
 #include "Tile.h"
 #include "Log.h"
-#include "Rng.h"
+#include "Lfsr.h"
 
 #ifdef RENDER
 
 #include <SDL.h>
-#include <list>
 #include "Renderer.h"
-#include "Lfsr.h"
 
 #endif
 
@@ -406,13 +406,12 @@ void normalLoop() {
     }
 }
 
-void createEntities(long livings, long food, uint32_t seed) {
+void createEntities(long livings, long food, LFSR &random) {
     int nodes = World::getMPINodes();
     if (World::getMPIRank() == 0) {
         //================================== ROOT NODE =================================
         MPI_Request requests[2 * (nodes - 1)];
         void *buffers[2 * (nodes - 1)];
-        LFSR random = LFSR(seed);
 
         std::list<LivingEntity *> sendLivings[nodes];
         std::list<FoodEntity *> sendFood[nodes];
@@ -476,8 +475,7 @@ void createEntities(long livings, long food, uint32_t seed) {
         }
 
         MPI_Waitall(2 * static_cast<int>(nodes - 1), requests, nullptr);
-        for (void *buf : buffers)
-            free(buf);
+        for (void *buf : buffers) free(buf);
     } else {
         //================================= OTHER NODE =================================
         int recvLivingBytes, recvFoodBytes;
@@ -669,10 +667,10 @@ int main(int argc, char **argv) {
                 return EXIT_FAILURE;
         }
     }
-    rng.seed(randomSeed);
+    LFSR random = LFSR(randomSeed);
 
     // Init world
-    World::setup(width, height, maimuc, foodRate, zoom);
+    World::setup(width, height, maimuc, foodRate, zoom, random.getNextInt());
     WorldDim dim = World::getWorldDim();
     if (!filename.empty())
         Log::startLogging(filename + "-" + std::to_string(World::getMPIRank()) + ".csv");
@@ -685,7 +683,7 @@ int main(int argc, char **argv) {
 #endif
 
     // Add entities
-    createEntities(livings, food, static_cast<uint32_t>(randomSeed));
+    createEntities(livings, food, random);
 
     while (!quit) {
 #ifdef RENDER

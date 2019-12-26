@@ -2,12 +2,13 @@
 #include <cassert>
 #include "SimplexNoise/SimplexNoise.h"
 #include "World.h"
-#include "Rng.h"
 #include "Log.h"
 
 std::vector<FoodEntity *> World::food = std::vector<FoodEntity *>();
 std::vector<LivingEntity *> World::living = std::vector<LivingEntity *>();
 std::vector<LivingEntity *> World::livingsInPadding = std::vector<LivingEntity *>();
+
+std::list<Food2Add> World::addFoodBuffer = std::list<Food2Add>();
 
 std::vector<LivingEntity *> World::removeLiving = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::removeFood = std::vector<FoodEntity *>();
@@ -43,19 +44,22 @@ int World::ticksToSkip = 0;
 int World::minTicksToSkip = 0;
 int World::maxTicksToSkip = 0;
 
+int World::remainingTicksInFoodBuffer = 0;
+LFSR World::random = LFSR();
+
 bool World::isSetup = false;
 
 std::vector<Tile *> World::terrain = std::vector<Tile *>();
 
-void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate, float zoom) {
+void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate, float zoom, uint32_t seed) {
     if (isSetup)
         return;
 
-    // Get MPI Rank and number of nodes
+    random.seed(seed);
+
     MPI_Comm_rank(MPI_COMM_WORLD, &MPI_Rank);
     MPI_Comm_size(MPI_COMM_WORLD, &MPI_Nodes);
 
-    // MaiMUC specific configuration?
     if (maimuc) {
         if (MPI_Nodes != NUMBER_OF_MAIMUC_NODES) {
             std::cerr << "Program started on MaiMUC without running on 10 nodes!" << std::endl;
@@ -92,18 +96,25 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
         if (std::find(paddingRanks.begin(), paddingRanks.end(), r.rank) == paddingRanks.end())
             paddingRanks.push_back(r.rank);
 
-    foodRate *= (float) (width * height) / (2000.f * TILE_SIZE * TILE_SIZE); //spawnRate of Node
-    //convert spawnRate of node to fraction
-    foodEveryTick = (int) foodRate;
-    foodRate -= (float) foodEveryTick; //only consider food that needs to be distributed
-    long greatestCommonDivisor = gcd((long) round(foodRate * MAX_FOOD_INTERVAL), MAX_FOOD_INTERVAL);
-    ticksPerFoodInterval = MAX_FOOD_INTERVAL / greatestCommonDivisor;
-    foodPerFoodInterval = (int) ((long) round(foodRate * MAX_FOOD_INTERVAL) / greatestCommonDivisor);
+    // Calculate Food Rate related stuff
+    if (MPI_Rank == 0) {
+        //spawnRate of World
+        foodRate *= (float) (overallWidth * overallHeight) / (2000.f * TILE_SIZE * TILE_SIZE);
 
-    minTicksToSkip = (int) floor((float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
-    maxTicksToSkip = (int) ceil((float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
+        //convert spawnRate of world to fraction
+        foodEveryTick = (int) foodRate;
+        foodRate -= (float) foodEveryTick; //only consider food that needs to be distributed
 
-    // Setup done
+        long greatestCommonDivisor = gcd((long) round(foodRate * MAX_FOOD_INTERVAL), MAX_FOOD_INTERVAL);
+        ticksPerFoodInterval = MAX_FOOD_INTERVAL / greatestCommonDivisor;
+        foodPerFoodInterval = (int) ((long) round(foodRate * MAX_FOOD_INTERVAL) / greatestCommonDivisor);
+
+        minTicksToSkip = (int) floor(
+                (float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
+        maxTicksToSkip = (int) ceil(
+                (float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
+    }
+
     isSetup = true;
 }
 
@@ -144,30 +155,97 @@ void World::generateTerrain(float zoom) {
     }
 }
 
+void World::fillFoodBuffer() {
+    if (MPI_Rank == 0) {
+        //================================== ROOT NODE =================================
+        std::list<Food2Add> sendFood[MPI_Nodes];
+        // Pre-calculate food entities for FOOD_BUFFER_TICKS_CAPACITY amount of ticks
+        for (int tick = FOOD_BUFFER_TICKS_CAPACITY; tick > 0; tick--) {
+            if (intervalTicksLeft == 0) {
+                assert(intervalFoodLeft == 0 && "Not enough food spawned!");
+                intervalFoodLeft = foodPerFoodInterval;
+                intervalTicksLeft = ticksPerFoodInterval;
+                ticksToSkip = 0;
+            }
+            for (int i = 0; i < foodEveryTick; i++) {
+                Point p = {static_cast<int>(random.getNextIntBetween(0, overallWidth)),
+                           static_cast<int>(random.getNextIntBetween(0, overallHeight))};
+                sendFood[rankAt(p.x, p.y)].push_back({tick, new FoodEntity(p.x, p.y, 8 * 60),});
+            }
+            intervalTicksLeft--;
+            if (ticksToSkip == 0 && intervalFoodLeft > 0) {
+                intervalFoodLeft--;
+                Point p = {static_cast<int>(random.getNextIntBetween(0, overallWidth)),
+                           static_cast<int>(random.getNextIntBetween(0, overallHeight))};
+                sendFood[rankAt(p.x, p.y)].push_back({tick, new FoodEntity(p.x, p.y, 8 * 60),});
+                if (intervalTicksLeft != 0)
+                    ticksToSkip = ((float) intervalFoodLeft / (float) intervalTicksLeft <
+                                   (float) foodPerFoodInterval / (float) ticksPerFoodInterval) ? maxTicksToSkip
+                                                                                               : minTicksToSkip;
+            } else {
+                ticksToSkip--;
+            }
+        }
+
+        MPI_Request requests[MPI_Nodes - 1];
+        void *buffers[MPI_Nodes - 1];
+        for (int rank = 0; rank < MPI_Nodes; rank++) {
+            // No send to ROOT!
+            if (rank == 0) {
+                for (const auto &e : sendFood[0]) addFoodBuffer.push_back(e);
+                continue;
+            }
+
+            int sendBytes = 0;
+            for (const auto &e : sendFood[rank]) sendBytes += e.entity->fullSerializedSize() + 4;
+
+            // Serialize and send food entities
+            void *buffer = buffers[rank - 1] = malloc(sendBytes);
+            for (const auto &e : sendFood[rank]) {
+                ((int *) buffer)[0] = e.tick;
+                buffer = static_cast<int *>(buffer) + 1;
+                e.entity->fullSerialize(buffer);
+                delete e.entity;
+            }
+            MPI_Isend(buffers[rank - 1], sendBytes, MPI_BYTE, rank, MPI_TAG_SPAWN_FOOD_ENTITY, MPI_COMM_WORLD,
+                      &requests[rank - 1]);
+        }
+
+        MPI_Waitall(MPI_Nodes - 1, requests, nullptr);
+        for (void *e : buffers) free(e);
+    } else {
+        //================================= OTHER NODE =================================
+        int recvBytes;
+
+        MPI_Status probeStat;
+        MPI_Probe(0, MPI_TAG_SPAWN_FOOD_ENTITY, MPI_COMM_WORLD, &probeStat);
+        MPI_Get_count(&probeStat, MPI_BYTE, &recvBytes);
+
+        // Receive and deserialize food entities
+        void *start, *buffer = start = malloc(recvBytes);
+        MPI_Recv(buffer, recvBytes, MPI_BYTE, 0, MPI_TAG_SPAWN_FOOD_ENTITY, MPI_COMM_WORLD, nullptr);
+        while (buffer < static_cast<char *>(start) + recvBytes) {
+            int tick = ((int *) buffer)[0];
+            buffer = static_cast<int *>(buffer) + 1;
+            addFoodBuffer.push_back({tick, new FoodEntity(buffer)});
+        }
+
+        free(start);
+    }
+}
+
 void World::tick() {
     //################################ ADD FOOD ###############################
-    if (intervalTicksLeft == 0) {
-        assert(intervalFoodLeft == 0 && "Not enough food spawned!");
-        intervalFoodLeft = foodPerFoodInterval;
-        intervalTicksLeft = ticksPerFoodInterval;
-        ticksToSkip = 0;
+    if (remainingTicksInFoodBuffer == 0) {
+        assert(addFoodBuffer.empty() && "Food buffer not empty!");
+        fillFoodBuffer();
+        remainingTicksInFoodBuffer = FOOD_BUFFER_TICKS_CAPACITY;
     }
-    for (int i = 0; i < foodEveryTick; i++) {
-        addFoodEntity(new FoodEntity(getRandomIntBetween(0, World::width) + World::x,
-                                     getRandomIntBetween(0, World::height) + World::y, 8 * 60), false);
+    while (!addFoodBuffer.empty() && addFoodBuffer.front().tick == remainingTicksInFoodBuffer) {
+        addFoodEntity(addFoodBuffer.front().entity, false);
+        addFoodBuffer.pop_front();
     }
-    intervalTicksLeft--;
-    if (ticksToSkip == 0 && intervalFoodLeft > 0) {
-        intervalFoodLeft--;
-        addFoodEntity(new FoodEntity(getRandomIntBetween(0, World::width) + World::x,
-                                     getRandomIntBetween(0, World::height) + World::y, 8 * 60), false);
-        if (intervalTicksLeft != 0)
-            ticksToSkip = ((float) intervalFoodLeft / (float) intervalTicksLeft <
-                           (float) foodPerFoodInterval / (float) ticksPerFoodInterval) ? maxTicksToSkip
-                                                                                       : minTicksToSkip;
-    } else {
-        ticksToSkip--;
-    }
+    remainingTicksInFoodBuffer--;
 
     //############################### TICK FOOD ###############################
     for (const auto &e : food) {
@@ -240,8 +318,7 @@ void World::tick() {
 
     // Wait for all sends to complete and afterwards free buffers
     MPI_Waitall((int) paddingRanks.size() * MSGS_PER_NEIGHBOR, reqs, stats);
-    for (void *e : buffers)
-        free(e);
+    for (void *e : buffers) free(e);
 
     if (!Log::paused)
         Log::data.mpi = Log::endTime(mpiTime);

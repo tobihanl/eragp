@@ -14,7 +14,6 @@ target_sources(${PROJECT_NAME}
         ${CMAKE_CURRENT_LIST_DIR}/Main.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Matrix.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Matrix.h
-        ${CMAKE_CURRENT_LIST_DIR}/Rng.h
         ${CMAKE_CURRENT_LIST_DIR}/Structs.h
         ${CMAKE_CURRENT_LIST_DIR}/Tile.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Tile.h

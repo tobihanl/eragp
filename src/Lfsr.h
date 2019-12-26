@@ -19,7 +19,7 @@ private:
     }
 
 public:
-    LFSR() : lfsr_register(0x1234567812345678u) {}
+    LFSR() noexcept : lfsr_register(0x1234567812345678u) {}
 
     explicit LFSR(uint64_t lfsr) : lfsr_register(lfsr) {}
 

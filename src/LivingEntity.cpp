@@ -3,7 +3,6 @@
 #include "LivingEntity.h"
 #include "World.h"
 #include "FoodEntity.h"
-#include "Rng.h"
 
 #define PI 3.14159265
 #define MAX_ENERGY 9999
