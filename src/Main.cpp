@@ -408,12 +408,12 @@ void normalLoop() {
 
 void createEntities(long livings, long food, LFSR &random) {
     int nodes = World::getMPINodes();
-    if (World::getMPIRank() == 0) {
-        //================================== ROOT NODE =================================
-        MPI_Request requests[2 * (nodes - 1)];
-        MPI_Status stats[2 * (nodes - 1)];
-        void *buffers[2 * (nodes - 1)];
 
+    int lCounts[nodes], fCounts[nodes];
+    int lDisplacement[nodes], fDisplacement[nodes];
+    void *sendLBuffer = nullptr, *sendFBuffer = nullptr;
+
+    if (World::getMPIRank() == 0) {
         std::list<LivingEntity *> sendLivings[nodes];
         std::list<FoodEntity *> sendFood[nodes];
 
@@ -442,72 +442,61 @@ void createEntities(long livings, long food, LFSR &random) {
             sendFood[World::rankAt(p.x, p.y)].push_back(new FoodEntity(p.x, p.y, 8 * 60));
         }
 
+        // Calc sizes and displacements for nodes
+        int lTotalSize = 0, fTotalSize = 0;
         for (int rank = 0; rank < nodes; rank++) {
-            // No send to ROOT!
-            if (rank == 0) {
-                for (const auto &e : sendLivings[0]) World::addLivingEntity(e);
-                for (const auto &e : sendFood[0]) World::addFoodEntity(e, false);
-                continue;
-            }
+            lDisplacement[rank] = lTotalSize;
+            fDisplacement[rank] = fTotalSize;
 
-            int sendLivingBytes = 0;
-            int sendFoodBytes = 0;
+            lCounts[rank] = fCounts[rank] = 0;
+            for (const auto &e : sendLivings[rank]) lCounts[rank] += e->fullSerializedSize();
+            for (const auto &e : sendFood[rank]) fCounts[rank] += e->fullSerializedSize();
 
-            for (const auto &e : sendLivings[rank]) sendLivingBytes += e->fullSerializedSize();
-            for (const auto &e : sendFood[rank]) sendFoodBytes += e->fullSerializedSize();
+            lTotalSize += lCounts[rank];
+            fTotalSize += fCounts[rank];
+        }
 
-            // Serialize entities
-            void *livingBuf = buffers[2 * (rank - 1)] = malloc(sendLivingBytes);
-            void *foodBuf = buffers[2 * (rank - 1) + 1] = malloc(sendFoodBytes);
+        // Serialize everything
+        void *lBuffer = sendLBuffer = malloc(lTotalSize);
+        void *fBuffer = sendFBuffer = malloc(fTotalSize);
+        for (int rank = 0; rank < nodes; rank++) {
             for (const auto &e : sendLivings[rank]) {
-                e->fullSerialize(livingBuf);
+                e->fullSerialize(lBuffer);
                 delete e;
             }
             for (const auto &e : sendFood[rank]) {
-                e->fullSerialize(foodBuf);
+                e->fullSerialize(fBuffer);
                 delete e;
             }
-
-            // Send entities NON-BLOCKING
-            MPI_Isend(buffers[2 * (rank - 1)], sendLivingBytes, MPI_BYTE, rank, MPI_TAG_STARTUP_LIVING_ENTITY,
-                      MPI_COMM_WORLD, &requests[2 * (rank - 1)]);
-            MPI_Isend(buffers[2 * (rank - 1) + 1], sendFoodBytes, MPI_BYTE, rank, MPI_TAG_STARTUP_FOOD_ENTITY,
-                      MPI_COMM_WORLD, &requests[2 * (rank - 1) + 1]);
         }
-
-        MPI_Waitall(2 * static_cast<int>(nodes - 1), requests, stats);
-        for (void *buf : buffers) free(buf);
-    } else {
-        //================================= OTHER NODE =================================
-        int recvLivingBytes, recvFoodBytes;
-
-        // Get Size of entities
-        MPI_Status probeLivingsStat, probeFoodStat;
-        MPI_Probe(0, MPI_TAG_STARTUP_LIVING_ENTITY, MPI_COMM_WORLD, &probeLivingsStat);
-        MPI_Get_count(&probeLivingsStat, MPI_BYTE, &recvLivingBytes);
-        MPI_Probe(0, MPI_TAG_STARTUP_FOOD_ENTITY, MPI_COMM_WORLD, &probeFoodStat);
-        MPI_Get_count(&probeFoodStat, MPI_BYTE, &recvFoodBytes);
-
-        // Receive entities
-        MPI_Status livingStat, foodStat;
-        void *startLivingBuf, *livingsBuf = startLivingBuf = malloc(recvLivingBytes);
-        void *startFoodBuf, *foodBuf = startFoodBuf = malloc(recvFoodBytes);
-        MPI_Recv(livingsBuf, recvLivingBytes, MPI_BYTE, 0, MPI_TAG_STARTUP_LIVING_ENTITY, MPI_COMM_WORLD, &livingStat);
-        MPI_Recv(foodBuf, recvFoodBytes, MPI_BYTE, 0, MPI_TAG_STARTUP_FOOD_ENTITY, MPI_COMM_WORLD, &foodStat);
-
-        // Add Entities
-        while (livingsBuf < static_cast<char *>(startLivingBuf) + recvLivingBytes) {
-            auto *e = new LivingEntity(livingsBuf, false);
-            World::addLivingEntity(e);
-        }
-        while (foodBuf < static_cast<char *>(startFoodBuf) + recvFoodBytes) {
-            auto *e = new FoodEntity(foodBuf);
-            World::addFoodEntity(e, true);
-        }
-
-        free(startLivingBuf);
-        free(startFoodBuf);
     }
+
+    // Send & receive Entities
+    int lCount = 0, fCount = 0;
+    MPI_Scatter(lCounts, 1, MPI_INT, &lCount, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(fCounts, 1, MPI_INT, &fCount, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    void *lBuffer, *recvLBuffer = lBuffer = malloc(lCount);
+    void *fBuffer, *recvFBuffer = fBuffer = malloc(fCount);
+    MPI_Scatterv(sendLBuffer, lCounts, lDisplacement, MPI_BYTE, recvLBuffer, lCount, MPI_BYTE,
+                 0, MPI_COMM_WORLD);
+    MPI_Scatterv(sendFBuffer, fCounts, fDisplacement, MPI_BYTE, recvFBuffer, fCount, MPI_BYTE,
+                 0, MPI_COMM_WORLD);
+
+    // Save Entities
+    while (lBuffer < static_cast<char *>(recvLBuffer) + lCount) {
+        auto *e = new LivingEntity(lBuffer, false);
+        World::addLivingEntity(e);
+    }
+    while (fBuffer < static_cast<char *>(recvFBuffer) + fCount) {
+        auto *e = new FoodEntity(fBuffer);
+        World::addFoodEntity(e, true);
+    }
+
+    if (sendLBuffer != nullptr) free(sendLBuffer);
+    if (sendFBuffer != nullptr) free(sendFBuffer);
+    free(recvLBuffer);
+    free(recvFBuffer);
 }
 
 /**
