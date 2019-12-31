@@ -91,14 +91,14 @@ void LivingEntity::tick() {
             (nearest.mate ? nearest.mate->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
             (float) tempEnergy / MAX_ENERGY,
             waterAgility * 2 - 1,
-            TILE_SIZE * speed * agility,
+            speed * agility,//both between 0 and 1
             (nearest.mate ? (float) nearest.mate->energy / MAX_ENERGY * 0.8f : 1.f),
             nearest.enemy ? (float) nearest.enemy->size : 0.f,
             (float) (nearestFood ? std::atan2(nearestFood->y - y, nearestFood->x - x) / PI : rotation),
             (float) (nearest.enemy ? std::atan2(nearest.enemy->y - y, nearest.enemy->x - x) / PI : rotation),
             (float) (nearest.mate ? std::atan2(nearest.mate->y - y, nearest.mate->x - x) / PI : rotation),
-            *World::tileAt(x + (int) std::round(std::cos(rotation * PI) * TILE_SIZE),
-                           y + (int) std::round(std::sin(rotation * PI) * TILE_SIZE)) == Tile::WATER ? 1.f : -1.f,
+            *World::tileAt(x + (int) std::round(std::cos(rotation * PI) * TILE_SIZE * speed * agility),
+                           y + (int) std::round(std::sin(rotation * PI) * TILE_SIZE) * speed * agility) == Tile::WATER ? 1.f : -1.f,
             std::atan2(World::overallHeight / 2.f - y, World::overallWidth / 2.f - x),
             calculateDanger()
     });
