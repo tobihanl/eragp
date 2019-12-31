@@ -26,6 +26,9 @@ endif ()
 
 OPTION(DEFINE_RENDER "Compile with rendering" OFF) # Disabled by default
 
-IF (DEFINE_RENDER)
+if (DEFINE_RENDER)
     ADD_DEFINITIONS(-DRENDER)
-ENDIF (DEFINE_RENDER)
+endif ()
+
+SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer")
+SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer")
