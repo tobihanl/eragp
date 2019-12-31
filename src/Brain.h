@@ -15,7 +15,6 @@ private:
     int numLayers;
     Matrix **weights;
     Matrix **biases;
-    Matrix *lastResult;
 
     /**
      * Copy constructor
