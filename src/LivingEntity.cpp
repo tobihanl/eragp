@@ -81,31 +81,32 @@ void LivingEntity::tick() {
         cooldown += 60;
     }
     //################################# Think #################################
+    float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
     FoodEntity *nearestFood = World::findNearestFood(x, y, false);
     NearestLiving nearest = World::findNearestLiving(this, false);
 
-
-    Matrix input(12, 1, {
+    Matrix input(14, 1, {
             (nearestFood ? nearestFood->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
             (nearest.enemy ? nearest.enemy->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
             (nearest.mate ? nearest.mate->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
             (float) tempEnergy / MAX_ENERGY,
+            waterAgility * 2 - 1,
+            TILE_SIZE * speed * agility,
             (nearest.mate ? (float) nearest.mate->energy / MAX_ENERGY * 0.8f : 1.f),
             nearest.enemy ? (float) nearest.enemy->size : 0.f,
             (float) (nearestFood ? std::atan2(nearestFood->y - y, nearestFood->x - x) / PI : rotation),
             (float) (nearest.enemy ? std::atan2(nearest.enemy->y - y, nearest.enemy->x - x) / PI : rotation),
             (float) (nearest.mate ? std::atan2(nearest.mate->y - y, nearest.mate->x - x) / PI : rotation),
             *World::tileAt(x + (int) std::round(std::cos(rotation * PI) * TILE_SIZE),
-                           y + (int) std::round(std::sin(rotation * PI) * TILE_SIZE)) == Tile::WATER ? -1.f : 1.f,
+                           y + (int) std::round(std::sin(rotation * PI) * TILE_SIZE)) == Tile::WATER ? 1.f : -1.f,
             std::atan2(World::overallHeight / 2.f - y, World::overallWidth / 2.f - x),
             calculateDanger()
     });
     ThinkResult thoughts = brain->think(input);
     rotation = thoughts.rotation;
     //################################# Move ##################################
-    float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
-    int xTo = x + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * 2 * std::cos(rotation * PI));
-    int yTo = y + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * 2 * std::sin(rotation * PI));
+    int xTo = x + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * std::cos(rotation * PI));
+    int yTo = y + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * std::sin(rotation * PI));
     if (xTo < 0 || yTo < 0 || xTo >= World::overallWidth || yTo >= World::overallHeight) {
         World::removeLivingEntity(this);
         return;

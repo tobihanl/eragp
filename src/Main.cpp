@@ -581,7 +581,7 @@ int main(int argc, char **argv) {
     //============================= ADD TEST ENTITIES =============================
     long max = livings / World::getMPINodes();
     if (World::getMPIRank() >= World::getMPINodes() - livings % World::getMPINodes()) max++;
-    int brainSizes[] = {12, 4};
+    int brainSizes[] = {14, 8, 4};
     for (long i = 0; i < max; i++) {
         auto *brain = new Brain(2, brainSizes);
         auto *entity = new LivingEntity(
