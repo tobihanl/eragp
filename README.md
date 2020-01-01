@@ -138,7 +138,10 @@ Windows
 ```
 docker run --rm -p 5901:5901 -p 6901:6901 -v ${PWD}:/app --name eragp tobiashanl/eragp-evolution 
 ```
-
+Linux
+```
+sudo docker run --rm -p 5901:5901 -p 6901:6901 -v "$(pwd):/app" --name eragp tobiashanl/eragp-evolution 
+```
 ### Run commands inside the container
 See *compiling* above on how to init cmake and build the application. 
 
