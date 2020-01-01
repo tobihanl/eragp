@@ -85,7 +85,7 @@ void LivingEntity::tick() {
     FoodEntity *nearestFood = World::findNearestFood(x, y, false);
     NearestLiving nearest = World::findNearestLiving(this, false);
 
-    Matrix input(14, 1, {
+    Matrix input(1, 14, {
             (nearestFood ? nearestFood->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
             (nearest.enemy ? nearest.enemy->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
             (nearest.mate ? nearest.mate->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
@@ -99,7 +99,7 @@ void LivingEntity::tick() {
             (float) (nearest.mate ? std::atan2(nearest.mate->y - y, nearest.mate->x - x) / PI : rotation),
             *World::tileAt(x + (int) std::round(std::cos(rotation * PI) * TILE_SIZE * speed * agility),
                            y + (int) std::round(std::sin(rotation * PI) * TILE_SIZE) * speed * agility) == Tile::WATER ? 1.f : -1.f,
-            std::atan2(World::overallHeight / 2.f - y, World::overallWidth / 2.f - x),
+            std::atan2(World::overallHeight / 2.f - y, World::overallWidth / 2.f - x) / PI,
             calculateDanger()
     });
     ThinkResult thoughts = brain->think(input);
