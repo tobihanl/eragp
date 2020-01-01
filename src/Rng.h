@@ -5,6 +5,12 @@
 
 static std::mt19937 rng(1);
 
+/**
+ * Generates random int between from and to (both inclusive)
+ * @param from lowest possible value
+ * @param to highest possible value
+ * @return element of [from, to]
+ */
 static int getRandomIntBetween(int from, int to) {
     std::uniform_int_distribution<int> distribution(from, to);
     return distribution(rng);
