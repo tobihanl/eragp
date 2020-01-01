@@ -45,7 +45,6 @@ Brain::Brain(int num, int sizes[]) : numLayers(num), weights(new Matrix *[(num -
                                                  0.5141643, -0.25508183, -1.2846099, -1.9092698,
                                                  -1.284557, 0.07724181, -0.95667297, -1.6971796});
     biases[1] = new Matrix(1, sizes[2], {0.18327999, 0.28678775, -0.77836573, -0.8042165});
-
 }
 
 Brain::Brain(void *&ptr) : numLayers(((int *) ptr)[0]), weights(new Matrix *[(((int *) ptr)[0] - 1)]),

@@ -4,6 +4,7 @@
 #include <poll.h>
 #include <mpi.h>
 #include <unistd.h>
+#include <fstream>
 #include "World.h"
 #include "Brain.h"
 #include "Tile.h"
@@ -581,9 +582,28 @@ int main(int argc, char **argv) {
     //============================= ADD TEST ENTITIES =============================
     long max = livings / World::getMPINodes();
     if (World::getMPIRank() >= World::getMPINodes() - livings % World::getMPINodes()) max++;
-    int brainSizes[] = {14, 8, 4};
+    //int brainSizes[] = {14, 8, 4};
+
+    /*char cCurPath[1024];
+    getcwd(cCurPath, sizeof(cCurPath));
+    cCurPath[sizeof(cCurPath)-1] = '\0';
+    printf("%s\n", cCurPath);*/
+
+    std::ifstream file("./../res/brains.data", std::ios::binary | std::ios::ate);
+    std::streamsize size = file.tellg();
+    if(size == -1) std::cout << "Cannot determine size of brains.data" << std::endl;
+    file.seekg(0, std::ios::beg);
+    std::vector<char> vec(size);
+    if (!file.read(vec.data(), size)) std::cout << "Could not open brains.data" << std::endl;
+    int *buffer = reinterpret_cast<int*>(vec.data());
+    int numBrains = buffer[0];
+    int sizeBrains = buffer[1];
+    assert(numBrains * sizeBrains + 8 == size && "Invalid brains.data file!");
+    buffer += 2;
+
     for (long i = 0; i < max; i++) {
-        auto *brain = new Brain(3, brainSizes);
+        void* brainPos = (void*)(buffer + (getRandomIntBetween(0, numBrains - 1) * sizeBrains / 4));//don't care about being modified
+        auto *brain = new Brain(brainPos);
         auto *entity = new LivingEntity(
                 getRandomIntBetween(0, dim.w) + dim.p.x,
                 getRandomIntBetween(0, dim.h) + dim.p.y,
