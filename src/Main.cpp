@@ -589,12 +589,12 @@ int main(int argc, char **argv) {
     cCurPath[sizeof(cCurPath)-1] = '\0';
     printf("%s\n", cCurPath);*/
 
-    std::ifstream file("./../res/brains.data", std::ios::binary | std::ios::ate);
+    std::ifstream file("./../res/brains.dat", std::ios::binary | std::ios::ate);
     std::streamsize size = file.tellg();
-    if(size == -1) std::cout << "Cannot determine size of brains.data" << std::endl;
+    if(size == -1) std::cout << "Cannot determine size of brains.dat" << std::endl;
     file.seekg(0, std::ios::beg);
     std::vector<char> vec(size);
-    if (!file.read(vec.data(), size)) std::cout << "Could not open brains.data" << std::endl;
+    if (!file.read(vec.data(), size)) std::cout << "Could not open brains.dat" << std::endl;
     int *buffer = reinterpret_cast<int*>(vec.data());
     int numBrains = buffer[0];
     int sizeBrains = buffer[1];
