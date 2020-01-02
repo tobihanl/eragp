@@ -5,6 +5,7 @@
 #include <mpi.h>
 #include <unistd.h>
 #include <fstream>
+#include <cassert>
 #include "World.h"
 #include "Brain.h"
 #include "Tile.h"
