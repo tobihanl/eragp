@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <list>
 #include <vector>
+#include <list>
 #include <mpi.h>
 #include "FoodEntity.h"
 #include "LivingEntity.h"
@@ -21,6 +22,11 @@ struct MPISendEntity {
 struct NearestLiving {
     LivingEntity *mate;
     LivingEntity *enemy;
+};
+
+struct Food2Add {
+    int tick;
+    FoodEntity *entity;
 };
 
 //=================================== Class ===================================
@@ -45,6 +51,8 @@ private:
 
     static bool isSetup;
 
+    static std::list<Food2Add> addFoodBuffer;
+
     static std::vector<FoodEntity *> removeFood;
     static std::vector<LivingEntity *> removeLiving;
     static std::vector<FoodEntity *> addFood;
@@ -62,6 +70,9 @@ private:
     static std::vector<PaddingRect> paddingRects;
     static std::vector<int> paddingRanks;
 
+    static int remainingTicksInFoodBuffer;
+    static LFSR random;
+
     static int xChunks;
     static int yChunks;
 
@@ -72,6 +83,7 @@ private:
 public:
     static int overallWidth;
     static int overallHeight;
+    static int dangerZone; //if distance to border is <= dangerZone, the danger neuron will have value (dist / dangerZone)
 
     static std::vector<Tile *> terrain;
 
@@ -88,7 +100,8 @@ public:
      * @param   maimuc              Indicates, whether the program is executed
      *                              on MaiMUC or not
      */
-    static void setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate, float zoom);
+    static void
+    setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate, float zoom, uint32_t seed);
 
     static void finalize();
 
@@ -125,6 +138,8 @@ public:
         return std::find(removeLiving.begin(), removeLiving.end(), e) != removeLiving.end();
     }
 
+    static size_t rankAt(int px, int py);
+
     static Tile *tileAt(int px, int py);
 
     static std::vector<PaddingRect> *getPaddingRects() { return &paddingRects; }
@@ -148,8 +163,6 @@ private:
         return std::find(addFood.begin(), addFood.end(), e) != addFood.end();
     }
 
-    static size_t rankAt(int px, int py);
-
     /**
      * @return      Ranks having a padding on the given coordinates
      *
@@ -160,6 +173,8 @@ private:
     static void *sendEntities(const std::vector<MPISendEntity> &entityVec, int rank, int tag, MPI_Request *request);
 
     static void receiveEntities(int rank, int tag);
+
+    static void fillFoodBuffer();
 
     template<typename T>
     static T getEntityBucket(const Point &p, const T *buckets) {

@@ -4,8 +4,9 @@
 #include "Entity.h"
 #include "Brain.h"
 #include "Tile.h"
+#include "Lfsr.h"
 
-#define AMOUNT_OF_LIVING_PARAMS 10
+#define AMOUNT_OF_LIVING_PARAMS 12 // 10 params (4 byte), 1 param (8 byte)
 
 class LivingEntity : public Entity {
 private:
@@ -15,20 +16,24 @@ private:
     float waterAgility;
     float rotation;
 
+    LFSR random;
+
     int cooldown;
 
-    int energyLossWithMove, energyLossWithoutMove;
+    float energyLossBase;
 
     friend std::ostream &operator<<(std::ostream &strm, const LivingEntity &e);
 
-    static int energyLossPerTick(bool move, float speed, float size) {
-        return (int) round((move ? speed * 8 : 0) + size * 4 + 1);
+    static float energyLossPerTick(float size) {
+        return (int) round(size * 4 + 1);
     }
+
+    float calculateDanger();
 
 public:
     Brain *brain;
 
-    LivingEntity(int x, int y, Color color, float speed, float size, float waterAgility, Brain *brain);
+    LivingEntity(int x, int y, Color color, float speed, float size, float waterAgility, Brain *brain, uint32_t seed);
 
     LivingEntity(void *&ptr, bool minimal);
 

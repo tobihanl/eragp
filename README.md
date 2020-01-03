@@ -138,7 +138,10 @@ Windows
 ```
 docker run --rm -p 5901:5901 -p 6901:6901 -v ${PWD}:/app --name eragp tobiashanl/eragp-evolution 
 ```
-
+Linux
+```
+sudo docker run --rm -p 5901:5901 -p 6901:6901 -v "$(pwd):/app" --name eragp tobiashanl/eragp-evolution 
+```
 ### Run commands inside the container
 See *compiling* above on how to init cmake and build the application. 
 
@@ -154,7 +157,10 @@ Use mpirun to run the application
 ```
 docker exec -it --user 0 eragp /bin/bash -c 'mpirun -n 4 ./Evolution <parameters>'
 ```
-
+#### Alternative: Directly in the containers build folder
+```
+cmake --build . --target Evolution && mpirun -n 2 ./Evolution -z4 -r -f0.01 -e1000,100 -w1200 -h900
+```
 ### Build the Container
 Optionally, you can also build the container yourself
 ```
