@@ -552,7 +552,7 @@ NearestLiving World::findNearestLiving(LivingEntity *le, bool surviving) {
 }
 
 LivingEntity *World::findNearestLivingToPoint(int px, int py) {
-    LivingEntity dummy = LivingEntity(px, py, {}, 0, 0, 0, nullptr);
+    LivingEntity dummy = LivingEntity(px, py, {}, 0, 0, 0, nullptr, 0);
     NearestLiving nearest = findNearestLiving(&dummy, false);
 
     if (nearest.enemy == nullptr) return nearest.mate;
