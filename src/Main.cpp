@@ -4,13 +4,15 @@
 #include <poll.h>
 #include <mpi.h>
 #include <unistd.h>
+#include <list>
+#include <random>
 #include <fstream>
 #include <cassert>
 #include "World.h"
 #include "Brain.h"
 #include "Tile.h"
 #include "Log.h"
-#include "Rng.h"
+#include "Lfsr.h"
 
 #ifdef RENDER
 
@@ -406,6 +408,114 @@ void normalLoop() {
     }
 }
 
+void createEntities(long livings, long food, LFSR &random) {
+    int nodes = World::getMPINodes();
+
+    int lCounts[nodes], fCounts[nodes];
+    int lDisplacement[nodes], fDisplacement[nodes];
+    void *sendLBuffer = nullptr, *sendFBuffer = nullptr;
+
+    // TODO: Maybe free?
+    std::ifstream file("./res/brains.dat", std::ios::binary | std::ios::ate);
+    std::streamsize size = file.tellg();
+    if(size == -1) std::cout << "Cannot determine size of brains.dat" << std::endl;
+    file.seekg(0, std::ios::beg);
+    std::vector<char> vec(size);
+    if (!file.read(vec.data(), size)) std::cout << "Could not open brains.dat" << std::endl;
+    int *buffer = reinterpret_cast<int*>(vec.data());
+    int numBrains = buffer[0];
+    int sizeBrains = buffer[1];
+    assert(numBrains * sizeBrains + 8 == size && "Invalid brains.data file!");
+    buffer += 2;
+
+    if (World::getMPIRank() == 0) {
+        std::list<LivingEntity *> sendLivings[nodes];
+        std::list<FoodEntity *> sendFood[nodes];
+
+        // Create Entities
+        for (long i = 0; i < livings; i++) {
+            Point p = {static_cast<int>(random.getNextIntBetween(0, World::overallWidth)),
+                       static_cast<int>(random.getNextIntBetween(0, World::overallHeight))};
+            void *brainPos = (void *) (buffer + (random.getNextIntBetween(0, numBrains) * sizeBrains /
+                                                 4));//don't care about being modified
+            auto *entity = new LivingEntity(
+                    p.x, p.y,
+                    {
+                            static_cast<uint8_t>(random.getNextIntBetween(0, 256)),
+                            static_cast<uint8_t>(random.getNextIntBetween(0, 256)),
+                            static_cast<uint8_t>(random.getNextIntBetween(0, 256)),
+                            255
+                    },
+                    random.getNextFloatBetween(0.0f, 1.0f),
+                    random.getNextFloatBetween(0.0f, 1.0f),
+                    random.getNextFloatBetween(0.0f, 1.0f),
+                    new Brain(brainPos),
+                    random.getNextInt());
+            sendLivings[World::rankAt(p.x, p.y)].push_back(entity);
+        }
+        for (long i = 0; i < food; i++) {
+            Point p = {static_cast<int>(random.getNextIntBetween(0, World::overallWidth)),
+                       static_cast<int>(random.getNextIntBetween(0, World::overallHeight))};
+            sendFood[World::rankAt(p.x, p.y)].push_back(new FoodEntity(p.x, p.y, 8 * 60));
+        }
+
+        // Calc sizes and displacements for nodes
+        int lTotalSize = 0, fTotalSize = 0;
+        for (int rank = 0; rank < nodes; rank++) {
+            lDisplacement[rank] = lTotalSize;
+            fDisplacement[rank] = fTotalSize;
+
+            lCounts[rank] = fCounts[rank] = 0;
+            for (const auto &e : sendLivings[rank]) lCounts[rank] += e->fullSerializedSize();
+            for (const auto &e : sendFood[rank]) fCounts[rank] += e->fullSerializedSize();
+
+            lTotalSize += lCounts[rank];
+            fTotalSize += fCounts[rank];
+        }
+
+        // Serialize everything
+        void *lBuffer = sendLBuffer = malloc(lTotalSize);
+        void *fBuffer = sendFBuffer = malloc(fTotalSize);
+        for (int rank = 0; rank < nodes; rank++) {
+            for (const auto &e : sendLivings[rank]) {
+                e->fullSerialize(lBuffer);
+                delete e;
+            }
+            for (const auto &e : sendFood[rank]) {
+                e->fullSerialize(fBuffer);
+                delete e;
+            }
+        }
+    }
+
+    // Send & receive Entities
+    int lCount = 0, fCount = 0;
+    MPI_Scatter(lCounts, 1, MPI_INT, &lCount, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(fCounts, 1, MPI_INT, &fCount, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    void *lBuffer, *recvLBuffer = lBuffer = malloc(lCount);
+    void *fBuffer, *recvFBuffer = fBuffer = malloc(fCount);
+    MPI_Scatterv(sendLBuffer, lCounts, lDisplacement, MPI_BYTE, recvLBuffer, lCount, MPI_BYTE,
+                 0, MPI_COMM_WORLD);
+    MPI_Scatterv(sendFBuffer, fCounts, fDisplacement, MPI_BYTE, recvFBuffer, fCount, MPI_BYTE,
+                 0, MPI_COMM_WORLD);
+
+    // Save Entities
+    while (lBuffer < static_cast<char *>(recvLBuffer) + lCount) {
+        auto *e = new LivingEntity(lBuffer, false);
+        World::addLivingEntity(e);
+    }
+    while (fBuffer < static_cast<char *>(recvFBuffer) + fCount) {
+        auto *e = new FoodEntity(fBuffer);
+        World::addFoodEntity(e, true);
+    }
+
+    if (sendLBuffer != nullptr) free(sendLBuffer);
+    if (sendFBuffer != nullptr) free(sendFBuffer);
+    free(recvLBuffer);
+    free(recvFBuffer);
+}
+
 /**
  * =============================================================================
  *                                 MAIN FUNCTION
@@ -565,10 +675,10 @@ int main(int argc, char **argv) {
                 return EXIT_FAILURE;
         }
     }
-    rng.seed(randomSeed);
+    LFSR random = LFSR(randomSeed);
 
     // Init world
-    World::setup(width, height, maimuc, foodRate, zoom);
+    World::setup(width, height, maimuc, foodRate, zoom, random.getNextInt());
     WorldDim dim = World::getWorldDim();
     if (!filename.empty())
         Log::startLogging(filename + "-" + std::to_string(World::getMPIRank()) + ".csv");
@@ -580,56 +690,8 @@ int main(int argc, char **argv) {
         Renderer::setup(dim.p.x, dim.p.y, dim.w, dim.h, false);
 #endif
 
-    //============================= ADD TEST ENTITIES =============================
-    long max = livings / World::getMPINodes();
-    if (World::getMPIRank() >= World::getMPINodes() - livings % World::getMPINodes()) max++;
-    //int brainSizes[] = {14, 8, 4};
-
-    /*char cCurPath[1024];
-    getcwd(cCurPath, sizeof(cCurPath));
-    cCurPath[sizeof(cCurPath)-1] = '\0';
-    printf("%s\n", cCurPath);*/
-
-    std::ifstream file("./../res/brains.dat", std::ios::binary | std::ios::ate);
-    std::streamsize size = file.tellg();
-    if(size == -1) std::cout << "Cannot determine size of brains.dat" << std::endl;
-    file.seekg(0, std::ios::beg);
-    std::vector<char> vec(size);
-    if (!file.read(vec.data(), size)) std::cout << "Could not open brains.dat" << std::endl;
-    int *buffer = reinterpret_cast<int*>(vec.data());
-    int numBrains = buffer[0];
-    int sizeBrains = buffer[1];
-    assert(numBrains * sizeBrains + 8 == size && "Invalid brains.data file!");
-    buffer += 2;
-
-    for (long i = 0; i < max; i++) {
-        void* brainPos = (void*)(buffer + (getRandomIntBetween(0, numBrains - 1) * sizeBrains / 4));//don't care about being modified
-        auto *brain = new Brain(brainPos);
-        auto *entity = new LivingEntity(
-                getRandomIntBetween(0, dim.w) + dim.p.x,
-                getRandomIntBetween(0, dim.h) + dim.p.y,
-                {
-                        static_cast<uint8_t>(getRandomIntBetween(0, 256)),
-                        static_cast<uint8_t>(getRandomIntBetween(0, 256)),
-                        static_cast<uint8_t>(getRandomIntBetween(0, 256)),
-                        255},
-                (float) getRandomIntBetween(0, 10000) / 10000.0f,
-                (float) getRandomIntBetween(0, 10000) / 10000.0f,
-                (float) getRandomIntBetween(0, 10000) / 10000.0f, brain);
-
-        World::addLivingEntity(entity);
-    }
-    max = food / World::getMPINodes();
-    if (World::getMPIRank() >= World::getMPINodes() - food % World::getMPINodes()) max++;
-    for (long i = 0; i < max; i++) {
-        World::addFoodEntity(
-                new FoodEntity(
-                        getRandomIntBetween(0, dim.w) + dim.p.x,
-                        getRandomIntBetween(0, dim.h) + dim.p.y,
-                        8 * 60),
-                false);
-    }
-    //=========================== END ADD TEST ENTITIES ===========================
+    // Add entities
+    createEntities(livings, food, random);
 
     while (!quit) {
 #ifdef RENDER

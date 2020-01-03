@@ -3,14 +3,13 @@
 #include "LivingEntity.h"
 #include "World.h"
 #include "FoodEntity.h"
-#include "Rng.h"
 
 #define PI 3.14159265
 #define MAX_ENERGY 9999
 
 //################################Begin object##############################################
 
-LivingEntity::LivingEntity(int startX, int startY, Color c, float sp, float si, float wa, Brain *b) :
+LivingEntity::LivingEntity(int startX, int startY, Color c, float sp, float si, float wa, Brain *b, uint32_t seed) :
         Entity(startX, startY, c, (int) ((1.0f + si) * TILE_SIZE / 2), 60 * 2),
         speed(sp >= 0 ? sp : 0),
         size(si >= 0 ? si : 0),
@@ -18,6 +17,7 @@ LivingEntity::LivingEntity(int startX, int startY, Color c, float sp, float si, 
         brain(b),
         cooldown(60),
         rotation(0.0f),
+        random(LFSR(seed)),
         energyLossBase(energyLossPerTick(si)) {
 
 }
@@ -33,12 +33,13 @@ LivingEntity::LivingEntity(void *&ptr, bool minimal) :
                        (uint8_t) ((uint32_t *) ptr)[3]
                },
                ((float *) ptr)[5],
-               ((int *) ptr)[8]),
+               ((int *) ptr)[10]),
         speed(((float *) ptr)[4]),
         size(((float *) ptr)[5]),
         waterAgility(((float *) ptr)[6]),
         rotation(((float *) ptr)[7]),
-        cooldown(((int *) ptr)[9]),
+        random(LFSR(((uint64_t *) ptr)[4])),
+        cooldown(((int *) ptr)[11]),
         energyLossBase(energyLossPerTick(((float *) ptr)[5])) {
     ptr = static_cast<int *>(ptr) + AMOUNT_OF_LIVING_PARAMS;
 
@@ -55,26 +56,29 @@ float LivingEntity::calculateDanger() {
     if(y < min) min = y;
     if(World::overallWidth - x < min) min = World::overallWidth - x;
     if(World::overallHeight - y < min) min = World::overallHeight - y;
-    return min > World::dangerZone ? -1.f : 1.f - (min / (float) World::dangerZone);
+    return min > World::dangerZone ? -1.f : 1.f - ((float) min / (float) World::dangerZone);
 }
 
 void LivingEntity::tick() {
     //################################# Breed ################################# at the beginning, so spawning happens before move ->on the right node
     int tempEnergy = this->energy;
     if (cooldown > 0) cooldown--;
-    if (cooldown == 0 && tempEnergy >= 60 * (energyLossBase + speed * 8)) {
+    if (cooldown == 0 && (float) tempEnergy >= 60 * (energyLossBase + speed * 8)) {
         //tempEnergy -= 60; leaving out might give better results
-        uint8_t nr = color.r + (int) std::round(getRandomFloatBetween(0, 2.55));
+        uint8_t nr = color.r + (int) std::round(random.getNextFloatBetween(0, 2.55));
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
-        uint8_t ng = color.g + (int) std::round(getRandomFloatBetween(0, 2.55));
+        uint8_t ng = color.g + (int) std::round(random.getNextFloatBetween(0, 2.55));
         ng = ng < 0 ? 0 : (ng > 255 ? 255 : ng);
-        uint8_t nb = color.b + (int) std::round(getRandomFloatBetween(0, 2.55));
+        uint8_t nb = color.b + (int) std::round(random.getNextFloatBetween(0, 2.55));
         nb = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
 
         // Create children
-        auto child = new LivingEntity(x, y, {nr, ng, nb, 255}, speed + getRandomFloatBetween(-0.05, 0.05),
-                                      size + getRandomFloatBetween(-0.05, 0.05),
-                                      waterAgility + getRandomFloatBetween(-0.05, 0.05), brain->createMutatedCopy());
+        auto child = new LivingEntity(
+                x, y, {nr, ng, nb, 255},
+                speed + random.getNextFloatBetween(-0.05, 0.05),
+                size + random.getNextFloatBetween(-0.05, 0.05),
+                waterAgility + random.getNextFloatBetween(-0.05, 0.05), brain->createMutatedCopy(&random),
+                random.getNextInt());
         if (!World::addLivingEntity(child)) // Not added?
             delete child;
 
@@ -98,8 +102,10 @@ void LivingEntity::tick() {
             (float) (nearest.enemy ? std::atan2(nearest.enemy->y - y, nearest.enemy->x - x) / PI : rotation),
             (float) (nearest.mate ? std::atan2(nearest.mate->y - y, nearest.mate->x - x) / PI : rotation),
             *World::tileAt(x + (int) std::round(std::cos(rotation * PI) * TILE_SIZE * speed * agility),
-                           y + (int) std::round(std::sin(rotation * PI) * TILE_SIZE) * speed * agility) == Tile::WATER ? 1.f : -1.f,
-            std::atan2(World::overallHeight / 2.f - y, World::overallWidth / 2.f - x) / PI,
+                           y + (int) (std::round(std::sin(rotation * PI) * TILE_SIZE) * speed * agility)) == Tile::WATER
+            ? 1.f : -1.f,
+            static_cast<float>(std::atan2((float) World::overallHeight / 2.f - (float) y,
+                                          (float) World::overallWidth / 2.f - (float) x) / PI),
             calculateDanger()
     });
     ThinkResult thoughts = brain->think(input);
@@ -162,7 +168,7 @@ void LivingEntity::tick() {
     }
 
     //################################# Energy ################################
-    tempEnergy -= round(energyLossBase + 8 * speed * thoughts.speed);
+    tempEnergy -= (int) round(energyLossBase + 8 * speed * thoughts.speed);
     assert(round(energyLossBase + 8 * speed * thoughts.speed) > 0 && "Entity not losing Energy");
     if (tempEnergy <= 0) World::removeLivingEntity(this);
     if (tempEnergy > MAX_ENERGY) {
@@ -174,7 +180,7 @@ void LivingEntity::tick() {
 }
 
 void LivingEntity::addEnergy(int e) {
-    if(energy + e > MAX_ENERGY) {
+    if (energy + e > MAX_ENERGY) {
         energy = MAX_ENERGY;
     } else {
         energy += e;
@@ -205,8 +211,9 @@ void LivingEntity::minimalSerialize(void *&ptr) {
     ((float *) ptr)[5] = size;
     ((float *) ptr)[6] = waterAgility;
     ((float *) ptr)[7] = rotation;
-    ((int *) ptr)[8] = energy;
-    ((int *) ptr)[9] = cooldown;
+    ((uint64_t *) ptr)[4] = random.getLfsrRegister(); // 4 = (8 * 4) / 8
+    ((int *) ptr)[10] = energy; // 8 and 9 occupied by LFSR register
+    ((int *) ptr)[11] = cooldown;
     ptr = static_cast<int *>(ptr) + AMOUNT_OF_LIVING_PARAMS;
 }
 

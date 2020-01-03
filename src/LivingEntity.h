@@ -4,8 +4,9 @@
 #include "Entity.h"
 #include "Brain.h"
 #include "Tile.h"
+#include "Lfsr.h"
 
-#define AMOUNT_OF_LIVING_PARAMS 10
+#define AMOUNT_OF_LIVING_PARAMS 12 // 10 params (4 byte), 1 param (8 byte)
 
 class LivingEntity : public Entity {
 private:
@@ -14,6 +15,8 @@ private:
     float size;
     float waterAgility;
     float rotation;
+
+    LFSR random;
 
     int cooldown;
 
@@ -30,7 +33,7 @@ private:
 public:
     Brain *brain;
 
-    LivingEntity(int x, int y, Color color, float speed, float size, float waterAgility, Brain *brain);
+    LivingEntity(int x, int y, Color color, float speed, float size, float waterAgility, Brain *brain, uint32_t seed);
 
     LivingEntity(void *&ptr, bool minimal);
 

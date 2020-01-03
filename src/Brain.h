@@ -22,14 +22,8 @@ private:
     explicit Brain(Brain *b);
 
     friend std::ostream &operator<<(std::ostream &strm, const Brain &b);
-public:
-    /**
-     *
-     * @param numLayers Amount of layers including input and output layer
-     * @param sizes Sizes of the layers
-     */
-    Brain(int numLayers, int sizes[]);
 
+public:
     /**
      * Deserialization
      * @param ptr first byte to deserialize. Points to next free byte after execution.
@@ -45,7 +39,7 @@ public:
      * @return pointer to the mutated copy
      */
 
-    Brain *createMutatedCopy();
+    Brain *createMutatedCopy(LFSR *random);
 
     int serializedSized();
 
