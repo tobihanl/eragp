@@ -25,13 +25,6 @@ private:
 
 public:
     /**
-     *
-     * @param numLayers Amount of layers including input and output layer
-     * @param sizes Sizes of the layers
-     */
-    Brain(int numLayers, int sizes[]);
-
-    /**
      * Deserialization
      * @param ptr first byte to deserialize. Points to next free byte after execution.
      */

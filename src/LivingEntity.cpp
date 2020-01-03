@@ -39,7 +39,7 @@ LivingEntity::LivingEntity(void *&ptr, bool minimal) :
         waterAgility(((float *) ptr)[6]),
         rotation(((float *) ptr)[7]),
         random(LFSR(((uint64_t *) ptr)[4])),
-        cooldown(((int *) ptr)[9]),
+        cooldown(((int *) ptr)[11]),
         energyLossBase(energyLossPerTick(((float *) ptr)[5])) {
     ptr = static_cast<int *>(ptr) + AMOUNT_OF_LIVING_PARAMS;
 
@@ -56,14 +56,14 @@ float LivingEntity::calculateDanger() {
     if(y < min) min = y;
     if(World::overallWidth - x < min) min = World::overallWidth - x;
     if(World::overallHeight - y < min) min = World::overallHeight - y;
-    return min > World::dangerZone ? -1.f : 1.f - (min / (float) World::dangerZone);
+    return min > World::dangerZone ? -1.f : 1.f - ((float) min / (float) World::dangerZone);
 }
 
 void LivingEntity::tick() {
     //################################# Breed ################################# at the beginning, so spawning happens before move ->on the right node
     int tempEnergy = this->energy;
     if (cooldown > 0) cooldown--;
-    if (cooldown == 0 && tempEnergy >= 60 * (energyLossBase + speed * 8)) {
+    if (cooldown == 0 && (float) tempEnergy >= 60 * (energyLossBase + speed * 8)) {
         //tempEnergy -= 60; leaving out might give better results
         uint8_t nr = color.r + (int) std::round(random.getNextFloatBetween(0, 2.55));
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
@@ -102,8 +102,10 @@ void LivingEntity::tick() {
             (float) (nearest.enemy ? std::atan2(nearest.enemy->y - y, nearest.enemy->x - x) / PI : rotation),
             (float) (nearest.mate ? std::atan2(nearest.mate->y - y, nearest.mate->x - x) / PI : rotation),
             *World::tileAt(x + (int) std::round(std::cos(rotation * PI) * TILE_SIZE * speed * agility),
-                           y + (int) std::round(std::sin(rotation * PI) * TILE_SIZE) * speed * agility) == Tile::WATER ? 1.f : -1.f,
-            std::atan2(World::overallHeight / 2.f - y, World::overallWidth / 2.f - x) / PI,
+                           y + (int) (std::round(std::sin(rotation * PI) * TILE_SIZE) * speed * agility)) == Tile::WATER
+            ? 1.f : -1.f,
+            static_cast<float>(std::atan2((float) World::overallHeight / 2.f - (float) y,
+                                          (float) World::overallWidth / 2.f - (float) x) / PI),
             calculateDanger()
     });
     ThinkResult thoughts = brain->think(input);
@@ -166,7 +168,7 @@ void LivingEntity::tick() {
     }
 
     //################################# Energy ################################
-    tempEnergy -= round(energyLossBase + 8 * speed * thoughts.speed);
+    tempEnergy -= (int) round(energyLossBase + 8 * speed * thoughts.speed);
     assert(round(energyLossBase + 8 * speed * thoughts.speed) > 0 && "Entity not losing Energy");
     if (tempEnergy <= 0) World::removeLivingEntity(this);
     if (tempEnergy > MAX_ENERGY) {

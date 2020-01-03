@@ -416,7 +416,7 @@ void createEntities(long livings, long food, LFSR &random) {
     void *sendLBuffer = nullptr, *sendFBuffer = nullptr;
 
     // TODO: Maybe free?
-    std::ifstream file("./../res/brains.dat", std::ios::binary | std::ios::ate);
+    std::ifstream file("./res/brains.dat", std::ios::binary | std::ios::ate);
     std::streamsize size = file.tellg();
     if(size == -1) std::cout << "Cannot determine size of brains.dat" << std::endl;
     file.seekg(0, std::ios::beg);
@@ -436,7 +436,8 @@ void createEntities(long livings, long food, LFSR &random) {
         for (long i = 0; i < livings; i++) {
             Point p = {static_cast<int>(random.getNextIntBetween(0, World::overallWidth)),
                        static_cast<int>(random.getNextIntBetween(0, World::overallHeight))};
-            void* brainPos = (void*)(buffer + (getRandomIntBetween(0, numBrains) * sizeBrains / 4));//don't care about being modified
+            void *brainPos = (void *) (buffer + (random.getNextIntBetween(0, numBrains) * sizeBrains /
+                                                 4));//don't care about being modified
             auto *entity = new LivingEntity(
                     p.x, p.y,
                     {
