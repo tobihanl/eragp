@@ -76,6 +76,7 @@ private:
 public:
     static int overallWidth;
     static int overallHeight;
+    static int dangerZone; //if distance to border is <= dangerZone, the danger neuron will have value (dist / dangerZone)
 
     static std::vector<Tile *> terrain;
 

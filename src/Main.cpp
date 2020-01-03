@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <list>
 #include <random>
+#include <fstream>
+#include <cassert>
 #include "World.h"
 #include "Brain.h"
 #include "Tile.h"
@@ -413,6 +415,19 @@ void createEntities(long livings, long food, LFSR &random) {
     int lDisplacement[nodes], fDisplacement[nodes];
     void *sendLBuffer = nullptr, *sendFBuffer = nullptr;
 
+    // TODO: Maybe free?
+    std::ifstream file("./../res/brains.dat", std::ios::binary | std::ios::ate);
+    std::streamsize size = file.tellg();
+    if(size == -1) std::cout << "Cannot determine size of brains.dat" << std::endl;
+    file.seekg(0, std::ios::beg);
+    std::vector<char> vec(size);
+    if (!file.read(vec.data(), size)) std::cout << "Could not open brains.dat" << std::endl;
+    int *buffer = reinterpret_cast<int*>(vec.data());
+    int numBrains = buffer[0];
+    int sizeBrains = buffer[1];
+    assert(numBrains * sizeBrains + 8 == size && "Invalid brains.data file!");
+    buffer += 2;
+
     if (World::getMPIRank() == 0) {
         std::list<LivingEntity *> sendLivings[nodes];
         std::list<FoodEntity *> sendFood[nodes];
@@ -421,6 +436,7 @@ void createEntities(long livings, long food, LFSR &random) {
         for (long i = 0; i < livings; i++) {
             Point p = {static_cast<int>(random.getNextIntBetween(0, World::overallWidth)),
                        static_cast<int>(random.getNextIntBetween(0, World::overallHeight))};
+            void* brainPos = (void*)(buffer + (getRandomIntBetween(0, numBrains) * sizeBrains / 4));//don't care about being modified
             auto *entity = new LivingEntity(
                     p.x, p.y,
                     {
@@ -432,7 +448,7 @@ void createEntities(long livings, long food, LFSR &random) {
                     random.getNextFloatBetween(0.0f, 1.0f),
                     random.getNextFloatBetween(0.0f, 1.0f),
                     random.getNextFloatBetween(0.0f, 1.0f),
-                    new Brain(6, 8, 4, 4, 10, 4, &random),
+                    new Brain(brainPos),
                     random.getNextInt());
             sendLivings[World::rankAt(p.x, p.y)].push_back(entity);
         }
