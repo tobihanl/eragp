@@ -2,6 +2,7 @@
 #define ERAGP_MAIMUC_EVO_2019_WORLD_H
 
 #include <algorithm>
+#include <list>
 #include <vector>
 #include <list>
 #include <mpi.h>
@@ -57,6 +58,9 @@ private:
     static std::vector<FoodEntity *> addFood;
     static std::vector<LivingEntity *> addLiving;
 
+    static std::list<LivingEntity *> **livingBuckets;
+    static std::list<FoodEntity *> **foodBuckets;
+
     // MPI Sending storage
     static std::vector<MPISendEntity> livingEntitiesToMoveToNeighbors;
     static std::vector<MPISendEntity> foodToSendToNeighbors;
@@ -68,6 +72,9 @@ private:
 
     static int remainingTicksInFoodBuffer;
     static LFSR random;
+
+    static int xChunks;
+    static int yChunks;
 
     World() = default;
 
@@ -168,6 +175,15 @@ private:
     static void receiveEntities(int rank, int tag);
 
     static void fillFoodBuffer();
+
+    template<typename T>
+    static T getEntityBucket(const Point &p, const T *buckets) {
+        int ix = (p.x + WORLD_PADDING - x) / CHUNK_SIZE, iy = (p.y + WORLD_PADDING - y) / CHUNK_SIZE;
+        return (ix < 0 || iy < 0 || ix >= xChunks || iy >= yChunks) ? nullptr : &buckets[ix][iy];
+    }
+
+    template<typename T>
+    static void searchBucketsForNearestEntity(Point entityPos, T searchBucketFunc);
 
     static long gcd(long a, long b) {
         if (a == 0) return b;

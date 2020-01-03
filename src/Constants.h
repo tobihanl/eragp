@@ -26,6 +26,7 @@
 #define ENERGY_FONT_SIZE 12
 
 #define TILE_SIZE 8
+#define CHUNK_SIZE 100
 
 #define LOG_DATA_BUFFER_SIZE 100
 #define LOG_TICKS_2_PAUSE 10
