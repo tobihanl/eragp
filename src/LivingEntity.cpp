@@ -59,11 +59,10 @@ float LivingEntity::calculateDanger() {
     return min > World::dangerZone ? -1.f : 1.f - ((float) min / (float) World::dangerZone);
 }
 
-void LivingEntity::tick() {
-    //################################# Breed ################################# at the beginning, so spawning happens before move ->on the right node
-    int tempEnergy = this->energy;
+// must be called before moving entity so spawning happens on right node
+LivingEntity *LivingEntity::breed() {
     if (cooldown > 0) cooldown--;
-    if (cooldown == 0 && (float) tempEnergy >= 60 * (energyLossBase + speed * 8)) {
+    if (cooldown == 0 && (float) energy >= 60 * (energyLossBase + speed * 8)) {
         //tempEnergy -= 60; leaving out might give better results
         uint8_t nr = color.r + (int) std::round(random.getNextFloatBetween(0, 2.55));
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
@@ -72,18 +71,20 @@ void LivingEntity::tick() {
         uint8_t nb = color.b + (int) std::round(random.getNextFloatBetween(0, 2.55));
         nb = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
 
+        cooldown += 60;
         // Create children
-        auto child = new LivingEntity(
+        return new LivingEntity(
                 x, y, {nr, ng, nb, 255},
                 speed + random.getNextFloatBetween(-0.05, 0.05),
                 size + random.getNextFloatBetween(-0.05, 0.05),
                 waterAgility + random.getNextFloatBetween(-0.05, 0.05), brain->createMutatedCopy(&random),
                 random.getNextInt());
-        if (!World::addLivingEntity(child)) // Not added?
-            delete child;
-
-        cooldown += 60;
     }
+    return nullptr;
+}
+
+void LivingEntity::tick() {
+    int tempEnergy = this->energy;
     //################################# Think #################################
     float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
     FoodEntity *nearestFood = World::findNearestFood(x, y, false);

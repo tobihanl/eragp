@@ -274,6 +274,11 @@ void World::tick() {
     //############################## TICK LIVINGS #############################
     std::vector<LivingEntity *> outgoingEntities = std::vector<LivingEntity *>();
     for (const auto &e : living) {
+        LivingEntity *child = e->breed();
+        if (child && !addLivingEntity(child)) // Not added?
+            delete child;
+    }
+    for (const auto &e : living) {
         auto bucketBefore = getEntityBucket({e->x, e->y}, livingBuckets);
         e->tick();
         auto bucketAfter = getEntityBucket({e->x, e->y}, livingBuckets);

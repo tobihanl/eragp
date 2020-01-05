@@ -41,6 +41,8 @@ public:
 
     struct RenderData getRenderData() override;
 
+    LivingEntity *breed();
+
     void tick() override;
 
     float squaredDifference(const LivingEntity &e) {
