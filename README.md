@@ -124,6 +124,11 @@ Get the generated svg files (**run on your local machine**)
 scp <login>@himmuc.caps.in.tum.de:~/eragp-maimuc-evo-2019/perf/*.svg .
 ```
 
+### Ubuntu machine
+Use profile-local.sh for example as follows:
+```
+sudo mpirun -n 4 ./utils/profile-local.sh -z4 -r -f0.1 -e100,50 -w1200 -h900 -t100
+```
 ## Local Dev Env
 A docker container exists for easy local development.
 The docker container exposes a VNC server at the address `vnc://localhost:5901` with password ``vncpassword``.
