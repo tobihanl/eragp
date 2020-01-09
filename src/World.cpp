@@ -278,15 +278,29 @@ void World::tick() {
         if (child && !addLivingEntity(child)) // Not added?
             delete child;
     }
+
     for (const auto &e : living) {
+        e->think();
+    }
+
+    for (const auto &e : living) {
+        if (toRemoveLiving(e)) continue;
         auto bucketBefore = getEntityBucket({e->x, e->y}, livingBuckets);
-        e->tick();
+
+        e->updateMovement();
+
         auto bucketAfter = getEntityBucket({e->x, e->y}, livingBuckets);
 
         if (bucketBefore != bucketAfter) {
+
             bucketBefore->remove(e);
             bucketAfter->push_back(e);
         }
+    }
+
+    for (const auto &e : living) {
+        if (toRemoveLiving(e)) continue;
+        e->tick();
 
         // Entity dead?
         if (toRemoveLiving(e)) continue;
