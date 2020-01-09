@@ -13,7 +13,6 @@
 #include "Tile.h"
 #include "Log.h"
 #include "Lfsr.h"
-#include <omp.h>
 
 #ifdef RENDER
 
@@ -525,17 +524,6 @@ void createEntities(long livings, long food, LFSR &random) {
 int main(int argc, char **argv) {
     // START MPI
     MPI_Init(&argc, &argv);
-
-    int rank, nodes;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nodes);
-#pragma omp parallel num_threads(3)
-    {
-        int id = omp_get_thread_num();
-        int total = omp_get_num_threads();
-        printf("Greetings from thread %d out of %d on rank %d out of %d\n", id, total, rank, nodes);
-    }
-    return 0;
 
     int width = 960, height = 720;
     bool maimuc = false;
