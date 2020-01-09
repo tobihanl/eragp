@@ -54,7 +54,6 @@ private:
     static std::list<Food2Add> addFoodBuffer;
 
     static std::vector<FoodEntity *> removeFood;
-    static std::vector<LivingEntity *> removeLiving;
     static std::vector<FoodEntity *> addFood;
     static std::vector<LivingEntity *> addLiving;
 
@@ -126,16 +125,10 @@ public:
 
     static bool addFoodEntity(FoodEntity *e, bool received);
 
-    static bool removeLivingEntity(LivingEntity *e);
-
     static bool removeFoodEntity(FoodEntity *e, bool received);
 
     static bool toRemoveFood(FoodEntity *e) {
         return std::find(removeFood.begin(), removeFood.end(), e) != removeFood.end();
-    }
-
-    static bool toRemoveLiving(LivingEntity *e) {
-        return std::find(removeLiving.begin(), removeLiving.end(), e) != removeLiving.end();
     }
 
     static size_t rankAt(int px, int py);

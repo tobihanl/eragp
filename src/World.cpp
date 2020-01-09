@@ -12,7 +12,6 @@ std::vector<LivingEntity *> World::livingsInPadding = std::vector<LivingEntity *
 
 std::list<Food2Add> World::addFoodBuffer = std::list<Food2Add>();
 
-std::vector<LivingEntity *> World::removeLiving = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::removeFood = std::vector<FoodEntity *>();
 std::vector<LivingEntity *> World::addLiving = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::addFood = std::vector<FoodEntity *>();
@@ -122,7 +121,7 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
     }
 
     dangerZone = (overallWidth + overallHeight) / 20;
-    if(dangerZone > 200) dangerZone = 200;
+    if (dangerZone > 200) dangerZone = 200;
 
     // Create buckets for Living Entities and Food Entities
     xChunks = (width + 2 * WORLD_PADDING) / CHUNK_SIZE + 1;
@@ -284,7 +283,7 @@ void World::tick() {
     }
 
     for (const auto &e : living) {
-        if (toRemoveLiving(e)) continue;
+        if (e->toBeRemoved) continue;
         auto bucketBefore = getEntityBucket({e->x, e->y}, livingBuckets);
 
         e->updateMovement();
@@ -299,11 +298,10 @@ void World::tick() {
     }
 
     for (const auto &e : living) {
-        if (toRemoveLiving(e)) continue;
+        if (e->toBeRemoved) continue;
         e->tick();
 
-        // Entity dead?
-        if (toRemoveLiving(e)) continue;
+        if (e->toBeRemoved) continue;
 
         // After moving: Entity on THIS node?
         if (pointInRect({e->x, e->y}, {{x, y}, width, height})) {
@@ -314,7 +312,7 @@ void World::tick() {
         } else {
             livingEntitiesToMoveToNeighbors.push_back({static_cast<int>(rankAt(e->x, e->y)), false, e});
             outgoingEntities.push_back(e);
-            removeLivingEntity(e);
+            e->toBeRemoved = true;
         }
     }
 
@@ -376,23 +374,27 @@ void World::tick() {
     //                             END MPI SEND/RECEIVE
     //=============================================================================
 
-    for (const auto &e : removeLiving) getEntityBucket({e->x, e->y}, livingBuckets)->remove(e);
+    for (const auto &e : living) {
+        if (e->toBeRemoved) {
+            getEntityBucket({e->x, e->y}, livingBuckets)->remove(e);
+            delete e;
+        }
+    }
     for (const auto &e : removeFood) getEntityBucket({e->x, e->y}, foodBuckets)->remove(e);
     for (const auto &e : addLiving) getEntityBucket({e->x, e->y}, livingBuckets)->push_back(e);
     for (const auto &e : addFood) getEntityBucket({e->x, e->y}, foodBuckets)->push_back(e);
 
-    living.erase(std::remove_if(living.begin(), living.end(), toRemoveLiving), living.end());
+    living.erase(std::remove_if(living.begin(), living.end(), [&](LivingEntity *e) -> bool { return e->toBeRemoved; }),
+                 living.end());
     living.insert(living.end(), addLiving.begin(), addLiving.end());
     food.erase(std::remove_if(food.begin(), food.end(), toRemoveFood), food.end());
     food.insert(food.end(), addFood.begin(), addFood.end());
 
     // Destroy entities
-    for (const auto &e : removeLiving) delete e;
     for (const auto &e : removeFood) delete e;
 
     // Clear vectors without deallocating memory
     removeFood.clear();
-    removeLiving.clear();
     addFood.clear();
     addLiving.clear();
 }
@@ -548,7 +550,7 @@ NearestLiving World::findNearestLiving(LivingEntity *le, bool surviving) {
 
     searchBucketsForNearestEntity({le->x, le->y}, [&nearest, &distEnemy, &distMate, surviving, le](int ix, int iy) {
         for (const auto &e : livingBuckets[ix][iy]) {
-            if (*e == *le || (surviving && toRemoveLiving(e))) continue;
+            if (*e == *le || (surviving && e->toBeRemoved)) continue;
 
             bool isEnemy =
                     le->squaredDifference(*e) >= ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD;
@@ -619,17 +621,6 @@ bool World::addFoodEntity(FoodEntity *e, bool received) {
             foodToSendToNeighbors.push_back({neighbor, false, e});
         delete ranks;
 
-        return true;
-    }
-
-    return false;
-}
-
-bool World::removeLivingEntity(LivingEntity *e) {
-    if (toRemoveLiving(e)) return false;
-
-    if (std::find(living.begin(), living.end(), e) != living.end()) {
-        removeLiving.push_back(e);
         return true;
     }
 

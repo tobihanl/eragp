@@ -39,6 +39,7 @@ private:
     float calculateDanger();
 
 public:
+    bool toBeRemoved = false;
     Brain *brain;
 
     LivingEntity(int x, int y, Color color, float speed, float size, float waterAgility, Brain *brain, uint32_t seed);

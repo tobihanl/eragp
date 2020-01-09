@@ -53,9 +53,9 @@ RenderData LivingEntity::getRenderData() {
 
 float LivingEntity::calculateDanger() {
     int min = x;
-    if(y < min) min = y;
-    if(World::overallWidth - x < min) min = World::overallWidth - x;
-    if(World::overallHeight - y < min) min = World::overallHeight - y;
+    if (y < min) min = y;
+    if (World::overallWidth - x < min) min = World::overallWidth - x;
+    if (World::overallHeight - y < min) min = World::overallHeight - y;
     return min > World::dangerZone ? -1.f : 1.f - ((float) min / (float) World::dangerZone);
 }
 
@@ -116,10 +116,10 @@ void LivingEntity::think() {
     int yTo = y + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * std::sin(thoughts.rotation * PI));
 
     if (xTo < 0 || yTo < 0 || xTo >= World::overallWidth || yTo >= World::overallHeight) {
-        World::removeLivingEntity(this);
+        toBeRemoved = true;
         return;
     }
-    if(brain->printThink) std::cout << "xDif: " << (xTo - x) << " yDif: " << (yTo-y) << std::endl;
+    if (brain->printThink) std::cout << "xDif: " << (xTo - x) << " yDif: " << (yTo - y) << std::endl;
     if ((*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2)
         || (*World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8)) {
         nextX = (xTo + World::overallWidth) % World::overallWidth;
@@ -140,38 +140,25 @@ void LivingEntity::tick() {
     int tempEnergy = this->energy;
 
     //################################## Attack ##################################
-    if (thoughts.attack && nearestEnemy && nearestEnemy->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-        if (World::toRemoveLiving(nearestEnemy)) {
-            LivingEntity *temp = World::findNearestLiving(this, true).enemy;
-            nearestEnemy = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp
-                                                                                            : nullptr;
-        }
-        if (nearestEnemy) {
-            if (size > nearestEnemy->size) {
-                World::removeLivingEntity(nearestEnemy); //don't forget to synchronize
-                tempEnergy += nearestEnemy->energy;
-            } else {
-                World::removeLivingEntity(this);
-                return;
-            }
+    if (thoughts.attack && nearestEnemy && !nearestEnemy->toBeRemoved &&
+        nearestEnemy->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
+        if (size > nearestEnemy->size) {
+            nearestEnemy->toBeRemoved = true;
+            tempEnergy += nearestEnemy->energy;
+        } else {
+            toBeRemoved = true;
+            return;
         }
     }
     //################################## Share ##################################
-    if (thoughts.share && tempEnergy > 80 && nearestMate &&
+    if (thoughts.share && tempEnergy > 80 && nearestMate && !nearestMate->toBeRemoved &&
         nearestMate->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-        if (World::toRemoveLiving(nearestMate)) {
-            LivingEntity *temp = World::findNearestLiving(this, true).mate;
-            nearestMate = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp
-                                                                                           : nullptr;
-        }
-        if (nearestMate) {
-            nearestMate->addEnergy(60);
-            tempEnergy -= 60;
-        }
+        nearestMate->addEnergy(60);
+        tempEnergy -= 60;
     }
     //################################## Eat ##################################
     if (nearestFood &&
-        nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {//nearest food also needed for input
+        nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
         if (World::toRemoveFood(nearestFood)) {
             FoodEntity *temp = World::findNearestFood(x, y, true);
             nearestFood = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp
@@ -186,7 +173,7 @@ void LivingEntity::tick() {
     //################################# Energy ################################
     tempEnergy -= (int) round(energyLossBase + 8 * speed * thoughts.speed);
     assert(round(energyLossBase + 8 * speed * thoughts.speed) > 0 && "Entity not losing Energy");
-    if (tempEnergy <= 0) World::removeLivingEntity(this);
+    if (tempEnergy <= 0) toBeRemoved = true;
     if (tempEnergy > MAX_ENERGY) {
         this->energy = MAX_ENERGY;
     } else {
