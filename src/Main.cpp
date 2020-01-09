@@ -13,6 +13,7 @@
 #include "Tile.h"
 #include "Log.h"
 #include "Lfsr.h"
+#include <omp.h>
 
 #ifdef RENDER
 
@@ -418,11 +419,11 @@ void createEntities(long livings, long food, LFSR &random) {
     // TODO: Maybe free?
     std::ifstream file("./res/brains.dat", std::ios::binary | std::ios::ate);
     std::streamsize size = file.tellg();
-    if(size == -1) std::cout << "Cannot determine size of brains.dat" << std::endl;
+    if (size == -1) std::cout << "Cannot determine size of brains.dat" << std::endl;
     file.seekg(0, std::ios::beg);
     std::vector<char> vec(size);
     if (!file.read(vec.data(), size)) std::cout << "Could not open brains.dat" << std::endl;
-    int *buffer = reinterpret_cast<int*>(vec.data());
+    int *buffer = reinterpret_cast<int *>(vec.data());
     int numBrains = buffer[0];
     int sizeBrains = buffer[1];
     assert(numBrains * sizeBrains + 8 == size && "Invalid brains.data file!");
@@ -524,6 +525,17 @@ void createEntities(long livings, long food, LFSR &random) {
 int main(int argc, char **argv) {
     // START MPI
     MPI_Init(&argc, &argv);
+
+    int rank, nodes;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nodes);
+#pragma omp parallel num_threads(3)
+    {
+        int id = omp_get_thread_num();
+        int total = omp_get_num_threads();
+        printf("Greetings from thread %d out of %d on rank %d out of %d\n", id, total, rank, nodes);
+    }
+    return 0;
 
     int width = 960, height = 720;
     bool maimuc = false;
