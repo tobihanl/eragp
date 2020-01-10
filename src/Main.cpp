@@ -105,8 +105,10 @@ void renderLoop() {
         previousTime = currentTime;
 
         // Log new tick
-        Log::paused = counter % LOG_TICKS_2_PAUSE != 0;
-        if (!Log::paused) {
+        if (counter % LOG_TICKS_2_PAUSE == 0)
+            Log::enable();
+
+        if (Log::isEnabled()) {
             Log::data.turn = counter;
             Log::data.food = World::getAmountOfFood();
             Log::data.livings = World::getAmountOfLivings();
@@ -254,7 +256,7 @@ void renderLoop() {
 
         //################################## TICK #################################
         if (!paused) {
-            if (!Log::paused) {
+            if (Log::isEnabled()) {
                 int tickTime = Log::currentTime();
                 World::tick();
                 Log::data.tick = Log::endTime(tickTime);
@@ -264,7 +266,7 @@ void renderLoop() {
         }
 
         //################################# RENDER ################################
-        int renderTime = (!Log::paused) ? Log::currentTime() : 0;
+        int renderTime = (Log::isEnabled()) ? Log::currentTime() : 0;
         Renderer::clear();
 
         Renderer::drawBackground(World::getWorldDim());
@@ -279,7 +281,7 @@ void renderLoop() {
         Renderer::present();
         frames++;
 
-        if (!Log::paused)
+        if (Log::isEnabled())
             Log::data.render = Log::endTime(renderTime);
 
         //########################### WAIT IF TOO FAST ############################
@@ -290,10 +292,11 @@ void renderLoop() {
         if (elapsedTime <= MS_PER_TICK)
             SDL_Delay(MS_PER_TICK - elapsedTime);
 
-        if (!Log::paused) {
+        if (Log::isEnabled()) {
             Log::data.delay = (elapsedTime <= MS_PER_TICK) ? MS_PER_TICK - elapsedTime : 0;
             Log::data.overall = Log::endTime(previousTime);
             Log::saveLogData();
+            Log::disable();
         }
     }
     //=============================================================================
@@ -329,10 +332,11 @@ void normalLoop() {
     uint8_t buffer = 0;
     bool run = true;
     while (run) {
-        Log::paused = counter % LOG_TICKS_2_PAUSE != 0;
+        if (counter % LOG_TICKS_2_PAUSE == 0)
+            Log::enable();
 
-        int loopTime = (!Log::paused) ? Log::currentTime() : 0;
-        if (!Log::paused) {
+        int loopTime = (Log::isEnabled()) ? Log::currentTime() : 0;
+        if (Log::isEnabled()) {
             Log::data.turn = counter;
             Log::data.food = World::getAmountOfFood();
             Log::data.livings = World::getAmountOfLivings();
@@ -395,13 +399,14 @@ void normalLoop() {
         if (!run) break;
 
         //################################## TICK #################################
-        if (!Log::paused) {
+        if (Log::isEnabled()) {
             int tickTime = Log::currentTime();
             World::tick();
             Log::data.tick = Log::endTime(tickTime);
 
             Log::data.overall = Log::endTime(loopTime);
             Log::saveLogData();
+            Log::disable();
         } else {
             World::tick();
         }

@@ -8,6 +8,7 @@
 
 class Log {
 private:
+    static bool paused;
     static bool logging;
     static FILE *logFile;
 
@@ -16,7 +17,6 @@ private:
 
 public:
     static LogData data;
-    static bool paused;
 
 private:
     static void writeLine(const std::string &line) {
@@ -72,6 +72,18 @@ public:
 
         if (occupied == LOG_DATA_BUFFER_SIZE)
             writeBackLogData();
+    }
+
+    static void enable() {
+        paused = false;
+    }
+
+    static void disable() {
+        paused = true;
+    }
+
+    static bool isEnabled() {
+        return logging && !paused;
     }
 
     static int currentTime() {

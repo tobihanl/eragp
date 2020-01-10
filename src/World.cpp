@@ -302,7 +302,7 @@ void World::tick() {
     //=============================================================================
     //                            BEGIN MPI SEND/RECEIVE
     //=============================================================================
-    int mpiTime = (!Log::paused) ? Log::currentTime() : 0;
+    int mpiTime = (Log::isEnabled()) ? Log::currentTime() : 0;
     MPI_Request reqs[paddingRanks.size() * MSGS_PER_NEIGHBOR];
     MPI_Status stats[paddingRanks.size() * MSGS_PER_NEIGHBOR];
     void *buffers[paddingRanks.size() * MSGS_PER_NEIGHBOR];
@@ -351,7 +351,7 @@ void World::tick() {
     MPI_Waitall((int) paddingRanks.size() * MSGS_PER_NEIGHBOR, reqs, stats);
     for (void *e : buffers) free(e);
 
-    if (!Log::paused)
+    if (Log::isEnabled())
         Log::data.mpi = Log::endTime(mpiTime);
     //=============================================================================
     //                             END MPI SEND/RECEIVE
