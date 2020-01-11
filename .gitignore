@@ -207,3 +207,5 @@ $RECYCLE.BIN/
 # Generated executable
 build/
 Evolution
+
+.idea/

@@ -13,21 +13,28 @@ Brain::Brain(Brain *b) : numLayers(b->numLayers), weights(new Matrix *[(b->numLa
     }
 }
 
-Brain::Brain(void *&ptr) : numLayers(((int *) ptr)[0]), weights(new Matrix *[(((int *) ptr)[0] - 1)]),
-                           biases(new Matrix *[((int *) ptr)[0] - 1]) {
-    ptr = static_cast<float *>(ptr) + 1;
-    for (int i = 0; i < numLayers - 1; i++) {
-        int height = ((int *) ptr)[0];
-        int width = ((int *) ptr)[1];
-        std::vector<float> data(static_cast<float *>(ptr) + 2, static_cast<float *>(ptr) + 2 + height * width);
-        weights[i] = new Matrix(height, width, data);
-        ptr = static_cast<float *>(ptr) + (2 + height * width);
+Brain::Brain(void *&ptr) {
+    numLayers = ((int32_t *) ptr)[0];
+    weights = new Matrix *[numLayers - 1];
+    biases = new Matrix *[numLayers - 1];
+    ptr = static_cast<int32_t *>(ptr) + 1;
 
-        int height3 = ((int *) ptr)[0];
-        int width3 = ((int *) ptr)[1];
-        biases[i] = new Matrix(height3, width3, std::vector<float>(static_cast<float *>(ptr) + 2,
-                                                              static_cast<float *>(ptr) + 2 + height3 * width3));
-        ptr = static_cast<float *>(ptr) + (2 + height3 * width3);
+    for (int i = 0; i < numLayers - 1; i++) {
+        int height = ((int32_t *) ptr)[0];
+        int width = ((int32_t *) ptr)[1];
+        ptr = static_cast<int32_t *>(ptr) + 2;
+
+        std::vector<float> data(static_cast<float *>(ptr), static_cast<float *>(ptr) + (height * width));
+        weights[i] = new Matrix(height, width, data);
+        ptr = static_cast<float *>(ptr) + (height * width);
+
+        int height2 = ((int32_t *) ptr)[0];
+        int width2 = ((int32_t *) ptr)[1];
+        ptr = static_cast<int32_t *>(ptr) + 2;
+
+        std::vector<float> data2(static_cast<float *>(ptr), static_cast<float *>(ptr) + (height2 * width2));
+        biases[i] = new Matrix(height2, width2, data2);
+        ptr = static_cast<float *>(ptr) + (height2 * width2);
     }
 }
 
@@ -67,31 +74,35 @@ Brain *Brain::createMutatedCopy(LFSR *random) {
 }
 
 int Brain::serializedSized() {
-    int sum = 0;
+    int sum = sizeof(int32_t);
     for (int i = 0; i < numLayers - 1; i++) {
-        sum += weights[i]->getHeight() * weights[i]->getWidth() * 4 + 8;//8 for the 2 int width/height of matrix
-        sum += biases[i]->getHeight() * biases[i]->getWidth() * 4 + 8;
+        sum += weights[i]->getHeight() * weights[i]->getWidth() * (int) sizeof(float) + 2 * (int) sizeof(int32_t);
+        sum += biases[i]->getHeight() * biases[i]->getWidth() * (int) sizeof(float) + 2 * (int) sizeof(int32_t);
     }
-    return 4 + sum;//+4 for numLayers
+    return sum;
 }
 
 void Brain::serialize(void *&ptr) {
-    ((int *) ptr)[0] = numLayers;
+    ((int32_t *) ptr)[0] = (int32_t) numLayers;
     ptr = static_cast<int *>(ptr) + 1;
-    for (int i = 0; i < numLayers - 1; i++) {
-        ((int *) ptr)[0] = weights[i]->getHeight();
-        ((int *) ptr)[1] = weights[i]->getWidth();
-        assert(weights[i]->data.end() - weights[i]->data.begin() == weights[i]->getHeight() * weights[i]->getWidth());
-        std::copy(weights[i]->data.begin(), weights[i]->data.end(),
-                  ((float *) ptr) + 2);// +2 only works because of same size
-        ptr = static_cast<float *>(ptr) + (2 + weights[i]->getHeight() * weights[i]->getWidth());
 
-        ((int *) ptr)[0] = biases[i]->getHeight();
-        ((int *) ptr)[1] = biases[i]->getWidth();
+    for (int i = 0; i < numLayers - 1; i++) {
         assert(biases[i]->data.end() - biases[i]->data.begin() == biases[i]->getHeight() * biases[i]->getWidth());
-        std::copy(biases[i]->data.begin(), biases[i]->data.end(),
-                  ((float *) ptr) + 2);// +2 only works because of same size
-        ptr = static_cast<float *>(ptr) + (2 + biases[i]->getHeight() * biases[i]->getWidth());
+        assert(weights[i]->data.end() - weights[i]->data.begin() == weights[i]->getHeight() * weights[i]->getWidth());
+
+        ((int32_t *) ptr)[0] = (int32_t) weights[i]->getHeight();
+        ((int32_t *) ptr)[1] = (int32_t) weights[i]->getWidth();
+        ptr = static_cast<int32_t *>(ptr) + 2;
+
+        std::copy(weights[i]->data.begin(), weights[i]->data.end(), (float *) ptr);
+        ptr = static_cast<float *>(ptr) + (weights[i]->getHeight() * weights[i]->getWidth());
+
+        ((int32_t *) ptr)[0] = (int32_t) biases[i]->getHeight();
+        ((int32_t *) ptr)[1] = (int32_t) biases[i]->getWidth();
+        ptr = static_cast<int32_t *>(ptr) + 2;
+
+        std::copy(biases[i]->data.begin(), biases[i]->data.end(), (float *) ptr);
+        ptr = static_cast<float *>(ptr) + (biases[i]->getHeight() * biases[i]->getWidth());
     }
 }
 

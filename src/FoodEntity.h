@@ -3,8 +3,8 @@
 
 #include "Entity.h"
 
-#define AMOUNT_OF_FOOD_PARAMS 5
-#define FOOD_EXPIRATION_TIME 180 * 4
+#define AMOUNT_32_BIT_FOOD_PARAMS 5
+#define FOOD_EXPIRATION_TIME (180 * 4)
 
 class FoodEntity : public Entity {
 private:
@@ -26,16 +26,16 @@ public:
     void minimalSerialize(void *&ptr) override { fullSerialize(ptr); }
 
     int fullSerializedSize() override {
-        return AMOUNT_OF_FOOD_PARAMS * 4;
+        return AMOUNT_32_BIT_FOOD_PARAMS * sizeof(int32_t);
     }
 
     void fullSerialize(void *&ptr) override {
-        ((int *) ptr)[0] = id;
-        ((int *) ptr)[1] = x;
-        ((int *) ptr)[2] = y;
-        ((int *) ptr)[3] = energy;
-        ((int *) ptr)[4] = expire;
-        ptr = static_cast<int *>(ptr) + AMOUNT_OF_FOOD_PARAMS;
+        ((int32_t *) ptr)[0] = (int32_t) id;
+        ((int32_t *) ptr)[1] = (int32_t) x;
+        ((int32_t *) ptr)[2] = (int32_t) y;
+        ((int32_t *) ptr)[3] = (int32_t) energy;
+        ((int32_t *) ptr)[4] = (int32_t) expire;
+        ptr = static_cast<int32_t *>(ptr) + AMOUNT_32_BIT_FOOD_PARAMS;
     }
 };
 

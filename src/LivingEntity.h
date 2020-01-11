@@ -6,7 +6,9 @@
 #include "Tile.h"
 #include "Lfsr.h"
 
-#define AMOUNT_OF_LIVING_PARAMS 12 // 10 params (4 byte), 1 param (8 byte)
+#define AMOUNT_32_BIT_LIVING_PARAMS 6
+#define AMOUNT_64_BIT_LIVING_PARAMS 1
+#define AMOUNT_FLOAT_LIVING_PARAMS 4
 
 class LivingEntity : public Entity {
 private:
@@ -59,14 +61,13 @@ public:
     void fullSerialize(void *&ptr) override;
 
     int minimalSerializedSize() override {
-        return AMOUNT_OF_LIVING_PARAMS * 4;
+        return AMOUNT_32_BIT_LIVING_PARAMS * (int) sizeof(uint32_t) +
+               AMOUNT_64_BIT_LIVING_PARAMS * (int) sizeof(uint64_t) +
+               AMOUNT_FLOAT_LIVING_PARAMS * (int) sizeof(float);
     }
 
     int fullSerializedSize() override {
-        if (brain == nullptr)
-            return minimalSerializedSize();
-
-        return AMOUNT_OF_LIVING_PARAMS * 4 + brain->serializedSized();
+        return minimalSerializedSize() + ((brain != nullptr) ? brain->serializedSized() : 0);
     }
 
     bool visibleOn(Tile *tile) {

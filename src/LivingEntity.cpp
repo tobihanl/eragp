@@ -22,29 +22,38 @@ LivingEntity::LivingEntity(int startX, int startY, Color c, float sp, float si, 
 
 }
 
-LivingEntity::LivingEntity(void *&ptr, bool minimal) :
-        Entity(((int *) ptr)[0],
-               ((int *) ptr)[1],
-               ((int *) ptr)[2],
-               {
-                       (uint8_t) (((uint32_t *) ptr)[3] >> 24u),
-                       (uint8_t) (((uint32_t *) ptr)[3] >> 16u),
-                       (uint8_t) (((uint32_t *) ptr)[3] >> 8u),
-                       (uint8_t) ((uint32_t *) ptr)[3]
-               },
-               ((float *) ptr)[5],
-               ((int *) ptr)[10]),
-        speed(((float *) ptr)[4]),
-        size(((float *) ptr)[5]),
-        waterAgility(((float *) ptr)[6]),
-        rotation(((float *) ptr)[7]),
-        random(LFSR(((uint64_t *) ptr)[4])),
-        cooldown(((int *) ptr)[11]),
-        energyLossBase(energyLossPerTick(((float *) ptr)[5])) {
-    ptr = static_cast<int *>(ptr) + AMOUNT_OF_LIVING_PARAMS;
+LivingEntity::LivingEntity(void *&ptr, bool minimal) : Entity(0, 0, 0, {}, 0.0f, 0) {
+    id = ((int32_t *) ptr)[0];
+    x = ((int32_t *) ptr)[1];
+    y = ((int32_t *) ptr)[2];
+    color = {
+            (uint8_t) (((uint32_t *) ptr)[3] >> 24u),
+            (uint8_t) (((uint32_t *) ptr)[3] >> 16u),
+            (uint8_t) (((uint32_t *) ptr)[3] >> 8u),
+            (uint8_t) ((uint32_t *) ptr)[3]
+    };
+    energy = ((int32_t *) ptr)[4];
+    cooldown = ((int32_t *) ptr)[5];
 
-    if (!minimal) brain = new Brain(ptr);
-    else brain = nullptr;
+    ptr = static_cast<uint32_t *>(ptr) + AMOUNT_32_BIT_LIVING_PARAMS;
+
+    random = LFSR(((uint64_t *) ptr)[0]);
+
+    ptr = static_cast<uint64_t *>(ptr) + AMOUNT_64_BIT_LIVING_PARAMS;
+
+    speed = ((float *) ptr)[0];
+    size = ((float *) ptr)[1];
+    waterAgility = ((float *) ptr)[2];
+    rotation = ((float *) ptr)[3];
+    energyLossBase = energyLossPerTick(size);
+    radius = (int) ((1.0f + size) * TILE_SIZE / 2);
+
+    ptr = static_cast<float *>(ptr) + AMOUNT_FLOAT_LIVING_PARAMS;
+
+    if (!minimal)
+        brain = new Brain(ptr);
+    else
+        brain = nullptr;
 }
 
 RenderData LivingEntity::getRenderData() {
@@ -117,7 +126,7 @@ void LivingEntity::tick() {
         World::removeLivingEntity(this);
         return;
     }
-    if(brain->printThink) std::cout << "xDif: " << (xTo - x) << " yDif: " << (yTo-y) << std::endl;
+    if (brain->printThink) std::cout << "xDif: " << (xTo - x) << " yDif: " << (yTo - y) << std::endl;
     if ((*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2)
         || (*World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8)) {
         x = (xTo + World::overallWidth) % World::overallWidth;
@@ -200,21 +209,27 @@ void LivingEntity::fullSerialize(void *&ptr) {
 }
 
 void LivingEntity::minimalSerialize(void *&ptr) {
-    //continuous counting only works due to sizeof(int) = sizeof(float)
-    ((int *) ptr)[0] = id;
-    ((int *) ptr)[1] = x;
-    ((int *) ptr)[2] = y;
+    ((int32_t *) ptr)[0] = (int32_t) id;
+    ((int32_t *) ptr)[1] = (int32_t) x;
+    ((int32_t *) ptr)[2] = (uint32_t) y;
     ((uint32_t *) ptr)[3] =
-            ((uint32_t) color.r) << 24u | ((uint32_t) color.g) << 16u | ((uint32_t) color.b) << 8u |
-            ((uint32_t) color.a);
-    ((float *) ptr)[4] = speed;
-    ((float *) ptr)[5] = size;
-    ((float *) ptr)[6] = waterAgility;
-    ((float *) ptr)[7] = rotation;
-    ((uint64_t *) ptr)[4] = random.getLfsrRegister(); // 4 = (8 * 4) / 8
-    ((int *) ptr)[10] = energy; // 8 and 9 occupied by LFSR register
-    ((int *) ptr)[11] = cooldown;
-    ptr = static_cast<int *>(ptr) + AMOUNT_OF_LIVING_PARAMS;
+            ((uint32_t) color.r) << 24u | ((uint32_t) color.g) << 16u |
+            ((uint32_t) color.b) << 8u | ((uint32_t) color.a);
+    ((int32_t *) ptr)[4] = (int32_t) energy;
+    ((int32_t *) ptr)[5] = (int32_t) cooldown;
+
+    ptr = static_cast<uint32_t *>(ptr) + AMOUNT_32_BIT_LIVING_PARAMS;
+
+    ((uint64_t *) ptr)[0] = random.getLfsrRegister();
+
+    ptr = static_cast<uint64_t *>(ptr) + AMOUNT_64_BIT_LIVING_PARAMS;
+
+    ((float *) ptr)[0] = speed;
+    ((float *) ptr)[1] = size;
+    ((float *) ptr)[2] = waterAgility;
+    ((float *) ptr)[3] = rotation;
+
+    ptr = static_cast<float *>(ptr) + AMOUNT_FLOAT_LIVING_PARAMS;
 }
 
 std::ostream &operator<<(std::ostream &strm, const LivingEntity &l) {

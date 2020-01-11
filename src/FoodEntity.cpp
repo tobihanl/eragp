@@ -8,14 +8,14 @@ FoodEntity::FoodEntity(int startX, int startY, int e) :
 }
 
 FoodEntity::FoodEntity(void *&ptr) :
-        Entity(((int *) ptr)[0],
-               ((int *) ptr)[1],
-               ((int *) ptr)[2],
+        Entity(((int32_t *) ptr)[0],
+               ((int32_t *) ptr)[1],
+               ((int32_t *) ptr)[2],
                {255, 0, 0, 255},
                4,
-               ((int *) ptr)[3]),
-        expire(((int *) ptr)[4]) {
-    ptr = static_cast<int *>(ptr) + AMOUNT_OF_FOOD_PARAMS;
+               ((int32_t *) ptr)[3]),
+        expire(((int32_t *) ptr)[4]) {
+    ptr = static_cast<int32_t *>(ptr) + AMOUNT_32_BIT_FOOD_PARAMS;
 }
 
 struct RenderData FoodEntity::getRenderData() {
