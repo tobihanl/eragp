@@ -32,3 +32,7 @@ endif ()
 
 SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer")
 SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer")
+
+find_package(OpenMP)
+target_link_libraries(${PROJECT_NAME} PRIVATE "${OpenMP_CXX_FLAGS}")
+target_compile_options(${PROJECT_NAME} PRIVATE "${OpenMP_CXX_FLAGS}")
