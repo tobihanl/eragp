@@ -3,7 +3,6 @@
 #include "SimplexNoise/SimplexNoise.h"
 #include "World.h"
 #include "Log.h"
-#include <omp.h>
 
 std::vector<FoodEntity *> World::food = std::vector<FoodEntity *>();
 std::list<FoodEntity *> **World::foodBuckets = nullptr;
@@ -279,13 +278,10 @@ void World::tick() {
             delete child;
     }
 
-    int total = 0;
 # pragma omp parallel for
     for (auto it = living.begin(); it < living.end(); it++) {
-        total = omp_get_num_threads();
         (*it)->think();
     }
-    printf("Used %d threads\n", total);
 
     for (const auto &e : living) {
         if (e->toBeRemoved) continue;
