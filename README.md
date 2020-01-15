@@ -37,6 +37,9 @@ option. The following will be appended to the filename: `-{MPI_Rank}.csv`.
 - **OpenMP Threads** `-o`: Run parallel sections with the specified number of threads. Default is 1 (only master 
 thread).
 
+## Resources
+To render logos in the background, place them in the `res/logos` folder with names `<MPI-Rank>.png`.
+
 ## Using the keyboard and mouse while running the application
 
 - **Pause/Play** `P`: Pauses simulation for further inspection of entities. Hitting the key again resumes simulation.

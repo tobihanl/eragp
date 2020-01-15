@@ -53,7 +53,7 @@ void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padd
     Renderer::setTarget(nullptr);
 
     // Render terrain and create texture for entities
-    Renderer::renderBackground(World::getWorldDim(), World::terrain);
+    Renderer::renderBackground(World::getWorldDim(), World::terrain, World::getMPIRank());
     Renderer::createEntitiesTexture(World::getWorldDim());
     Renderer::renderRank(World::getMPIRank());
 }
