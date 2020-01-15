@@ -56,10 +56,12 @@ bool World::isSetup = false;
 
 std::vector<Tile *> World::terrain = std::vector<Tile *>();
 
-void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate, float zoom, uint32_t seed) {
+void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate, float zoom, uint32_t seed,
+                  int threads) {
     if (isSetup)
         return;
 
+    numThreads = threads;
     random.seed(seed);
 
     MPI_Comm_rank(MPI_COMM_WORLD, &MPI_Rank);
@@ -278,7 +280,7 @@ void World::tick() {
             delete child;
     }
 
-# pragma omp parallel for
+# pragma omp parallel for num_threads(numThreads)
     for (auto it = living.begin(); it < living.end(); it++) {
         (*it)->think();
     }

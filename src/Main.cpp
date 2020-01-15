@@ -529,6 +529,7 @@ int main(int argc, char **argv) {
     bool maimuc = false;
     float foodRate = 1.f;  //food spawned per 2000 tiles per tick
     float zoom = 1.f;
+    int numThreads = 1;
     long livings = 50, food = 100;
     std::string filename;
 
@@ -538,7 +539,7 @@ int main(int argc, char **argv) {
     // Scan program arguments
     opterr = 0;
     int c;
-    while ((c = getopt(argc, argv, "h:w:m::f:r::t:s:l:e:z:")) != -1) {
+    while ((c = getopt(argc, argv, "h:w:m::f:r::t:s:l:e:z:o:")) != -1) {
         char *ptr = nullptr;
         switch (c) {
             // Render flag
@@ -622,6 +623,16 @@ int main(int argc, char **argv) {
                     filename = optarg;
                 }
                 break;
+            case 'o':
+                if (optarg) {
+                    numThreads = (int) strtol(optarg, &ptr, 10);
+                    if (*ptr) {
+                        std::cerr << "Option -o requires an integer!" << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                }
+                break;
+
 
                 // Amount of entities
             case 'e':
@@ -678,7 +689,7 @@ int main(int argc, char **argv) {
     LFSR random = LFSR(randomSeed);
 
     // Init world
-    World::setup(width, height, maimuc, foodRate, zoom, random.getNextInt());
+    World::setup(width, height, maimuc, foodRate, zoom, random.getNextInt(), numThreads);
     WorldDim dim = World::getWorldDim();
     if (!filename.empty())
         Log::startLogging(filename + "-" + std::to_string(World::getMPIRank()) + ".csv");

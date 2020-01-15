@@ -34,6 +34,9 @@ Entities will be distributed equally to all ranks. Format for argument: `{AMOUNT
 - **Log File** `-l`: Log data about application into a `.csv` file. Filename has to be specified within this
 option. The following will be appended to the filename: `-{MPI_Rank}.csv`.
 
+- **OpenMP Threads** `-o`: Run parallel sections with the specified number of threads. Default is 1 (only master 
+thread).
+
 ## Using the keyboard and mouse while running the application
 
 - **Pause/Play** `P`: Pauses simulation for further inspection of entities. Hitting the key again resumes simulation.
