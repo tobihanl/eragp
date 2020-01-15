@@ -37,6 +37,8 @@ int World::y = 0;
 int World::width = 0;
 int World::height = 0;
 
+int World::numThreads = 1;
+
 int World::ticksPerFoodInterval = 0;
 int World::foodPerFoodInterval = 0;
 int World::intervalTicksLeft = 0;
