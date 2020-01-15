@@ -168,7 +168,7 @@ void renderLoop() {
 
                     // Mouse clicked?
                 case SDL_MOUSEBUTTONDOWN:
-                    if (e.button.button == SDL_BUTTON_LEFT) {
+                    if (e.button.button == SDL_BUTTON_RIGHT) {
                         LivingEntity *nearest = World::findNearestLivingToPoint(dim.p.x + e.button.x,
                                                                                 dim.p.y + e.button.y);
 
@@ -192,6 +192,14 @@ void renderLoop() {
                                 std::cout << "No nearest entity available!" << std::endl;
                             }
                         }
+                    } else if (e.button.button == SDL_BUTTON_LEFT) {
+                        FoodEntity *f = new FoodEntity(
+                                dim.p.x + e.button.x,
+                                dim.p.y + e.button.y,
+                                8 * 60);
+                        f->beer = true;
+                        World::addFoodEntity(f, false);
+
                     }
                     break;
 

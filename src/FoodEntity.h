@@ -11,6 +11,7 @@ private:
     int expire;
 
 public:
+    bool beer;
     FoodEntity(int x, int y, int energy);
 
     explicit FoodEntity(void *&ptr);

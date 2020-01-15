@@ -3,7 +3,8 @@
 
 FoodEntity::FoodEntity(int startX, int startY, int e) :
         Entity(startX, startY, {255, 0, 0, 255}, 4, e),
-        expire(FOOD_EXPIRATION_TIME) {
+        expire(FOOD_EXPIRATION_TIME),
+        beer(false) {
 
 }
 
@@ -14,7 +15,8 @@ FoodEntity::FoodEntity(void *&ptr) :
                {255, 0, 0, 255},
                4,
                ((int32_t *) ptr)[3]),
-        expire(((int32_t *) ptr)[4]) {
+        expire(((int32_t *) ptr)[4]),
+        beer(false) {
     ptr = static_cast<int32_t *>(ptr) + AMOUNT_32_BIT_FOOD_PARAMS;
 }
 

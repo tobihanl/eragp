@@ -6,6 +6,7 @@
 
 #define PI 3.14159265
 #define MAX_ENERGY 9999
+#define MAX_DRUNKNESS 400
 
 //################################Begin object##############################################
 
@@ -16,10 +17,10 @@ LivingEntity::LivingEntity(int startX, int startY, Color c, float sp, float si, 
         waterAgility(wa < 0 ? 0 : (wa > 1 ? 1 : wa)),
         brain(b),
         cooldown(60),
+        drunkness(0),
         rotation(0.0f),
         random(LFSR(seed)),
         energyLossBase(energyLossPerTick(si)) {
-
 }
 
 LivingEntity::LivingEntity(void *&ptr, bool minimal) : Entity(0, 0, 0, {}, 0.0f, 0) {
@@ -34,6 +35,7 @@ LivingEntity::LivingEntity(void *&ptr, bool minimal) : Entity(0, 0, 0, {}, 0.0f,
     };
     energy = ((int32_t *) ptr)[4];
     cooldown = ((int32_t *) ptr)[5];
+    drunkness = ((int32_t *) ptr)[6];
 
     ptr = static_cast<uint32_t *>(ptr) + AMOUNT_32_BIT_LIVING_PARAMS;
 
@@ -45,6 +47,7 @@ LivingEntity::LivingEntity(void *&ptr, bool minimal) : Entity(0, 0, 0, {}, 0.0f,
     size = ((float *) ptr)[1];
     waterAgility = ((float *) ptr)[2];
     rotation = ((float *) ptr)[3];
+    drunkness = ((float *) ptr)[4];
     energyLossBase = energyLossPerTick(size);
     radius = (int) ((1.0f + size) * TILE_SIZE / 2);
 
@@ -121,6 +124,8 @@ void LivingEntity::think() {
     thoughts = brain->think(input);
 
     //################################# Move ##################################
+    thoughts.rotation = thoughts.rotation + (drunkness > 0 ? drunkness * (1. / MAX_DRUNKNESS) * std::sin((drunkness % 20) / 10.f * PI) : 0);
+    if(drunkness > 0) drunkness--;
     int xTo = x + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * std::cos(thoughts.rotation * PI));
     int yTo = y + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * std::sin(thoughts.rotation * PI));
 
@@ -174,8 +179,9 @@ void LivingEntity::tick() {
                                                                                            : nullptr;
         }
         if (nearestFood) {
-            World::removeFoodEntity(nearestFood, false); //don't forget to synchronize
+            if(nearestFood->beer) drunkness = MAX_DRUNKNESS;
             tempEnergy += nearestFood->energy;
+            World::removeFoodEntity(nearestFood, false); //don't forget to synchronize
         }
     }
 
@@ -220,6 +226,8 @@ void LivingEntity::minimalSerialize(void *&ptr) {
             ((uint32_t) color.b) << 8u | ((uint32_t) color.a);
     ((int32_t *) ptr)[4] = (int32_t) energy;
     ((int32_t *) ptr)[5] = (int32_t) cooldown;
+    ((int32_t *) ptr)[6] = (int32_t) drunkness;
+
 
     ptr = static_cast<uint32_t *>(ptr) + AMOUNT_32_BIT_LIVING_PARAMS;
 

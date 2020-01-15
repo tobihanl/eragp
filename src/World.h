@@ -89,7 +89,6 @@ public:
     static std::vector<FoodEntity *> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
     static std::vector<LivingEntity *> living;
     static std::vector<LivingEntity *> livingsInPadding;
-
     /**
      * Initialize the world, which is part of the overall world and set
      * it up.

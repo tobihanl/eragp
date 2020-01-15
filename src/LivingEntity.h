@@ -7,7 +7,7 @@
 #include "Tile.h"
 #include "Lfsr.h"
 
-#define AMOUNT_32_BIT_LIVING_PARAMS 6
+#define AMOUNT_32_BIT_LIVING_PARAMS 7
 #define AMOUNT_64_BIT_LIVING_PARAMS 1
 #define AMOUNT_FLOAT_LIVING_PARAMS 4
 
@@ -29,6 +29,7 @@ private:
     LFSR random;
 
     int cooldown;
+    int drunkness;
 
     float energyLossBase;
 
