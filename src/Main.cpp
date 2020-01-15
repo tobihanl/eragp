@@ -538,6 +538,7 @@ int main(int argc, char **argv) {
 
     int width = 960, height = 720;
     bool maimuc = false;
+    bool boarisch = false;
     float foodRate = 1.f;  //food spawned per 2000 tiles per tick
     float zoom = 1.f;
     long livings = 50, food = 100;
@@ -549,7 +550,7 @@ int main(int argc, char **argv) {
     // Scan program arguments
     opterr = 0;
     int c;
-    while ((c = getopt(argc, argv, "h:w:m::f:r::t:s:l:e:z:p:")) != -1) {
+    while ((c = getopt(argc, argv, "h:w:m::f:r::t:s:l:e:z:p:b::")) != -1) {
         char *ptr = nullptr;
         switch (c) {
             // Render flag
@@ -560,6 +561,9 @@ int main(int argc, char **argv) {
                 // MaiMUC flag
             case 'm':
                 maimuc = true;
+                break;
+            case 'b':
+                boarisch = true;
                 break;
 
                 // Height
@@ -708,9 +712,9 @@ int main(int argc, char **argv) {
 
 #ifdef RENDER
     if (maimuc)
-        Renderer::setup(0, 0, dim.w, dim.h, true);
+        Renderer::setup(0, 0, dim.w, dim.h, true, boarisch);
     else
-        Renderer::setup(dim.p.x, dim.p.y, dim.w, dim.h, false);
+        Renderer::setup(dim.p.x, dim.p.y, dim.w, dim.h, false, boarisch);
 #endif
 
     // Add entities

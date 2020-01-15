@@ -6,6 +6,7 @@ SDL_Window *Renderer::win = nullptr;
 SDL_Renderer *Renderer::ren = nullptr;
 bool Renderer::isSetup = false;
 bool Renderer::hidden = true;
+bool Renderer::boarisch = false;
 SDL_Texture *Renderer::digits[10];
 
 SDL_Texture *Renderer::background = nullptr;
@@ -16,10 +17,12 @@ SDL_Texture *Renderer::foodTexture = nullptr;
 std::set<LivingTexture> Renderer::livingTextures = std::set<LivingTexture>();
 std::set<LivingTexture> Renderer::livingTexturesSwap = std::set<LivingTexture>();
 
-int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
+int Renderer::setup(int x, int y, int width, int height, bool fullscreen, bool boarisch) {
     // Renderer already set up?
     if (isSetup)
         return -1;
+
+    Renderer::boarisch = boarisch;
 
     // Init SDL
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {

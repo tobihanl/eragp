@@ -40,6 +40,8 @@ option. The following will be appended to the filename: `-{MPI_Rank}.csv`.
 ## Resources
 To render logos in the background, place them in the `res/logos` folder with names `<MPI-Rank>.png`.
 
+- **Boarisch mode** `-b` (optional): Enables the "Boarisch" mode (with pretzels)
+
 ## Using the keyboard and mouse while running the application
 
 - **Pause/Play** `P`: Pauses simulation for further inspection of entities. Hitting the key again resumes simulation.

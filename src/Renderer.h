@@ -37,6 +37,7 @@ private:
     static SDL_Renderer *ren;
     static bool isSetup;
     static bool hidden;
+    static bool boarisch;
     static SDL_Texture *digits[];
 
     static SDL_Texture *foodTexture;
@@ -66,7 +67,7 @@ public:
      * @return  0 if successful, 1 if not successful, -1 if the
      *          renderer is already setup
      */
-    static int setup(int x, int y, int width, int height, bool fullscreen);
+    static int setup(int x, int y, int width, int height, bool fullscreen, bool boarisch);
 
     /**
      * Destroys the renderer by cleaning up all the SDL components and
@@ -302,9 +303,12 @@ public:
     static void renderFoodEntity(FoodEntity *e) {
         if (!isSetup) return;
         RenderData data = e->getRenderData();
+        int offset = boarisch ? 8 : data.radius;
         if (foodTexture == nullptr) // Food texture identical for all food entities
-            foodTexture = Renderer::renderDot(data.radius, data.color);
-        Renderer::copy(foodTexture, data.x - data.worldDim.p.x - data.radius, data.y - data.worldDim.p.y - data.radius);
+            foodTexture = (boarisch) ? Renderer::renderImage("pretzel-16.png") : Renderer::renderDot(data.radius,
+                                                                                                     data.color);
+
+        Renderer::copy(foodTexture, data.x - data.worldDim.p.x - offset, data.y - data.worldDim.p.y - offset);
     }
 
     static void renderRank(int rank) {
