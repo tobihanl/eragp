@@ -11,7 +11,9 @@
 //################################Begin object##############################################
 
 LivingEntity::LivingEntity(int startX, int startY, Color c, float sp, float si, float wa, Brain *b, uint32_t seed) :
-        Entity(startX, startY, c, (int) ((1.0f + si) * TILE_SIZE / 2), 60 * 2),
+        Entity(startX < 0 ? 0 : (startX >= World::overallWidth ? World::overallWidth - 1 : startX),
+                startY < 0 ? 0 : (startY >= World::overallHeight ? World::overallHeight - 1 : startY), c,
+                (int) ((1.0f + si) * TILE_SIZE / 2), 60 * 2),
         speed(sp >= 0 ? (sp > 2 ? 2 : sp) : 0),
         size(si >= 0 ? (si > 2 ? 2 : si) : 0),
         waterAgility(wa < 0 ? 0 : (wa > 1 ? 1 : wa)),
@@ -86,7 +88,7 @@ LivingEntity *LivingEntity::breed() {
         cooldown += 60;
         // Create children
         return new LivingEntity(
-                x, y, {nr, ng, nb, 255},
+                x + random.getNextIntBetween(-2 * TILE_SIZE, 2 * TILE_SIZE), y + random.getNextIntBetween(-2 * TILE_SIZE, 2 * TILE_SIZE), {nr, ng, nb, 255},
                 speed + random.getNextFloatBetween(-0.05, 0.05),
                 size + random.getNextFloatBetween(-0.05, 0.05),
                 waterAgility + random.getNextFloatBetween(-0.05, 0.05), brain->createMutatedCopy(&random),
