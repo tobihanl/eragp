@@ -2,6 +2,7 @@
 #define ERAGP_MAIMUC_EVO_2019_LIVINGENTITY_H
 
 #include "Entity.h"
+#include "FoodEntity.h"
 #include "Brain.h"
 #include "Tile.h"
 #include "Lfsr.h"
@@ -18,6 +19,13 @@ private:
     float waterAgility;
     float rotation;
 
+    ThinkResult thoughts;
+    int nextX, nextY;
+    FoodEntity *nearestFood;
+    LivingEntity *nearestEnemy;
+    LivingEntity *nearestMate;
+
+
     LFSR random;
 
     int cooldown;
@@ -33,6 +41,7 @@ private:
     float calculateDanger();
 
 public:
+    bool toBeRemoved = false;
     Brain *brain;
 
     LivingEntity(int x, int y, Color color, float speed, float size, float waterAgility, Brain *brain, uint32_t seed);
@@ -42,6 +51,12 @@ public:
     ~LivingEntity() override;
 
     struct RenderData getRenderData() override;
+
+    LivingEntity *breed();
+
+    void think();
+
+    void updateMovement();
 
     void tick() override;
 

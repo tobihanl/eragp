@@ -62,17 +62,16 @@ RenderData LivingEntity::getRenderData() {
 
 float LivingEntity::calculateDanger() {
     int min = x;
-    if(y < min) min = y;
-    if(World::overallWidth - x < min) min = World::overallWidth - x;
-    if(World::overallHeight - y < min) min = World::overallHeight - y;
+    if (y < min) min = y;
+    if (World::overallWidth - x < min) min = World::overallWidth - x;
+    if (World::overallHeight - y < min) min = World::overallHeight - y;
     return min > World::dangerZone ? -1.f : 1.f - ((float) min / (float) World::dangerZone);
 }
 
-void LivingEntity::tick() {
-    //################################# Breed ################################# at the beginning, so spawning happens before move ->on the right node
-    int tempEnergy = this->energy;
+// must be called before moving entity so spawning happens on right node
+LivingEntity *LivingEntity::breed() {
     if (cooldown > 0) cooldown--;
-    if (cooldown == 0 && (float) tempEnergy >= 60 * (energyLossBase + speed * 8)) {
+    if (cooldown == 0 && (float) energy >= 60 * (energyLossBase + speed * 8)) {
         //tempEnergy -= 60; leaving out might give better results
         uint8_t nr = color.r + (int) std::round(random.getNextFloatBetween(0, 2.55));
         nr = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
@@ -81,28 +80,30 @@ void LivingEntity::tick() {
         uint8_t nb = color.b + (int) std::round(random.getNextFloatBetween(0, 2.55));
         nb = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
 
+        cooldown += 60;
         // Create children
-        auto child = new LivingEntity(
+        return new LivingEntity(
                 x, y, {nr, ng, nb, 255},
                 speed + random.getNextFloatBetween(-0.05, 0.05),
                 size + random.getNextFloatBetween(-0.05, 0.05),
                 waterAgility + random.getNextFloatBetween(-0.05, 0.05), brain->createMutatedCopy(&random),
                 random.getNextInt());
-        if (!World::addLivingEntity(child)) // Not added?
-            delete child;
-
-        cooldown += 60;
     }
-    //################################# Think #################################
+    return nullptr;
+}
+
+void LivingEntity::think() {
     float agility = *World::tileAt(x, y) == Tile::WATER ? waterAgility : 1.f - waterAgility;
-    FoodEntity *nearestFood = World::findNearestFood(x, y, false);
+    nearestFood = World::findNearestFood(x, y, false);
     NearestLiving nearest = World::findNearestLiving(this, false);
+    nearestEnemy = nearest.enemy;
+    nearestMate = nearest.mate;
 
     Matrix input(1, 14, {
             (nearestFood ? nearestFood->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
             (nearest.enemy ? nearest.enemy->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
             (nearest.mate ? nearest.mate->getDistance(x, y) / VIEW_RANGE * 0.8f : 1.f),
-            (float) tempEnergy / MAX_ENERGY,
+            (float) energy / MAX_ENERGY,
             waterAgility * 2 - 1,
             speed * agility,//both between 0 and 1
             (nearest.mate ? (float) nearest.mate->energy / MAX_ENERGY * 0.8f : 1.f),
@@ -117,54 +118,56 @@ void LivingEntity::tick() {
                                           (float) World::overallWidth / 2.f - (float) x) / PI),
             calculateDanger()
     });
-    ThinkResult thoughts = brain->think(input);
-    rotation = thoughts.rotation;
+    thoughts = brain->think(input);
+
     //################################# Move ##################################
-    int xTo = x + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * std::cos(rotation * PI));
-    int yTo = y + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * std::sin(rotation * PI));
+    int xTo = x + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * std::cos(thoughts.rotation * PI));
+    int yTo = y + (int) std::round(TILE_SIZE * speed * thoughts.speed * agility * std::sin(thoughts.rotation * PI));
+
     if (xTo < 0 || yTo < 0 || xTo >= World::overallWidth || yTo >= World::overallHeight) {
-        World::removeLivingEntity(this);
+        toBeRemoved = true;
         return;
     }
     if (brain->printThink) std::cout << "xDif: " << (xTo - x) << " yDif: " << (yTo - y) << std::endl;
     if ((*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2)
         || (*World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8)) {
-        x = (xTo + World::overallWidth) % World::overallWidth;
-        y = (yTo + World::overallHeight) % World::overallHeight;
+        nextX = (xTo + World::overallWidth) % World::overallWidth;
+        nextY = (yTo + World::overallHeight) % World::overallHeight;
+    } else {
+        nextX = x;
+        nextY = y;
     }
+}
+
+void LivingEntity::updateMovement() {
+    x = nextX;
+    y = nextY;
+    rotation = thoughts.rotation;
+}
+
+void LivingEntity::tick() {
+    int tempEnergy = this->energy;
+
     //################################## Attack ##################################
-    if (thoughts.attack && nearest.enemy && nearest.enemy->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-        if (World::toRemoveLiving(nearest.enemy)) {
-            LivingEntity *temp = World::findNearestLiving(this, true).enemy;
-            nearest.enemy = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp
-                                                                                             : nullptr;
-        }
-        if (nearest.enemy) {
-            if (size > nearest.enemy->size) {
-                World::removeLivingEntity(nearest.enemy); //don't forget to synchronize
-                tempEnergy += nearest.enemy->energy;
-            } else {
-                World::removeLivingEntity(this);
-                return;
-            }
+    if (thoughts.attack && nearestEnemy && !nearestEnemy->toBeRemoved &&
+        nearestEnemy->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
+        if (size > nearestEnemy->size) {
+            nearestEnemy->toBeRemoved = true;
+            tempEnergy += nearestEnemy->energy;
+        } else {
+            toBeRemoved = true;
+            return;
         }
     }
     //################################## Share ##################################
-    if (thoughts.share && tempEnergy > 80 && nearest.mate &&
-        nearest.mate->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
-        if (World::toRemoveLiving(nearest.mate)) {
-            LivingEntity *temp = World::findNearestLiving(this, true).mate;
-            nearest.mate = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp
-                                                                                            : nullptr;
-        }
-        if (nearest.mate) {
-            nearest.mate->addEnergy(60);
-            tempEnergy -= 60;
-        }
+    if (thoughts.share && tempEnergy > 80 && nearestMate && !nearestMate->toBeRemoved &&
+        nearestMate->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
+        nearestMate->addEnergy(60);
+        tempEnergy -= 60;
     }
     //################################## Eat ##################################
     if (nearestFood &&
-        nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {//nearest food also needed for input
+        nearestFood->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) {
         if (World::toRemoveFood(nearestFood)) {
             FoodEntity *temp = World::findNearestFood(x, y, true);
             nearestFood = (temp && temp->getSquaredDistance(x, y) < TILE_SIZE * TILE_SIZE) ? temp
@@ -179,7 +182,7 @@ void LivingEntity::tick() {
     //################################# Energy ################################
     tempEnergy -= (int) round(energyLossBase + 8 * speed * thoughts.speed);
     assert(round(energyLossBase + 8 * speed * thoughts.speed) > 0 && "Entity not losing Energy");
-    if (tempEnergy <= 0) World::removeLivingEntity(this);
+    if (tempEnergy <= 0) toBeRemoved = true;
     if (tempEnergy > MAX_ENERGY) {
         this->energy = MAX_ENERGY;
     } else {
