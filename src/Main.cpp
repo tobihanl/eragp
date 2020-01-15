@@ -21,8 +21,6 @@
 
 #endif
 
-#define MS_PER_TICK 100
-
 // Init class Log attributes
 bool Log::logging = false;
 FILE *Log::logFile = nullptr;
@@ -60,6 +58,7 @@ void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padd
 
 #endif
 
+int minTickPeriod = 100;
 int counter = 0;
 long ticks = -1;
 bool render = false;
@@ -193,13 +192,12 @@ void renderLoop() {
                             }
                         }
                     } else if (e.button.button == SDL_BUTTON_LEFT) {
-                        FoodEntity *f = new FoodEntity(
+                        auto *f = new FoodEntity(
                                 dim.p.x + e.button.x,
                                 dim.p.y + e.button.y,
                                 8 * 60);
                         f->beer = true;
                         World::addFoodEntity(f, false);
-
                     }
                     break;
 
@@ -297,11 +295,11 @@ void renderLoop() {
         elapsedTime = (currentTime - previousTime);
 
         // Delay loop turn
-        if (elapsedTime <= MS_PER_TICK)
-            SDL_Delay(MS_PER_TICK - elapsedTime);
+        if (elapsedTime <= minTickPeriod)
+            SDL_Delay(minTickPeriod - elapsedTime);
 
         if (Log::isEnabled()) {
-            Log::data.delay = (elapsedTime <= MS_PER_TICK) ? MS_PER_TICK - elapsedTime : 0;
+            Log::data.delay = (elapsedTime <= minTickPeriod) ? minTickPeriod - elapsedTime : 0;
             Log::data.overall = Log::endTime(previousTime);
             Log::saveLogData();
             Log::disable();
@@ -551,7 +549,7 @@ int main(int argc, char **argv) {
     // Scan program arguments
     opterr = 0;
     int c;
-    while ((c = getopt(argc, argv, "h:w:m::f:r::t:s:l:e:z:")) != -1) {
+    while ((c = getopt(argc, argv, "h:w:m::f:r::t:s:l:e:z:p:")) != -1) {
         char *ptr = nullptr;
         switch (c) {
             // Render flag
@@ -662,9 +660,21 @@ int main(int argc, char **argv) {
                 }
                 break;
 
+                // Frames-per-second (FPS)
+            case 'p':
+                if (optarg) {
+                    int frameRate = (int) strtol(optarg, &ptr, 10);
+                    if (*ptr) {
+                        std::cerr << "Option -p requires an integer!" << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                    minTickPeriod = (frameRate > 0) ? 1000 / frameRate : 0;
+                }
+                break;
+
                 // Unknown Option
             case '?':
-                if (optopt == 'h' || optopt == 'w' || optopt == 't') {
+                if (optopt == 'h' || optopt == 'w' || optopt == 't' || optopt == 'p') {
                     std::cerr << "Option -" << (char) optopt << " requires an integer!" << std::endl;
                 } else if (optopt == 'f') {
                     std::cerr << "Option -f requires a float indicating the amount of food spawned per 2000 tiles "

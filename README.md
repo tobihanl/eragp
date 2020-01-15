@@ -27,9 +27,12 @@ be** executed on 10 nodes with this configuration!
 
 - **Random Seed** `-s`: Run application with given seed.
 
-- **Amount of entities** `e`: Specify the amount of entities to spawn at start-up on the **entire** world.
+- **Amount of entities** `-e`: Specify the amount of entities to spawn at start-up on the **entire** world.
 Entities will be distributed equally to all ranks. Format for argument: `{AMOUNT_LIVINGS},{AMOUNT_FOOD}`. Default is
 `50,100`.
+
+- **Frame-Rate (FPS)** `-p`: Set the maximum amount of frames-per-second (fps) to render. Must be an integer value. Default
+is 10.
 
 - **Log File** `-l`: Log data about application into a `.csv` file. Filename has to be specified within this
 option. The following will be appended to the filename: `-{MPI_Rank}.csv`.
