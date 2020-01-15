@@ -62,7 +62,7 @@ LivingEntity::LivingEntity(void *&ptr, bool minimal) : Entity(0, 0, 0, {}, 0.0f,
 }
 
 RenderData LivingEntity::getRenderData() {
-    return {World::getWorldDim(), radius, color, x, y, energy, true};
+    return {World::getWorldDim(), radius, color, x, y, energy};
 }
 
 float LivingEntity::calculateDanger() {

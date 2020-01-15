@@ -35,7 +35,6 @@ struct RenderData {
     int x = 0;
     int y = 0;
     int energy = 0;
-    bool isLiving = false;
 };
 
 typedef struct {

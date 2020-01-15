@@ -21,7 +21,7 @@ FoodEntity::FoodEntity(void *&ptr) :
 }
 
 struct RenderData FoodEntity::getRenderData() {
-    return {World::getWorldDim(), radius, color, x, y, 0, false};
+    return {World::getWorldDim(), radius, color, x, y, 0};
 }
 
 void FoodEntity::tick() {

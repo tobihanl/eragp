@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <cassert>
+#include <set>
 #include <SDL_image.h>
 #include <SDL_ttf.h>
 #include <SDL.h>
@@ -13,6 +14,23 @@
 #include "FoodEntity.h"
 #include "LivingEntity.h"
 
+//================================== Structs ==================================
+struct LivingTexture {
+    int livingId;
+    SDL_Texture *texture;
+
+    // For std::set
+    bool operator()(const LivingTexture &lhs, const LivingTexture &rhs) const {
+        return lhs < rhs;
+    }
+
+    // For std::set
+    bool operator<(const LivingTexture &lhs) const {
+        return lhs.livingId < livingId;
+    }
+};
+
+//=================================== Class ===================================
 class Renderer {
 private:
     static SDL_Window *win;
@@ -20,6 +38,10 @@ private:
     static bool isSetup;
     static bool hidden;
     static SDL_Texture *digits[];
+
+    static SDL_Texture *foodTexture;
+    static std::set<LivingTexture> livingTextures;
+    static std::set<LivingTexture> livingTexturesSwap;
 
     Renderer() = default;
 
@@ -145,11 +167,21 @@ public:
     }
 
     static void cleanup() {
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 10; i++) {
             cleanupTexture(digits[i]);
+            digits[i] = nullptr;
+        }
         cleanupTexture(background);
+        background = nullptr;
         cleanupTexture(entities);
+        entities = nullptr;
         cleanupTexture(rankTexture);
+        rankTexture = nullptr;
+        cleanupTexture(foodTexture);
+        foodTexture = nullptr;
+        for (const auto &item : livingTextures)
+            cleanupTexture(item.texture);
+        livingTextures.clear();
     }
 
     /**
@@ -241,8 +273,6 @@ public:
 
     static void renderBackground(WorldDim dim, const std::vector<Tile *> &terrain);
 
-    static void renderEntity(RenderData renderData);
-
     static void createEntitiesTexture(WorldDim dim) {
         if (!isSetup) return;
         entities = createTexture(dim.w, dim.h, SDL_TEXTUREACCESS_TARGET);
@@ -252,12 +282,29 @@ public:
     static void renderEntities(const std::vector<FoodEntity *> &food, const std::vector<LivingEntity *> &living,
                                const std::vector<LivingEntity *> &livingsInPadding) {
         if (!isSetup) return;
+
         setTarget(entities);
         clear();
-        for (const auto &f : food) renderEntity(f->getRenderData());
-        for (const auto &e : living) renderEntity(e->getRenderData());
-        for (const auto &e : livingsInPadding) renderEntity(e->getRenderData());
+
+        for (const auto &f : food) renderFoodEntity(f);
+        for (const auto &e : living) renderLivingEntity(e);
+        for (const auto &e : livingsInPadding) renderLivingEntity(e);
+
+        livingTextures.swap(livingTexturesSwap);
+        for (const auto &item : livingTexturesSwap) cleanupTexture(item.texture);
+        livingTexturesSwap.clear();
+
         setTarget(nullptr);
+    }
+
+    static void renderLivingEntity(LivingEntity *e);
+
+    static void renderFoodEntity(FoodEntity *e) {
+        if (!isSetup) return;
+        RenderData data = e->getRenderData();
+        if (foodTexture == nullptr) // Food texture identical for all food entities
+            foodTexture = Renderer::renderDot(data.radius, data.color);
+        Renderer::copy(foodTexture, data.x - data.worldDim.p.x - data.radius, data.y - data.worldDim.p.y - data.radius);
     }
 
     static void renderRank(int rank) {

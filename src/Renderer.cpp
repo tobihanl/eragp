@@ -12,6 +12,10 @@ SDL_Texture *Renderer::background = nullptr;
 SDL_Texture *Renderer::entities = nullptr;
 SDL_Texture *Renderer::rankTexture = nullptr;
 
+SDL_Texture *Renderer::foodTexture = nullptr;
+std::set<LivingTexture> Renderer::livingTextures = std::set<LivingTexture>();
+std::set<LivingTexture> Renderer::livingTexturesSwap = std::set<LivingTexture>();
+
 int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
     // Renderer already set up?
     if (isSetup)
@@ -111,23 +115,33 @@ void Renderer::renderDigits() {
     digits[9] = renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
 }
 
-void Renderer::renderEntity(RenderData r) {
+void Renderer::renderLivingEntity(LivingEntity *e) {
     if (!isSetup) return;
 
-    SDL_Texture *dot = Renderer::renderDot(r.radius, r.color);
-    Renderer::copy(dot, r.x - r.worldDim.p.x - r.radius, r.y - r.worldDim.p.y - r.radius);
-    cleanupTexture(dot);
+    SDL_Texture *dot;
+    RenderData data = e->getRenderData();
+    LivingTexture cmp = {e->getId(), nullptr};
 
-    if (!r.isLiving) return;
+    auto it = livingTextures.find(cmp);
+    if (it != livingTextures.end()) {
+        dot = it->texture;
+        livingTextures.erase(it);
+        livingTexturesSwap.insert(*it);
+    } else {
+        dot = Renderer::renderDot(data.radius, data.color);
+        livingTexturesSwap.insert({e->getId(), dot});
+    }
 
-    assert(r.energy > 0 && "Energy must be greater than 0");
+    Renderer::copy(dot, data.x - data.worldDim.p.x - data.radius, data.y - data.worldDim.p.y - data.radius);
+
+    assert(data.energy > 0 && "Energy must be greater than 0");
     //max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
-    int numDigits = getNumDigits(r.energy);
-    int energyToDisplay = r.energy;
-    int baseX = r.x - r.worldDim.p.x + numDigits * 4 -
+    int numDigits = getNumDigits(data.energy);
+    int energyToDisplay = data.energy;
+    int baseX = data.x - data.worldDim.p.x + numDigits * 4 -
                 4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
     for (int i = 0; energyToDisplay > 0; i++) {
-        Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, r.y - r.worldDim.p.y - 4 - ENERGY_FONT_SIZE);
+        Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, data.y - data.worldDim.p.y - 4 - ENERGY_FONT_SIZE);
         energyToDisplay /= 10;
     }
 
