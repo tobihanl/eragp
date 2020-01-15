@@ -11,8 +11,8 @@
 
 LivingEntity::LivingEntity(int startX, int startY, Color c, float sp, float si, float wa, Brain *b, uint32_t seed) :
         Entity(startX, startY, c, (int) ((1.0f + si) * TILE_SIZE / 2), 60 * 2),
-        speed(sp >= 0 ? sp : 0),
-        size(si >= 0 ? si : 0),
+        speed(sp >= 0 ? (sp > 2 ? 2 : sp) : 0),
+        size(si >= 0 ? (si > 2 ? 2 : si) : 0),
         waterAgility(wa < 0 ? 0 : (wa > 1 ? 1 : wa)),
         brain(b),
         cooldown(60),
