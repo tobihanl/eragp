@@ -271,7 +271,7 @@ public:
 
     static void renderDigits();
 
-    static void renderBackground(WorldDim dim, const std::vector<Tile *> &terrain);
+    static void renderBackground(WorldDim dim, const std::vector<Tile *> &terrain, int rank);
 
     static void createEntitiesTexture(WorldDim dim) {
         if (!isSetup) return;
