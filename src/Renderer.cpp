@@ -64,7 +64,7 @@ int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
     return 0;
 }
 
-void Renderer::renderBackground(WorldDim dim, const std::vector<Tile *> &terrain, int rank) {
+void Renderer::renderBackground(WorldDim dim, const std::vector<Tile *> &terrain) {
     if (!isSetup) return;
 
     int heightWithPadding = dim.h + (2 * WORLD_PADDING) + (dim.p.y % TILE_SIZE) + (TILE_SIZE - (dim.p.y + dim.h) %
@@ -91,14 +91,6 @@ void Renderer::renderBackground(WorldDim dim, const std::vector<Tile *> &terrain
                  py * TILE_SIZE);
         }
     }
-
-    // Render a logo if one exists with name <Rank>.png
-    std::string fileName = std::to_string(rank) + ".png";
-    SDL_Texture *logos = renderImage("logos/" + fileName);
-
-    int imageWidth, imageHeight;
-    SDL_QueryTexture(logos, nullptr, nullptr, &imageWidth, &imageHeight);
-    copy(logos, (widthWithPadding - imageWidth) / 2, (heightWithPadding - imageHeight) / 2);
 
     // Change render target back to default
     setTarget(nullptr);
