@@ -31,18 +31,18 @@ be** executed on 10 nodes with this configuration!
 Entities will be distributed equally to all ranks. Format for argument: `{AMOUNT_LIVINGS},{AMOUNT_FOOD}`. Default is
 `50,100`.
 
-- **Frame-Rate (FPS)** `-p`: Set the maximum amount of frames-per-second (fps) to render. Must be an integer value. Default
-is 10.
+- **Frame-Rate (FPS)** `-p`: Set the maximum amount of frames-per-second (fps) to render. Must be an integer value.
+Default is 10.
 
 - **Log File** `-l`: Log data about application into a `.csv` file. Filename has to be specified within this
 option. The following will be appended to the filename: `-{MPI_Rank}.csv`.
 
+- **Boarisch mode** `-b`: Enables the "Boarisch" mode (with pretzels)
+
 ## Resources
 To render logos in the background, place them in the `res/logos` folder with names `<MPI-Rank>.png`.
 
-- **Boarisch mode** `-b` (optional): Enables the "Boarisch" mode (with pretzels)
-
-## Using the keyboard and mouse while running the application
+## Using the keyboard and mouse (ONLY in render-mode)
 
 - **Pause/Play** `P`: Pauses simulation for further inspection of entities. Hitting the key again resumes simulation.
 
@@ -56,24 +56,36 @@ next to each other. The borders are drawn in red.
 - **Draw padding areas** `A`: Draws all padding areas from other nodes on the window of a node. The rectangles are drawn
 in blue.
 
-- **Hide window** `H`: Hide window and switch to no render mode (like leaving out the `-r` option). To switch back
-again, write the character `r` *(render)* into the console of the simulation.
+- **Quit** `Q`: Stops simulation and terminates the application.
 
-- **Quit** `Q`: Stops simulation and quits the application.
+- `Right-click`: Get information about the nearest living entity, where the mouse was pressed, printed in the console.
 
-- **Left-click**: Get information about the nearest living entity, where the mouse was pressed, printed in the console.
+- `Left-click`: Spawn *beer* at the position pressed. Only in *Boarisch mode*, otherwise a normal Food-Entity will be
+spawned.
+
+## Using the CLI while running the application
+You can type the same characters to the CLI as you would press in a window while in render-mode.
+These are the only additions:
+
+- **Hide** `H`: Hide the window and switch to *hidden-mode*. Can only be executed in *render-mode* and only if the
+application was compiled with RENDER flag on (see Compiling).
+
+- **Render** `R`: Switch to *render-mode* and show the window. Can only be executed in *hidden-mode* and only if the
+application was compiled with RENDER flag on (see Compiling).
+
+- **Quit** `Q`: Stops the simulation and terminates the application. This can also be called in *hidden-mode*.
 
 ## Compiling
 All commands should be executed in the project root folder unless stated otherwise.
 
 ### Init Cmake
-The following build types are available: Debug, Release, RelWithDebInfo and MinSizeRel.
-For profiling, RelWithDebInfo should be used.
+The following `<build type>`'s are available: `Debug`, `Release`, `RelWithDebInfo` and `MinSizeRel`.
+For profiling, *RelWithDebInfo* should be used.
 
-Render mode can be ON or OFF.
+`<render>` flag can be `ON` or `OFF`.
 
 ```
-./utils/init.sh <build type> <render mode>
+./utils/init.sh <build type> <render>
 ```
 
 ### Build application

@@ -64,11 +64,130 @@ void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padd
 
 #endif
 
+// Global render-variables
+bool borders = false;
+bool paddings = false;
+bool paused = false;
+bool similarityMode = false;
+int countSelectedEntities = 0;
+LivingEntity *selectedEntities[2] = {nullptr, nullptr};
+
+// Global control-variables
 int minTickPeriod = 100;
 int counter = 0;
 long ticks = -1;
 bool render = false;
 bool quit = false;
+bool run = true;
+
+/**
+ * =============================================================================
+ *                              COMMAND-LINE THREAD
+ * =============================================================================
+ */
+pthread_mutex_t cmdMutex = PTHREAD_MUTEX_INITIALIZER;
+bool threadSuccessfullyCreated = true;
+bool cancelThread = false;
+
+void *commandLineThread(void *args) {
+    pollfd pfds[1];
+
+    pfds[0].fd = fileno(stdin);
+    pfds[0].events = POLLIN;
+
+    //############################# PROCESS INPUT #############################
+    while (true) {
+        std::cout << ((render) ? "[RENDER] > " : "[HIDDEN] > ");
+        std::cout.flush();
+
+        while (!cancelThread && poll(pfds, 1, 1000) == 0);
+        if (cancelThread) break;
+
+        std::string str;
+        std::cin >> str;
+
+        // Switch command
+        pthread_mutex_lock(&cmdMutex);
+        switch (str.front()) {
+            // Quit
+            case 'q':
+            case 'Q':
+                run = false;
+                quit = true;
+                break;
+
+#ifdef RENDER
+                // Render (Show)
+            case 'r':
+            case 'R':
+                if (!render) {
+                    run = false;
+                    render = true;
+                    std::cout << "==[ Switch to RENDER mode ]==" << std::endl;
+                } else {
+                    std::cerr << "** Only allowed in HIDDEN mode **" << std::endl;
+                }
+                break;
+
+                // Hide
+            case 'h':
+            case 'H':
+                if (render) {
+                    run = false;
+                    render = false;
+                    std::cout << "==[ Switch to HIDDEN mode ]==" << std::endl;
+                } else {
+                    std::cerr << "** Only allowed in RENDER mode **" << std::endl;
+                }
+                break;
+
+                // Pause/Play
+            case 'p':
+            case 'P':
+                if (render) {
+                    // Simulation is already paused in similarity mode!
+                    if (!similarityMode) paused = !paused;
+                } else {
+                    std::cerr << "** Only allowed in RENDER mode **" << std::endl;
+                }
+                break;
+
+                // Similarity mode
+            case 's':
+            case 'S':
+                if (render) {
+                    similarityMode = paused = !similarityMode;
+                    selectedEntities[0] = selectedEntities[1] = nullptr;
+                    countSelectedEntities = 0;
+                } else {
+                    std::cerr << "** Only allowed in RENDER mode **" << std::endl;
+                }
+                break;
+
+                // Show borders of the world
+            case 'b':
+            case 'B':
+                if (render) borders = !borders;
+                else std::cerr << "** Only allowed in RENDER mode **" << std::endl;
+                break;
+
+                // Show padding areas
+            case 'a':
+            case 'A':
+                if (render) paddings = !paddings;
+                else std::cerr << "** Only allowed in RENDER mode **" << std::endl;
+                break;
+#endif
+
+            default:
+                std::cerr << "** Unknown command! **" << std::endl;
+                break;
+        }
+        pthread_mutex_unlock(&cmdMutex);
+        if (quit) break;
+    }
+    pthread_exit(args);
+}
 
 /**
  * Event Loop that is also rendering and updating the world.
@@ -90,17 +209,21 @@ void renderLoop() {
     SDL_Texture *border = nullptr, *pauseText = nullptr, *padding = nullptr;
     preRender(&border, &pauseText, &padding);
 
-    // Debug flags and other stuff
-    uint8_t buffer = 0;
-    bool paused = false, similarityMode = false, borders = false, paddings = false;
-    int countSelectedEntities = 0;
-    LivingEntity *selectedEntities[2] = {nullptr};
-    WorldDim dim = World::getWorldDim();
-
     // Frame rate
     SDL_Texture *fps = nullptr;
     SDL_Rect fpsRect = {0, 10, 0, 0}; // Always 10px padding to the top
     int frameTime = 0, frames = 0;
+
+    uint8_t buffer;
+    WorldDim dim = World::getWorldDim();
+    run = true;
+
+    // Force quit application when failing! --> must be broadcasted to all applications!
+    if (!threadSuccessfullyCreated) {
+        std::cerr << "** CLI Thread couldn't be created. Please try again! **" << std::endl;
+        run = false;
+        quit = true;
+    }
 
     //=============================================================================
     //                               BEGIN MAIN LOOP
@@ -108,8 +231,7 @@ void renderLoop() {
     SDL_Event e;
     int currentTime, elapsedTime;
     int previousTime = Log::currentTime();
-    bool run = true;
-    while (run) {
+    while (true) {
         currentTime = Log::currentTime();
         frameTime += currentTime - previousTime;
         previousTime = currentTime;
@@ -125,7 +247,8 @@ void renderLoop() {
         }
         counter++;
 
-        //############################# PROCESS INPUT #############################
+        //######################## PROCESS KEYBOARD-INPUT #########################
+        pthread_mutex_lock(&cmdMutex);
         while (SDL_PollEvent(&e)) {
             switch (e.type) {
                 // Key pressed?
@@ -163,12 +286,6 @@ void renderLoop() {
                             // Show padding areas
                         case SDLK_a:
                             paddings = !paddings;
-                            break;
-
-                            // Hide rendering
-                        case SDLK_h:
-                            run = false;
-                            render = false;
                             break;
 
                         default:
@@ -233,6 +350,7 @@ void renderLoop() {
         } else if (ticks > 0) {
             ticks--;
         }
+
         //###################### BROADCAST APPLICATION STATUS #####################
         buffer = 0;
         if (World::getMPIRank() == 0) {
@@ -256,7 +374,11 @@ void renderLoop() {
         }
 
         // Quit?
-        if (!run) break;
+        if (!run) {
+            pthread_mutex_unlock(&cmdMutex);
+            break;
+        }
+        pthread_mutex_unlock(&cmdMutex);
 
         // Calc FPS
         if (frameTime >= 1000) {
@@ -332,87 +454,20 @@ void renderLoop() {
 
 /**
  * =============================================================================
- *                              COMMAND-LINE THREAD
- *                               (for normalLoop)
- * =============================================================================
- */
-pthread_mutex_t cmdMutex = PTHREAD_MUTEX_INITIALIZER;
-bool cancelThread = false;
-
-void *commandLineThread(void *args) {
-    bool *run = (bool *) args;
-
-    pollfd cin[1];
-    cin[0].fd = fileno(stdin);
-    cin[0].events = POLLIN;
-
-    //############################# PROCESS INPUT #############################
-    while (true) {
-        std::cout << "> ";
-        std::cout.flush();
-
-        while (!cancelThread && poll(cin, 1, 1000) == 0);
-        if (cancelThread) break;
-
-        std::string str;
-        std::cin >> str;
-
-        // Switch command
-        pthread_mutex_lock(&cmdMutex);
-        switch (str.front()) {
-            // Quit
-            case 'q':
-            case 'Q':
-                *run = false;
-                quit = true;
-                break;
-
-#ifdef RENDER
-                // Render
-            case 'r':
-            case 'R':
-                *run = false;
-                render = true;
-                break;
-#endif
-
-            default:
-                break;
-        }
-        pthread_mutex_unlock(&cmdMutex);
-
-        if (!*run) break;
-    }
-
-    pthread_exit(nullptr);
-}
-
-/**
- * =============================================================================
  *                                  NORMAL LOOP
  * =============================================================================
  */
 void normalLoop() {
     uint8_t buffer = 0;
-    bool run = true;
+    run = true;
 
-    // Create command-line Thread
-    auto threadId = (pthread_t) nullptr;
-    cancelThread = false;
-    bool threadSuccessfullyCreated = true;
-    if (World::getMPIRank() == 0) {
-        threadSuccessfullyCreated = pthread_create(&threadId, nullptr, commandLineThread, &run) == 0;
-
-        // Force quit application when failing!
-        if (!threadSuccessfullyCreated) {
-            run = false;
-            quit = true;
-        }
+    // Force quit application when failing! --> must be broadcasted to all applications!
+    if (!threadSuccessfullyCreated) {
+        std::cerr << "** CLI Thread couldn't be created. Please try again! **" << std::endl;
+        run = false;
+        quit = true;
     }
 
-    //=============================================================================
-    //                               BEGIN MAIN LOOP
-    //=============================================================================
     while (true) {
         if (counter % LOG_TICKS_2_PAUSE == 0)
             Log::enable();
@@ -467,13 +522,6 @@ void normalLoop() {
             World::tick();
         }
     }
-    //=============================================================================
-    //                                END MAIN LOOP
-    //=============================================================================
-
-    cancelThread = true;
-    if (World::getMPIRank() == 0 && threadSuccessfullyCreated)
-        pthread_join(threadId, nullptr);
 }
 
 /**
@@ -491,11 +539,11 @@ void createEntities(long livings, long food, LFSR &random) {
     // TODO: Maybe free?
     std::ifstream file("./res/brains.dat", std::ios::binary | std::ios::ate);
     std::streamsize size = file.tellg();
-    if(size == -1) std::cout << "Cannot determine size of brains.dat" << std::endl;
+    if (size == -1) std::cout << "Cannot determine size of brains.dat" << std::endl;
     file.seekg(0, std::ios::beg);
     std::vector<char> vec(size);
     if (!file.read(vec.data(), size)) std::cout << "Could not open brains.dat" << std::endl;
-    int *buffer = reinterpret_cast<int*>(vec.data());
+    int *buffer = reinterpret_cast<int *>(vec.data());
     int numBrains = buffer[0];
     int sizeBrains = buffer[1];
     assert(numBrains * sizeBrains + 8 == size && "Invalid brains.data file!");
@@ -782,6 +830,12 @@ int main(int argc, char **argv) {
     // Add entities
     createEntities(livings, food, random);
 
+    // Create command-line Thread
+    auto threadId = (pthread_t) nullptr;
+    if (World::getMPIRank() == 0) {
+        threadSuccessfullyCreated = (0 == pthread_create(&threadId, nullptr, commandLineThread, nullptr));
+    }
+
     while (!quit) {
 #ifdef RENDER
         if (render) renderLoop();
@@ -791,8 +845,13 @@ int main(int argc, char **argv) {
 #endif
     }
 
-    if (World::getMPIRank() == 0)
+    cancelThread = true;
+    if (World::getMPIRank() == 0) {
+        if (threadSuccessfullyCreated) {
+            pthread_join(threadId, nullptr);
+        }
         std::cout << "EXITING..." << std::endl;
+    }
 
     World::finalize();
 
