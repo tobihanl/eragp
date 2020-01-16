@@ -4,6 +4,7 @@
 #include <poll.h>
 #include <mpi.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <list>
 #include <random>
 #include <fstream>
@@ -31,6 +32,11 @@ bool Log::paused = true;
 
 #ifdef RENDER
 
+/**
+ * =============================================================================
+ *                                 PRE-RENDERING
+ * =============================================================================
+ */
 void preRender(SDL_Texture **border, SDL_Texture **pauseText, SDL_Texture **padding) {
     WorldDim dim = World::getWorldDim();
 
@@ -72,6 +78,11 @@ bool quit = false;
  */
 #ifdef RENDER
 
+/**
+ * =============================================================================
+ *                                  RENDER LOOP
+ * =============================================================================
+ */
 void renderLoop() {
     Renderer::show();
 
@@ -319,25 +330,90 @@ void renderLoop() {
 
 #endif
 
-/*
- * Normal loop updating the world without rendering it.
- *
-* @param    ticks   Amount of ticks to calculate
- *                  (-1) = no limitation
+/**
+ * =============================================================================
+ *                              COMMAND-LINE THREAD
+ *                               (for normalLoop)
+ * =============================================================================
  */
-void normalLoop() {
-    // Inspired from http://www.coldestgame.com/site/blog/cybertron/non-blocking-reading-stdin-c
+pthread_mutex_t cmdMutex = PTHREAD_MUTEX_INITIALIZER;
+bool cancelThread = false;
+
+void *commandLineThread(void *args) {
+    bool *run = (bool *) args;
+
     pollfd cin[1];
-    if (World::getMPIRank() == 0) {
-        cin[0].fd = fileno(stdin);
-        cin[0].events = POLLIN;
+    cin[0].fd = fileno(stdin);
+    cin[0].events = POLLIN;
+
+    //############################# PROCESS INPUT #############################
+    while (true) {
         std::cout << "> ";
         std::cout.flush();
+
+        while (!cancelThread && poll(cin, 1, 1000) == 0);
+        if (cancelThread) break;
+
+        std::string str;
+        std::cin >> str;
+
+        // Switch command
+        pthread_mutex_lock(&cmdMutex);
+        switch (str.front()) {
+            // Quit
+            case 'q':
+            case 'Q':
+                *run = false;
+                quit = true;
+                break;
+
+#ifdef RENDER
+                // Render
+            case 'r':
+            case 'R':
+                *run = false;
+                render = true;
+                break;
+#endif
+
+            default:
+                break;
+        }
+        pthread_mutex_unlock(&cmdMutex);
+
+        if (!*run) break;
     }
 
+    pthread_exit(nullptr);
+}
+
+/**
+ * =============================================================================
+ *                                  NORMAL LOOP
+ * =============================================================================
+ */
+void normalLoop() {
     uint8_t buffer = 0;
     bool run = true;
-    while (run) {
+
+    // Create command-line Thread
+    auto threadId = (pthread_t) nullptr;
+    cancelThread = false;
+    bool threadSuccessfullyCreated = true;
+    if (World::getMPIRank() == 0) {
+        threadSuccessfullyCreated = pthread_create(&threadId, nullptr, commandLineThread, &run) == 0;
+
+        // Force quit application when failing!
+        if (!threadSuccessfullyCreated) {
+            run = false;
+            quit = true;
+        }
+    }
+
+    //=============================================================================
+    //                               BEGIN MAIN LOOP
+    //=============================================================================
+    while (true) {
         if (counter % LOG_TICKS_2_PAUSE == 0)
             Log::enable();
 
@@ -349,44 +425,14 @@ void normalLoop() {
         }
         counter++;
 
-        //############################# PROCESS INPUT #############################
-        if (World::getMPIRank() == 0 && poll(cin, 1, 1)) {
-            std::string str;
-            std::cin >> str;
-
-            // Switch command
-            switch (str.front()) {
-                // Quit
-                case 'q':
-                case 'Q':
-                    run = false;
-                    quit = true;
-                    break;
-
-#ifdef RENDER
-                case 'r':
-                case 'R':
-                    run = false;
-                    render = true;
-                    break;
-#endif
-
-                default:
-                    break;
-            }
-
-            if (run) {
-                std::cout << "> ";
-                std::cout.flush();
-            }
-        }
-
+        pthread_mutex_lock(&cmdMutex);
         if (ticks == 0) {
             quit = true;
             run = false;
         } else if (ticks > 0) {
             ticks--;
         }
+
         //###################### BROADCAST APPLICATION STATUS #####################
         buffer = 0;
         if (World::getMPIRank() == 0) {
@@ -402,7 +448,11 @@ void normalLoop() {
         }
 
         // Quit?
-        if (!run) break;
+        if (!run) {
+            pthread_mutex_unlock(&cmdMutex);
+            break;
+        }
+        pthread_mutex_unlock(&cmdMutex);
 
         //################################## TICK #################################
         if (Log::isEnabled()) {
@@ -417,8 +467,20 @@ void normalLoop() {
             World::tick();
         }
     }
+    //=============================================================================
+    //                                END MAIN LOOP
+    //=============================================================================
+
+    cancelThread = true;
+    if (World::getMPIRank() == 0 && threadSuccessfullyCreated)
+        pthread_join(threadId, nullptr);
 }
 
+/**
+ * =============================================================================
+ *                                CREATE ENTITIES
+ * =============================================================================
+ */
 void createEntities(long livings, long food, LFSR &random) {
     int nodes = World::getMPINodes();
 
