@@ -84,7 +84,7 @@ int Brain::serializedSized() {
 
 void Brain::serialize(void *&ptr) {
     ((int32_t *) ptr)[0] = (int32_t) numLayers;
-    ptr = static_cast<int *>(ptr) + 1;
+    ptr = static_cast<int32_t *>(ptr) + 1;
 
     for (int i = 0; i < numLayers - 1; i++) {
         assert(biases[i]->data.end() - biases[i]->data.begin() == biases[i]->getHeight() * biases[i]->getWidth());

@@ -49,7 +49,6 @@ LivingEntity::LivingEntity(void *&ptr, bool minimal) : Entity(0, 0, 0, {}, 0.0f,
     size = ((float *) ptr)[1];
     waterAgility = ((float *) ptr)[2];
     rotation = ((float *) ptr)[3];
-    drunkness = ((float *) ptr)[4];
     energyLossBase = energyLossPerTick(size);
     radius = (int) ((1.0f + size) * TILE_SIZE / 2);
 
