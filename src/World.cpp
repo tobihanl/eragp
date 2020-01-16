@@ -373,25 +373,28 @@ void World::tick() {
     //=============================================================================
     //                             END MPI SEND/RECEIVE
     //=============================================================================
-
+    std::vector<LivingEntity *> livingsToBeRemoved = std::vector<LivingEntity *>();
     for (const auto &e : living) {
-        if (e->toBeRemoved) {
-            getEntityBucket({e->x, e->y}, livingBuckets)->remove(e);
-            delete e;
-        }
+        if (e->toBeRemoved) livingsToBeRemoved.push_back(e);
     }
+
+    for (const auto &e : livingsToBeRemoved) {
+        getEntityBucket({e->x, e->y}, livingBuckets)->remove(e);
+    }
+    living.erase(std::remove_if(living.begin(), living.end(), [&](LivingEntity *e) -> bool { return e->toBeRemoved; }),
+                 living.end());
+
     for (const auto &e : removeFood) getEntityBucket({e->x, e->y}, foodBuckets)->remove(e);
     for (const auto &e : addLiving) getEntityBucket({e->x, e->y}, livingBuckets)->push_back(e);
     for (const auto &e : addFood) getEntityBucket({e->x, e->y}, foodBuckets)->push_back(e);
 
-    living.erase(std::remove_if(living.begin(), living.end(), [&](LivingEntity *e) -> bool { return e->toBeRemoved; }),
-                 living.end());
     living.insert(living.end(), addLiving.begin(), addLiving.end());
     food.erase(std::remove_if(food.begin(), food.end(), toRemoveFood), food.end());
     food.insert(food.end(), addFood.begin(), addFood.end());
 
     // Destroy entities
     for (const auto &e : removeFood) delete e;
+    for (const auto &e : livingsToBeRemoved) delete e;
 
     // Clear vectors without deallocating memory
     removeFood.clear();
