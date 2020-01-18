@@ -243,8 +243,6 @@ public:
      * @return itself
      */
     Matrix &transpose();
-
-    int serializedSize() { return (2 + width * height) * 4; }
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_MATRIX_H
