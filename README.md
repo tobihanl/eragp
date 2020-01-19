@@ -42,6 +42,8 @@ thread).
 
 - **Boarisch mode** `-b`: Enables the "Boarisch" mode (with pretzels)
 
+- **Automated mode** `-a`: Disable the cli input for execution within scripts
+
 ## Resources
 To render logos in the background, place them in the `res/logos` folder with names `<MPI-Rank>.png`.
 
