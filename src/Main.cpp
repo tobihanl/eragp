@@ -885,11 +885,13 @@ int main(int argc, char **argv) {
     timeFinalize = Log::endTime(timeFinalize);
     timeTotal = Log::endTime(timeTotal);
 
-    printf("Initialization:   \t%d\n", timeInit);
-    printf("Create Entities:  \t%d\n", timeCreateEntities);
-    printf("Loop:             \t%d\n", timeLoop);
-    printf("Finalize:         \t%d\n", timeFinalize);
-    printf("Total:            \t%d\n", timeTotal);
+    if (World::getMPIRank() == 0) {
+        printf("Initialization:   \t%d\n", timeInit);
+        printf("Create Entities:  \t%d\n", timeCreateEntities);
+        printf("Loop:             \t%d\n", timeLoop);
+        printf("Finalize:         \t%d\n", timeFinalize);
+        printf("Total:            \t%d\n", timeTotal);
+    }
 
     return EXIT_SUCCESS;
 }
