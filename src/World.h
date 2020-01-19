@@ -40,6 +40,8 @@ private:
     static int width;
     static int height;
 
+    static int numThreads;
+
     static int ticksPerFoodInterval; //ticks per interval
     static int foodPerFoodInterval; //food to distribute over every interval (without the food spawned every tick)
     static int intervalTicksLeft; //remaining ticks in the current interval
@@ -98,8 +100,8 @@ public:
      * @param   maimuc              Indicates, whether the program is executed
      *                              on MaiMUC or not
      */
-    static void
-    setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate, float zoom, uint32_t seed);
+    static void setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate, float zoom, uint32_t seed,
+                      int numThreads);
 
     static void finalize();
 

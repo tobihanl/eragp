@@ -37,6 +37,9 @@ Default is 10.
 - **Log File** `-l`: Log data about application into a `.csv` file. Filename has to be specified within this
 option. The following will be appended to the filename: `-{MPI_Rank}.csv`.
 
+- **OpenMP Threads** `-o`: Run parallel sections with the specified number of threads. Default is 1 (only master 
+thread).
+
 - **Boarisch mode** `-b`: Enables the "Boarisch" mode (with pretzels)
 
 ## Resources
