@@ -644,6 +644,8 @@ void createEntities(long livings, long food, LFSR &random) {
  * =============================================================================
  */
 int main(int argc, char **argv) {
+    int timeTotal = Log::currentTime();
+    int timeInit = Log::currentTime();
     // START MPI
     MPI_Init(&argc, &argv);
 
@@ -842,15 +844,18 @@ int main(int argc, char **argv) {
         Renderer::setup(dim.p.x, dim.p.y, dim.w, dim.h, false, boarisch);
 #endif
 
-    // Add entities
-    createEntities(livings, food, random);
-
-    // Create command-line Thread
-    auto threadId = (pthread_t) nullptr;
+    auto threadId = (pthread_t)
+    nullptr;
     if (World::getMPIRank() == 0 && !automated) {
         threadSuccessfullyCreated = (0 == pthread_create(&threadId, nullptr, commandLineThread, nullptr));
     }
+    timeInit = Log::endTime(timeInit);
 
+    int timeCreateEntities = Log::currentTime();
+    createEntities(livings, food, random);
+    timeCreateEntities = Log::endTime(timeCreateEntities);
+
+    int timeLoop = Log::currentTime();
     while (!quit) {
 #ifdef RENDER
         if (render) renderLoop();
@@ -859,7 +864,9 @@ int main(int argc, char **argv) {
         normalLoop();
 #endif
     }
+    timeLoop = Log::endTime(timeLoop);
 
+    int timeFinalize = Log::currentTime();
     cancelThread = true;
     if (World::getMPIRank() == 0 && threadSuccessfullyCreated && !automated) {
         pthread_join(threadId, nullptr);
@@ -875,5 +882,14 @@ int main(int argc, char **argv) {
 
     // END MPI
     MPI_Finalize();
+    timeFinalize = Log::endTime(timeFinalize);
+    timeTotal = Log::endTime(timeTotal);
+
+    printf("Initialization:   \t%d\n", timeInit);
+    printf("Create Entities:  \t%d\n", timeCreateEntities);
+    printf("Loop:             \t%d\n", timeLoop);
+    printf("Finalize:         \t%d\n", timeFinalize);
+    printf("Total:            \t%d\n", timeTotal);
+
     return EXIT_SUCCESS;
 }
