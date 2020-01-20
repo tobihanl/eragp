@@ -41,6 +41,8 @@ private:
     static SDL_Texture *digits[];
 
     static SDL_Texture *foodTexture;
+    static SDL_Texture *beerTexture;
+    static SDL_Texture *pretzelTexture;
     static std::set<LivingTexture> livingTextures;
     static std::set<LivingTexture> livingTexturesSwap;
 
@@ -180,6 +182,10 @@ public:
         rankTexture = nullptr;
         cleanupTexture(foodTexture);
         foodTexture = nullptr;
+        cleanupTexture(pretzelTexture);
+        pretzelTexture = nullptr;
+        cleanupTexture(beerTexture);
+        beerTexture = nullptr;
         for (const auto &item : livingTextures)
             cleanupTexture(item.texture);
         livingTextures.clear();
@@ -302,13 +308,22 @@ public:
 
     static void renderFoodEntity(FoodEntity *e) {
         if (!isSetup) return;
+        SDL_Texture *tex = nullptr;
         RenderData data = e->getRenderData();
         int offset = boarisch ? 8 : data.radius;
-        if (foodTexture == nullptr) // Food texture identical for all food entities
-            foodTexture = (boarisch) ? Renderer::renderImage("pretzel-16.png") : Renderer::renderDot(data.radius,
-                                                                                                     data.color);
+        if (boarisch) {
+            if (pretzelTexture == nullptr) pretzelTexture = Renderer::renderImage("pretzel-16.png");
+            if (beerTexture == nullptr) beerTexture = Renderer::renderImage("beer-16.png");
 
-        Renderer::copy(foodTexture, data.x - data.worldDim.p.x - offset, data.y - data.worldDim.p.y - offset);
+            if (e->beer)
+                tex = beerTexture;
+            else
+                tex = pretzelTexture;
+        } else {
+            if (foodTexture == nullptr) foodTexture = Renderer::renderDot(data.radius, data.color);
+            tex = foodTexture;
+        }
+        Renderer::copy(tex, data.x - data.worldDim.p.x - offset, data.y - data.worldDim.p.y - offset);
     }
 
     static void renderRank(int rank) {

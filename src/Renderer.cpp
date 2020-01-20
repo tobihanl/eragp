@@ -14,6 +14,8 @@ SDL_Texture *Renderer::entities = nullptr;
 SDL_Texture *Renderer::rankTexture = nullptr;
 
 SDL_Texture *Renderer::foodTexture = nullptr;
+SDL_Texture *Renderer::beerTexture = nullptr;
+SDL_Texture *Renderer::pretzelTexture = nullptr;
 std::set<LivingTexture> Renderer::livingTextures = std::set<LivingTexture>();
 std::set<LivingTexture> Renderer::livingTexturesSwap = std::set<LivingTexture>();
 
