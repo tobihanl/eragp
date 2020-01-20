@@ -97,12 +97,23 @@ void *commandLineThread(void *args) {
     pfds[0].events = POLLIN;
 
     //############################# PROCESS INPUT #############################
+    bool renderStatus = render;
     while (true) {
+#ifdef RENDER
         std::cout << ((render) ? "[RENDER] > " : "[HIDDEN] > ");
+#else
+        std::cout << "[HIDDEN] > ";
+#endif
         std::cout.flush();
 
-        while (!cancelThread && poll(pfds, 1, 1000) == 0);
+        while (!cancelThread && renderStatus == render && poll(pfds, 1, 1000) == 0);
         if (cancelThread) break;
+        if (renderStatus != render) {
+            renderStatus = render;
+            if (render) std::cout << "\n==[ Switch to RENDER mode ]==" << std::endl;
+            else std::cout << "\n==[ Switch to HIDDEN mode ]==" << std::endl;
+            continue;
+        }
 
         std::string str;
         std::cin >> str;
@@ -118,66 +129,66 @@ void *commandLineThread(void *args) {
                 break;
 
 #ifdef RENDER
-            // Render (Show)
-        case 'r':
-        case 'R':
-            if (!render) {
-                run = false;
-                render = true;
-                std::cout << "==[ Switch to RENDER mode ]==" << std::endl;
-            } else {
-                std::cerr << "** Only allowed in HIDDEN mode **" << std::endl;
-            }
-            break;
+                // Render (Show)
+            case 'r':
+            case 'R':
+                if (!render) {
+                    run = false;
+                    render = renderStatus = true;
+                    std::cout << "==[ Switch to RENDER mode ]==" << std::endl;
+                } else {
+                    std::cerr << "** Only allowed in HIDDEN mode **" << std::endl;
+                }
+                break;
 
-            // Hide
-        case 'h':
-        case 'H':
-            if (render) {
-                run = false;
-                render = false;
-                std::cout << "==[ Switch to HIDDEN mode ]==" << std::endl;
-            } else {
-                std::cerr << "** Only allowed in RENDER mode **" << std::endl;
-            }
-            break;
+                // Hide
+            case 'h':
+            case 'H':
+                if (render) {
+                    run = false;
+                    render = renderStatus = false;
+                    std::cout << "==[ Switch to HIDDEN mode ]==" << std::endl;
+                } else {
+                    std::cerr << "** Only allowed in RENDER mode **" << std::endl;
+                }
+                break;
 
-            // Pause/Play
-        case 'p':
-        case 'P':
-            if (render) {
-                // Simulation is already paused in similarity mode!
-                if (!similarityMode) paused = !paused;
-            } else {
-                std::cerr << "** Only allowed in RENDER mode **" << std::endl;
-            }
-            break;
+                // Pause/Play
+            case 'p':
+            case 'P':
+                if (render) {
+                    // Simulation is already paused in similarity mode!
+                    if (!similarityMode) paused = !paused;
+                } else {
+                    std::cerr << "** Only allowed in RENDER mode **" << std::endl;
+                }
+                break;
 
-            // Similarity mode
-        case 's':
-        case 'S':
-            if (render) {
-                similarityMode = paused = !similarityMode;
-                selectedEntities[0] = selectedEntities[1] = nullptr;
-                countSelectedEntities = 0;
-            } else {
-                std::cerr << "** Only allowed in RENDER mode **" << std::endl;
-            }
-            break;
+                // Similarity mode
+            case 's':
+            case 'S':
+                if (render) {
+                    similarityMode = paused = !similarityMode;
+                    selectedEntities[0] = selectedEntities[1] = nullptr;
+                    countSelectedEntities = 0;
+                } else {
+                    std::cerr << "** Only allowed in RENDER mode **" << std::endl;
+                }
+                break;
 
-            // Show borders of the world
-        case 'b':
-        case 'B':
-            if (render) borders = !borders;
-            else std::cerr << "** Only allowed in RENDER mode **" << std::endl;
-            break;
+                // Show borders of the world
+            case 'b':
+            case 'B':
+                if (render) borders = !borders;
+                else std::cerr << "** Only allowed in RENDER mode **" << std::endl;
+                break;
 
-            // Show padding areas
-        case 'a':
-        case 'A':
-            if (render) paddings = !paddings;
-            else std::cerr << "** Only allowed in RENDER mode **" << std::endl;
-            break;
+                // Show padding areas
+            case 'a':
+            case 'A':
+                if (render) paddings = !paddings;
+                else std::cerr << "** Only allowed in RENDER mode **" << std::endl;
+                break;
 #endif
 
             default:
@@ -287,6 +298,12 @@ void renderLoop() {
                             // Show padding areas
                         case SDLK_a:
                             paddings = !paddings;
+                            break;
+
+                            // Hide rendering
+                        case SDLK_h:
+                            run = false;
+                            render = false;
                             break;
 
                         default:
@@ -551,8 +568,8 @@ void createEntities(long livings, long food, LFSR &random) {
     buffer += 2;
 
     if (World::getMPIRank() == 0) {
-        std::list < LivingEntity * > sendLivings[nodes];
-        std::list < FoodEntity * > sendFood[nodes];
+        std::list<LivingEntity *> sendLivings[nodes];
+        std::list<FoodEntity *> sendFood[nodes];
 
         // Create Entities
         for (long i = 0; i < livings; i++) {
@@ -844,8 +861,7 @@ int main(int argc, char **argv) {
         Renderer::setup(dim.p.x, dim.p.y, dim.w, dim.h, false, boarisch);
 #endif
 
-    auto threadId = (pthread_t)
-    nullptr;
+    auto threadId = (pthread_t) nullptr;
     if (World::getMPIRank() == 0 && !automated) {
         threadSuccessfullyCreated = (0 == pthread_create(&threadId, nullptr, commandLineThread, nullptr));
     }
