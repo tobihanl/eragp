@@ -21,14 +21,25 @@ private:
 public:
     LFSR() noexcept : lfsr_register(0x1234567812345678u) {}
 
-    explicit LFSR(uint64_t lfsr) : lfsr_register(lfsr) {}
+    explicit LFSR(uint64_t lfsr) {
+        if (lfsr == 0)
+            lfsr_register = 0x1234567812345678u;
+        else
+            lfsr_register = lfsr;
+    }
 
     explicit LFSR(uint32_t seed) {
-        lfsr_register = static_cast<uint64_t>(seed);
+        if (seed == 0)
+            lfsr_register = 0x1234567812345678u;
+        else
+            lfsr_register = static_cast<uint64_t>(seed);
     }
 
     void seed(uint32_t s) {
-        lfsr_register = static_cast<uint64_t>(s);
+        if (s == 0)
+            lfsr_register = 0x1234567812345678u;
+        else
+            lfsr_register = static_cast<uint64_t>(s);
     }
 
     uint64_t getLfsrRegister() {
