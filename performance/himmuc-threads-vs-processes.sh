@@ -1,6 +1,6 @@
 #!/bin/bash
-MEASURE_FILE=measure-2.dat
-OUT_FILE=results-2.dat
+MEASURE_FILE=himmuc-threads-processes-measure-1.dat
+OUT_FILE=himmuc-threads-processes-results-1.dat
 PARAMS="-a -s3 -w10000 -h10000 -e3000,1000 -f0.08 -t3000"
 RUNS=3
 
