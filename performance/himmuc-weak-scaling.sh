@@ -20,11 +20,11 @@ printf "Food per process: %s\n\n" $FOOD_PER_PROCESS >> $MEASURE_FILE
 printf "Nodes Run Runtime\n" >> $MEASURE_FILE
 
 for i in $(seq 1 $RUNS); do
-  for n in $(seq -w 01 $NODES); do
-    printf "%s %s " $n $i >> $MEASURE_FILE
+  for n in $(seq 1 $NODES); do
+    printf "%02d %s " $n $i >> $MEASURE_FILE
     side=$(bc <<< "sqrt($AREA_PER_PROCESS * $n)")
-    livings=$LIVINGS_PER_PROCESS * $n
-    food=$FOOD_PER_PROCESS * $n
+    livings=$(($LIVINGS_PER_PROCESS * $n))
+    food=$(($FOOD_PER_PROCESS * $n))
     srun -p odr -N $n ./build/Evolution $PARAMS -w$side -h$side -e$livings,$food >> $MEASURE_FILE
   done
 done
