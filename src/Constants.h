@@ -6,7 +6,7 @@
 #define VIEW_RANGE (20 * TILE_SIZE) // 160, should be a multiple of TILE_SIZE!
 #define VIEW_RANGE_SQUARED (VIEW_RANGE * VIEW_RANGE)
 
-#define WORLD_PADDING (2 * VIEW_RANGE) // must be a multiple of TILE_SIZE!
+#define WORLD_PADDING VIEW_RANGE // must be a multiple of TILE_SIZE!
 
 #define ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD 0.0016
 
