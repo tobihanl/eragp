@@ -63,13 +63,11 @@ public:
      * @param   y           Position of the window (y coordinate)
      * @param   width       Width of the new window
      * @param   height      Height of the new window
-     * @param   fullscreen  Decide, whether the application should be run in
-     *                      fullscreen mode or not
      *
      * @return  0 if successful, 1 if not successful, -1 if the
      *          renderer is already setup
      */
-    static int setup(int x, int y, int width, int height, bool fullscreen, bool boarisch);
+    static int setup(int x, int y, int width, int height, bool boarisch);
 
     /**
      * Destroys the renderer by cleaning up all the SDL components and

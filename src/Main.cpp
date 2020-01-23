@@ -856,9 +856,9 @@ int main(int argc, char **argv) {
 
 #ifdef RENDER
     if (maimuc)
-        Renderer::setup(0, 0, dim.w, dim.h, true, boarisch);
+        Renderer::setup(0, 0, dim.w, dim.h, boarisch);
     else
-        Renderer::setup(dim.p.x, dim.p.y, dim.w, dim.h, false, boarisch);
+        Renderer::setup(dim.p.x, dim.p.y, dim.w, dim.h, boarisch);
 #endif
 
     auto threadId = (pthread_t) nullptr;

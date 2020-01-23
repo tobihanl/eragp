@@ -19,7 +19,7 @@ SDL_Texture *Renderer::pretzelTexture = nullptr;
 std::set<LivingTexture> Renderer::livingTextures = std::set<LivingTexture>();
 std::set<LivingTexture> Renderer::livingTexturesSwap = std::set<LivingTexture>();
 
-int Renderer::setup(int x, int y, int width, int height, bool fullscreen, bool boarisch) {
+int Renderer::setup(int x, int y, int width, int height, bool boarisch) {
     // Renderer already set up?
     if (isSetup)
         return -1;
@@ -27,7 +27,7 @@ int Renderer::setup(int x, int y, int width, int height, bool fullscreen, bool b
     Renderer::boarisch = boarisch;
 
     // Init SDL
-    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         logSDLError(std::cerr, "SDL_Init");
         return 1;
     }
@@ -45,10 +45,7 @@ int Renderer::setup(int x, int y, int width, int height, bool fullscreen, bool b
     }
 
     // Create Window
-    if (fullscreen)
-        win = SDL_CreateWindow("Evolution", 0, 0, 1, 1, SDL_WINDOW_FULLSCREEN | SDL_WINDOW_HIDDEN);
-    else
-        win = SDL_CreateWindow("Evolution", x, y, width, height, SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIDDEN);
+    win = SDL_CreateWindow("Evolution", x, y, width, height, SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIDDEN);
 
     if (win == nullptr) {
         logSDLError(std::cerr, "SDL_CreateWindow");
