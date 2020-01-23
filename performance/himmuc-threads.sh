@@ -1,7 +1,7 @@
 #!/bin/bash
-MEASURE_FILE=maimuc-threads-measure-1.dat
-OUT_FILE=maimuc-threads-results-1.dat
-PARAMS="-m -r -a -s3 -w10000 -h10000 -e5000,1000 -f0.08 -t30000"
+MEASURE_FILE=himmuc-threads-measure-1.dat
+OUT_FILE=himmuc-threads-results-1.dat
+PARAMS="-a -s3 -w10000 -h10000 -e5000,1000 -f0.08 -t30000"
 RUNS=3
 THREADS=4
 
@@ -16,7 +16,7 @@ printf "# Threads Run Runtime\n" >> $MEASURE_FILE
 for i in $(seq 1 $RUNS); do
   for n in $(seq 1 $THREADS); do
     printf "%s %s " $n $i >> $MEASURE_FILE
-    ./utils/run.sh ./build/Evolution $PARAMS -o$n >> $MEASURE_FILE
+    srun -p odr -N 1 ./build/Evolution $PARAMS -o$n >> $MEASURE_FILE
   done
 done
 
