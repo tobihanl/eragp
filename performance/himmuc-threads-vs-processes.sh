@@ -9,8 +9,8 @@ if [[ -f "$MEASURE_FILE" || -f "$OUT_FILE" ]]; then
     exit
 fi
 
-printf "Params: %s\n\n" "$PARAMS" >> $MEASURE_FILE
-printf "Processes Threads Run Runtime\n" >> $MEASURE_FILE
+printf "# Params: %s\n\n" "$PARAMS" >> $MEASURE_FILE
+printf "# Processes Threads Run Runtime\n" >> $MEASURE_FILE
 
 for i in $(seq 1 $RUNS); do
   printf "1 4 %s " $i >> $MEASURE_FILE
@@ -21,9 +21,9 @@ for i in $(seq 1 $RUNS); do
   srun -p odr -N 1 -n4 ./build/Evolution $PARAMS -o1 >> $MEASURE_FILE
 done
 
-printf "Params: %s\n" "$PARAMS" >> $OUT_FILE
-printf "Runs: %s\n" $RUNS >> $OUT_FILE
+printf "# Params: %s\n" "$PARAMS" >> $OUT_FILE
+printf "# Runs: %s\n" $RUNS >> $OUT_FILE
 printf "\n" >> $OUT_FILE
-printf "Processes Threads AverageRuntime\n" >> $OUT_FILE
+printf "# Processes Threads AverageRuntime\n" >> $OUT_FILE
 
 awk -F " " -v runs=$RUNS 'NR>2 {a[$1]+=$4} END{print "1 4", a[1]/runs; print "2 2", a[2]/runs; print "4 1", a[4]/runs}' $MEASURE_FILE >> $OUT_FILE

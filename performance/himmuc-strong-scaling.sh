@@ -10,20 +10,20 @@ if [[ -f "$MEASURE_FILE" || -f "$OUT_FILE" ]]; then
     exit
 fi
 
-printf "Params: %s\n\n" "$PARAMS" >> $MEASURE_FILE
-printf "Nodes Run Runtime\n" >> $MEASURE_FILE
+printf "# Params: %s\n\n" "$PARAMS" >> $MEASURE_FILE
+printf "# Nodes Run Runtime\n" >> $MEASURE_FILE
 
 for i in $(seq 1 $RUNS); do
-  for n in $(seq -w 01 $NODES); do
+  for n in $(seq 1 $NODES); do
     printf "%s %s " $n $i >> $MEASURE_FILE
     srun -p odr -N $n ./build/Evolution $PARAMS >> $MEASURE_FILE
   done
 done
 
-printf "Params: %s\n" "$PARAMS" >> $OUT_FILE
-printf "Runs: %s\n" $RUNS >> $OUT_FILE
-printf "Nodes: %s\n" $NODES >> $OUT_FILE
+printf "# Params: %s\n" "$PARAMS" >> $OUT_FILE
+printf "# Runs: %s\n" $RUNS >> $OUT_FILE
+printf "# Nodes: %s\n" $NODES >> $OUT_FILE
 printf "\n" >> $OUT_FILE
-printf "Nodes AverageRuntime\n" >> $OUT_FILE
+printf "# Nodes AverageRuntime\n" >> $OUT_FILE
 
 awk -F " " -v nodes=$NODES -v runs=$RUNS 'NR>2 {a[$1]+=$3} END{for(i=1;i<=nodes;i++) print i, a[i]/runs}' $MEASURE_FILE >> $OUT_FILE
