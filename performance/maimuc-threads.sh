@@ -1,7 +1,7 @@
 #!/bin/bash
 MEASURE_FILE=maimuc-threads-measure-1.dat
 OUT_FILE=maimuc-threads-results-1.dat
-PARAMS="-m -r -a -s3 -w10000 -h10000 -e5000,1000 -f0.08 -t30000"
+PARAMS="-m -a -s1 -e20000,3000 -f0.08 -t30000"
 RUNS=3
 THREADS=4
 
