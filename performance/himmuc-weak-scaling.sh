@@ -13,9 +13,9 @@ if [[ -f "$MEASURE_FILE" || -f "$OUT_FILE" ]]; then
     exit
 fi
 
-printf "# Params: %s\n\n" "$PARAMS" >> $MEASURE_FILE
-printf "# Area per process: %s\n\n" $AREA_PER_PROCESS >> $MEASURE_FILE
-printf "# Livings per process: %s\n\n" $LIVINGS_PER_PROCESS >> $MEASURE_FILE
+printf "# Params: %s\n" "$PARAMS" >> $MEASURE_FILE
+printf "# Area per process: %s\n" $AREA_PER_PROCESS >> $MEASURE_FILE
+printf "# Livings per process: %s\n" $LIVINGS_PER_PROCESS >> $MEASURE_FILE
 printf "# Food per process: %s\n\n" $FOOD_PER_PROCESS >> $MEASURE_FILE
 printf "# Nodes Run Runtime\n" >> $MEASURE_FILE
 
