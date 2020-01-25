@@ -1,6 +1,7 @@
 #include "SDL/res_path.h"
 #include "Renderer.h"
 #include <vector>
+#include <fstream>
 
 SDL_Window *Renderer::win = nullptr;
 SDL_Renderer *Renderer::ren = nullptr;
@@ -99,12 +100,14 @@ void Renderer::renderBackground(WorldDim dim, const std::vector<Tile *> &terrain
     }
 
     // Render a logo if one exists with name <Rank>.png
-    std::string fileName = std::to_string(rank) + ".png";
-    SDL_Texture *logos = renderImage("logos/" + fileName);
+    std::string fileName = "logos/" + std::to_string(rank) + ".png";
+    if (std::ifstream("./res/" + fileName)) {
+        SDL_Texture *logos = renderImage(fileName);
 
-    int imageWidth, imageHeight;
-    SDL_QueryTexture(logos, nullptr, nullptr, &imageWidth, &imageHeight);
-    copy(logos, (widthWithPadding - imageWidth) / 2, (heightWithPadding - imageHeight) / 2);
+        int imageWidth, imageHeight;
+        SDL_QueryTexture(logos, nullptr, nullptr, &imageWidth, &imageHeight);
+        copy(logos, (widthWithPadding - imageWidth) / 2, (heightWithPadding - imageHeight) / 2);
+    }
 
     // Change render target back to default
     setTarget(nullptr);
