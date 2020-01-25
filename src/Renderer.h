@@ -276,6 +276,11 @@ public:
 
     static void renderDigits();
 
+    static void renderRank(int rank) {
+        if (!isSetup) return;
+        rankTexture = renderFont(std::to_string(rank), 25, {255, 255, 255, 255}, "font.ttf");
+    }
+
     static void renderBackground(WorldDim dim, const std::vector<Tile *> &terrain, int rank);
 
     static void createEntitiesTexture(WorldDim dim) {
@@ -284,16 +289,16 @@ public:
         SDL_SetTextureBlendMode(entities, SDL_BLENDMODE_BLEND);
     }
 
-    static void renderEntities(const std::vector<FoodEntity *> &food, const std::vector<LivingEntity *> &living,
-                               const std::vector<LivingEntity *> &livingsInPadding) {
+    static void drawEntities(const std::vector<FoodEntity *> &food, const std::vector<LivingEntity *> &living,
+                             const std::vector<LivingEntity *> &livingsInPadding) {
         if (!isSetup) return;
 
         setTarget(entities);
         clear();
 
-        for (const auto &f : food) renderFoodEntity(f);
-        for (const auto &e : living) renderLivingEntity(e);
-        for (const auto &e : livingsInPadding) renderLivingEntity(e);
+        for (const auto &f : food) drawFoodEntity(f);
+        for (const auto &e : living) drawLivingEntity(e);
+        for (const auto &e : livingsInPadding) drawLivingEntity(e);
 
         livingTextures.swap(livingTexturesSwap);
         for (const auto &item : livingTexturesSwap) cleanupTexture(item.texture);
@@ -302,9 +307,9 @@ public:
         setTarget(nullptr);
     }
 
-    static void renderLivingEntity(LivingEntity *e);
+    static void drawLivingEntity(LivingEntity *e);
 
-    static void renderFoodEntity(FoodEntity *e) {
+    static void drawFoodEntity(FoodEntity *e) {
         if (!isSetup) return;
         SDL_Texture *tex = nullptr;
         RenderData data = e->getRenderData();
@@ -322,11 +327,6 @@ public:
             tex = foodTexture;
         }
         Renderer::copy(tex, data.x - data.worldDim.p.x - offset, data.y - data.worldDim.p.y - offset);
-    }
-
-    static void renderRank(int rank) {
-        if (!isSetup) return;
-        rankTexture = renderFont(std::to_string(rank), 25, {255, 255, 255, 255}, "font.ttf");
     }
 
     static void drawBackground(WorldDim dim) {

@@ -128,7 +128,7 @@ void Renderer::renderDigits() {
     digits[9] = renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
 }
 
-void Renderer::renderLivingEntity(LivingEntity *e) {
+void Renderer::drawLivingEntity(LivingEntity *e) {
     if (!isSetup) return;
 
     SDL_Texture *dot;

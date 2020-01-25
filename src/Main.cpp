@@ -427,7 +427,7 @@ void renderLoop() {
         Renderer::clear();
 
         Renderer::drawBackground(World::getWorldDim());
-        if (!paused) Renderer::renderEntities(World::food, World::living, World::livingsInPadding);
+        if (!paused) Renderer::drawEntities(World::food, World::living, World::livingsInPadding);
         Renderer::copy(Renderer::entities, 0, 0);
         Renderer::drawRank();
 
