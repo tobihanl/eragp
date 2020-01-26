@@ -8,6 +8,7 @@ SDL_Renderer *Renderer::ren = nullptr;
 bool Renderer::isSetup = false;
 bool Renderer::hidden = true;
 bool Renderer::boarisch = false;
+float Renderer::scaling = 1;
 SDL_Texture *Renderer::digits[10];
 
 SDL_Texture *Renderer::background = nullptr;
@@ -20,12 +21,13 @@ SDL_Texture *Renderer::pretzelTexture = nullptr;
 std::set<LivingTexture> Renderer::livingTextures = std::set<LivingTexture>();
 std::set<LivingTexture> Renderer::livingTexturesSwap = std::set<LivingTexture>();
 
-int Renderer::setup(int x, int y, int width, int height, bool boarisch) {
+int Renderer::setup(int x, int y, int width, int height, float scale, bool boarischFlag) {
     // Renderer already set up?
     if (isSetup)
         return -1;
 
-    Renderer::boarisch = boarisch;
+    boarisch = boarischFlag;
+    scaling = scale;
 
     // Init SDL
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -80,7 +82,7 @@ void Renderer::renderBackground(WorldDim dim, const std::vector<Tile *> &terrain
                                                                                               TILE_SIZE);
 
     // Pre-render terrain for faster rendering
-    SDL_Texture *tex = Renderer::createTexture(widthWithPadding, heightWithPadding, SDL_TEXTUREACCESS_TARGET);
+    SDL_Texture *tex = createTexture(widthWithPadding, heightWithPadding, SDL_TEXTUREACCESS_TARGET);
     setTarget(tex);
     clear();
 
@@ -116,16 +118,8 @@ void Renderer::renderBackground(WorldDim dim, const std::vector<Tile *> &terrain
 
 void Renderer::renderDigits() {
     if (!isSetup) return;
-    digits[0] = renderFont("0", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    digits[1] = renderFont("1", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    digits[2] = renderFont("2", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    digits[3] = renderFont("3", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    digits[4] = renderFont("4", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    digits[5] = renderFont("5", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    digits[6] = renderFont("6", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    digits[7] = renderFont("7", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    digits[8] = renderFont("8", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
-    digits[9] = renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
+    for (int i = 0; i < 10; i++)
+        digits[i] = renderFont(std::to_string(i), ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
 }
 
 void Renderer::drawLivingEntity(LivingEntity *e) {
@@ -141,23 +135,26 @@ void Renderer::drawLivingEntity(LivingEntity *e) {
         livingTextures.erase(it);
         livingTexturesSwap.insert(*it);
     } else {
-        dot = Renderer::renderDot(data.radius, data.color);
+        dot = renderDot(data.radius, data.color);
         livingTexturesSwap.insert({e->getId(), dot});
     }
 
-    Renderer::copy(dot, data.x - data.worldDim.p.x - data.radius, data.y - data.worldDim.p.y - data.radius);
+    SDL_Rect dst = {data.x - data.worldDim.p.x, data.y - data.worldDim.p.y, 0, 0};
+    query(dot, &dst);
+    dst.x -= dst.w / 2;
+    dst.y -= dst.h / 2;
+    copy(dot, &dst);
 
     assert(data.energy > 0 && "Energy must be greater than 0");
-    //max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
+    query(digits[0], &dst);
     int numDigits = getNumDigits(data.energy);
     int energyToDisplay = data.energy;
-    int baseX = data.x - data.worldDim.p.x + numDigits * 4 -
-                4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
+    int baseX = data.x - data.worldDim.p.x + numDigits * (dst.w / 2) - (3 * dst.w / 4);
+    int baseY = data.y - data.worldDim.p.y - (dst.h / 2) - dst.h;
     for (int i = 0; energyToDisplay > 0; i++) {
-        Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, data.y - data.worldDim.p.y - 4 - ENERGY_FONT_SIZE);
+        copy(digits[energyToDisplay % 10], baseX - dst.w * i, baseY);
         energyToDisplay /= 10;
     }
-
 }
 
 SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
@@ -175,6 +172,7 @@ SDL_Texture *Renderer::renderImage(const std::string &imagePath) {
 
 SDL_Texture *Renderer::renderDot(int radius, const Color &color) {
     if (!isSetup) return nullptr;
+    radius = (int) (scaling * (float) radius);
 
     int squaredRadius = radius * radius, doubledRadius = radius + radius;
 
@@ -234,7 +232,7 @@ SDL_Texture *Renderer::renderFont(const std::string &text, int size, const SDL_C
     if (!isSetup) return nullptr;
 
     std::string file = Include::getResourcePath() + fontFile;
-    TTF_Font *font = TTF_OpenFont(file.c_str(), size);
+    TTF_Font *font = TTF_OpenFont(file.c_str(), (int) (scaling * (float) size));
     if (font == nullptr) {
         logSDLError(std::cerr, "TTF_OpenFont");
         return nullptr;
