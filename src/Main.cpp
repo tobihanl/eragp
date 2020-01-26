@@ -554,7 +554,6 @@ void createEntities(long livings, long food, LFSR &random) {
     int lDisplacement[nodes], fDisplacement[nodes];
     void *sendLBuffer = nullptr, *sendFBuffer = nullptr;
 
-    // TODO: Maybe free?
     std::ifstream file("./res/brains.dat", std::ios::binary | std::ios::ate);
     std::streamsize size = file.tellg();
     if (size == -1) std::cout << "Cannot determine size of brains.dat" << std::endl;
