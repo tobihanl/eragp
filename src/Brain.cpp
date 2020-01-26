@@ -50,17 +50,13 @@ Brain::~Brain() {
 ThinkResult Brain::think(Matrix input) {
     assert(input.getWidth() == weights[0]->getHeight() && input.getHeight() == 1 &&
            "Wrong size of input Matrix in Brain::think()");
-    if(printThink) std::cout << *this << std::endl;
-    if(printThink) std::cout << "Input:\n" << input << std::endl;
     for(int i = 0; i < numLayers - 1; i++) {
         input = input.dotProduct(*weights[i]);
         input += *biases[i];
         input.apply(std::tanh);
-        if(printThink) std::cout << "After layer " << i << ":\n" << input << std::endl;
     }
     assert(input.height == 1 && input.width == 4 && "ThinkResult does not have the correct size.");
     ThinkResult res = {input(0, 0), input(0, 1) < 0 ? 0 : input(0, 1), input(0, 2) > 0, input(0, 3) > 0};
-    if(printThink) std::cout << "Result:\n" << input << std::endl;
     return res;
 }
 

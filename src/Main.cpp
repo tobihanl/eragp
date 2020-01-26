@@ -331,8 +331,6 @@ void renderLoop() {
                         } else {
                             if (nearest) {
                                 std::cout << *nearest << std::endl;
-                                if (nearest->brain != nullptr)
-                                    nearest->brain->printThink = true;
                             } else {
                                 std::cout << "No nearest entity available!" << std::endl;
                             }

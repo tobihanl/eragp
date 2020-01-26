@@ -134,7 +134,6 @@ void LivingEntity::think() {
         toBeRemoved = true;
         return;
     }
-    if (brain->printThink) std::cout << "xDif: " << (xTo - x) << " yDif: " << (yTo - y) << std::endl;
     if ((*World::tileAt(xTo, yTo) == Tile::WATER && waterAgility >= 0.2)
         || (*World::tileAt(xTo, yTo) != Tile::WATER && waterAgility < 0.8)) {
         nextX = (xTo + World::overallWidth) % World::overallWidth;
@@ -195,7 +194,6 @@ void LivingEntity::tick() {
     } else {
         this->energy = tempEnergy;
     }
-    brain->printThink = false; //TODO remove
 }
 
 void LivingEntity::addEnergy(int e) {

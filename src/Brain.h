@@ -48,8 +48,6 @@ public:
     int getNumLayers() {
         return numLayers;
     }
-
-    bool printThink = false; //TODO remove
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_DESKTOP_BRAIN_H
