@@ -238,11 +238,6 @@ public:
         return data[0];
     }
 
-    /**
-     * Transposes matrix
-     * @return itself
-     */
-    Matrix &transpose();
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_MATRIX_H
