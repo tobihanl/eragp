@@ -278,7 +278,7 @@ void World::tick() {
     std::vector<LivingEntity *> outgoingEntities = std::vector<LivingEntity *>();
     for (const auto &e : living) {
         LivingEntity *child = e->breed();
-        if (child && !addLivingEntity(child)) // Not added?
+        if (child && !addLivingEntity(child, true)) // Not added?
             delete child;
     }
 
@@ -466,7 +466,7 @@ void World::receiveEntities(int rank, int tag) {
                     livingsInPadding.push_back((LivingEntity *) e);
                     getEntityBucket({e->x, e->y}, livingBuckets)->push_back((LivingEntity *) e);
                 } else {
-                    addLivingEntity((LivingEntity *) e);
+                    addLivingEntity((LivingEntity *) e, false);
                 }
 
                 break;
@@ -589,17 +589,19 @@ LivingEntity *World::findNearestLivingToPoint(int px, int py) {
         return nearest.enemy;
 }
 
-bool World::addLivingEntity(LivingEntity *e) {
+bool World::addLivingEntity(LivingEntity *e, bool send) {
     if (toAddLiving(e)) return false;
 
     // Only add and broadcast to other nodes when laying on THIS node
     if (pointInRect({e->x, e->y}, {{x, y}, width, height})) {
         addLiving.push_back(e);
 
-        auto *ranks = paddingRanksAt(e->x, e->y);
-        for (int neighbor : *ranks)
-            livingEntitiesToMoveToNeighbors.push_back({neighbor, true, e});
-        delete ranks;
+        if (send) {
+            auto *ranks = paddingRanksAt(e->x, e->y);
+            for (int neighbor : *ranks)
+                livingEntitiesToMoveToNeighbors.push_back({neighbor, true, e});
+            delete ranks;
+        }
 
         return true;
     }

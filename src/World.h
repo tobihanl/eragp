@@ -122,7 +122,7 @@ public:
 
     static LivingEntity *findNearestLivingToPoint(int px, int py);
 
-    static bool addLivingEntity(LivingEntity *e);
+    static bool addLivingEntity(LivingEntity *e, bool send);
 
     static bool addFoodEntity(FoodEntity *e, bool received);
 

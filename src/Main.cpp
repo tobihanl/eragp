@@ -642,7 +642,7 @@ void createEntities(long livings, long food, LFSR &random) {
     // Save Entities
     while (lBuffer < static_cast<char *>(recvLBuffer) + lCount) {
         auto *e = new LivingEntity(lBuffer, false);
-        World::addLivingEntity(e);
+        World::addLivingEntity(e, false);
     }
     while (fBuffer < static_cast<char *>(recvFBuffer) + fCount) {
         auto *e = new FoodEntity(fBuffer);
