@@ -30,6 +30,9 @@ INPUT_SIZE = 14
 OUTPUT_SIZE = 4
 FILENAME = "brains.dat"
 NUM_BRAINS = 100
+SIZE_DATASET = 100000
+SIZE_TESTSET = 1000
+NUM_EPOCHS = 4
 """
 --------just food:------
 choose:
@@ -56,8 +59,8 @@ danger: -1
 ---
 rotation: targetDir
 speed: 
-attack: -1
-share: -1
+attack: -1/1
+share: -1/1
 """
 
 def food_only():
@@ -84,8 +87,8 @@ def food_only():
         ]), np.array([
         targetDir,
         1 if TILE_SIZE * maxDist < (VIEW_RANGE * targetDist) / 0.8 else (VIEW_RANGE * targetDist) / (TILE_SIZE * maxDist * 0.8),
-        -1,
-        -1
+        np.random.randint(0,2) * 2 - 1,
+        np.random.randint(0,2) * 2 - 1
         ])
 
 def generate_dataset(size):
@@ -129,8 +132,8 @@ np.array([NUM_BRAINS, 4*(1 + 2 + INPUT_SIZE*8 + 2 + 8 + 2 + 8*OUTPUT_SIZE + 2 + 
 
 for i in range(NUM_BRAINS):
     print("############################### Training Brain " + str(i) + "/" + str(NUM_BRAINS) + " ###############################")
-    train_ins, train_labels = generate_dataset(100000)
-    test_ins, test_labels = generate_dataset(1000)
+    train_ins, train_labels = generate_dataset(SIZE_DATASET)
+    test_ins, test_labels = generate_dataset(SIZE_TESTSET)
     
     model = keras.Sequential([
         keras.layers.Dense(8, activation="tanh", input_shape=(INPUT_SIZE,)),
@@ -138,7 +141,7 @@ for i in range(NUM_BRAINS):
     ])
     model.compile(optimizer="adam", loss="mse", metrics=["mae"])
 
-    model.fit(train_ins, train_labels, epochs=5, batch_size=32, validation_data=(test_ins, test_labels))
+    model.fit(train_ins, train_labels, epochs=NUM_EPOCHS, batch_size=32, validation_data=(test_ins, test_labels))
 
     print_model(model)
     write_model_to_file(fileobj, model)
