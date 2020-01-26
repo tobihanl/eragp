@@ -3,22 +3,17 @@
 
 #include <chrono>
 #include <cstdio>
-
-typedef struct {
-    int turn = -1;
-    int food = -1;
-    int livings = -1;
-    int mpi = -1;
-    int tick = -1;
-    int render = -1;
-    int delay = -1;
-    int overall = -1;
-} LogData;
+#include "Constants.h"
+#include "Structs.h"
 
 class Log {
 private:
+    static bool paused;
     static bool logging;
     static FILE *logFile;
+
+    static int occupied;
+    static LogData buffer[LOG_DATA_BUFFER_SIZE];
 
 public:
     static LogData data;
@@ -32,6 +27,20 @@ private:
         // Begin new line (when not written)
         if ('\n' != *line.rbegin())
             fwrite("\n", sizeof(char), 1, logFile);
+    }
+
+    static void writeBackLogData() {
+        if (!logging) return;
+
+        for (int i = 0; i < occupied; i++) {
+            LogData logData = buffer[i];
+            writeLine(std::to_string(logData.turn) + "," + std::to_string(logData.food) + "," +
+                      std::to_string(logData.livings) + "," + std::to_string(logData.mpi) + "," +
+                      std::to_string(logData.tick) + "," + std::to_string(logData.render) + "," +
+                      std::to_string(logData.delay) + "," + std::to_string(logData.overall));
+        }
+
+        occupied = 0;
     }
 
 public:
@@ -48,23 +57,33 @@ public:
 
     static void endLogging() {
         if (logging) {
-            logging = false;
+            writeBackLogData();
             fclose(logFile);
+            logging = false;
             logFile = nullptr;
         }
     }
 
-    static void writeLogData() {
+    static void saveLogData() {
         if (!logging) return;
 
-        // Write line of logging data
-        writeLine(std::to_string(data.turn) + "," + std::to_string(data.food) + "," +
-                  std::to_string(data.livings) + "," + std::to_string(data.mpi) + "," +
-                  std::to_string(data.tick) + "," + std::to_string(data.render) + "," +
-                  std::to_string(data.delay) + "," + std::to_string(data.overall));
-
-        // Reset logging structure
+        buffer[occupied++] = data;
         data = {};
+
+        if (occupied == LOG_DATA_BUFFER_SIZE)
+            writeBackLogData();
+    }
+
+    static void enable() {
+        paused = false;
+    }
+
+    static void disable() {
+        paused = true;
+    }
+
+    static bool isEnabled() {
+        return logging && !paused;
     }
 
     static int currentTime() {

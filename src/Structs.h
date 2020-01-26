@@ -35,6 +35,17 @@ struct RenderData {
     int x = 0;
     int y = 0;
     int energy = 0;
-    bool isLiving = false;
 };
+
+typedef struct {
+    int turn = -1;
+    int food = -1;
+    int livings = -1;
+    int mpi = -1;
+    int tick = -1;
+    int render = -1;
+    int delay = -1;
+    int overall = -1;
+} LogData;
+
 #endif //EVOLUTION_STRUCTS_H

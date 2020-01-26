@@ -2,10 +2,14 @@
 #define ERAGP_MAIMUC_EVO_2019_LIVINGENTITY_H
 
 #include "Entity.h"
+#include "FoodEntity.h"
 #include "Brain.h"
 #include "Tile.h"
+#include "Lfsr.h"
 
-#define AMOUNT_OF_LIVING_PARAMS 10
+#define AMOUNT_32_BIT_LIVING_PARAMS 7
+#define AMOUNT_64_BIT_LIVING_PARAMS 1
+#define AMOUNT_FLOAT_LIVING_PARAMS 4
 
 class LivingEntity : public Entity {
 private:
@@ -15,27 +19,45 @@ private:
     float waterAgility;
     float rotation;
 
-    int energy;
-    int cooldown;
+    ThinkResult thoughts;
+    int nextX, nextY;
+    FoodEntity *nearestFood;
+    LivingEntity *nearestEnemy;
+    LivingEntity *nearestMate;
 
-    int energyLossWithMove, energyLossWithoutMove;
+
+    LFSR random;
+
+    int cooldown;
+    int drunkness;
+
+    float energyLossBase;
 
     friend std::ostream &operator<<(std::ostream &strm, const LivingEntity &e);
 
-    static int energyLossPerTick(bool move, float speed, float size) {
-        return (int) round((move ? speed * 8 : 0) + size * 4 + 1);
+    static float energyLossPerTick(float size) {
+        return (int) round(size * 4 + 1);
     }
 
+    float calculateDanger();
+
 public:
+    bool toBeRemoved = false;
     Brain *brain;
 
-    LivingEntity(int x, int y, Color color, float speed, float size, float waterAgility, Brain *brain);
+    LivingEntity(int x, int y, Color color, float speed, float size, float waterAgility, Brain *brain, uint32_t seed);
 
-    explicit LivingEntity(void *&ptr);
+    LivingEntity(void *&ptr, bool minimal);
 
     ~LivingEntity() override;
 
     struct RenderData getRenderData() override;
+
+    LivingEntity *breed();
+
+    void think();
+
+    void updateMovement();
 
     void tick() override;
 
@@ -50,10 +72,18 @@ public:
 
     void addEnergy(int energy);
 
-    void serialize(void *&ptr) override;
+    void minimalSerialize(void *&ptr) override;
 
-    int serializedSize() override {
-        return AMOUNT_OF_LIVING_PARAMS * 4 + brain->serializedSized();
+    void fullSerialize(void *&ptr) override;
+
+    int minimalSerializedSize() override {
+        return AMOUNT_32_BIT_LIVING_PARAMS * (int) sizeof(uint32_t) +
+               AMOUNT_64_BIT_LIVING_PARAMS * (int) sizeof(uint64_t) +
+               AMOUNT_FLOAT_LIVING_PARAMS * (int) sizeof(float);
+    }
+
+    int fullSerializedSize() override {
+        return minimalSerializedSize() + ((brain != nullptr) ? brain->serializedSized() : 0);
     }
 
     bool visibleOn(Tile *tile) {

@@ -1,27 +1,11 @@
 #!/bin/bash
 
-echo "Init CMake:"
-if [[ "$1" == "-build" ]]; then
-    cd ./build/ || exit
-
-    if [[ "$2" == "-render" ]]; then
-      echo "Parameters: build and render"
-      cmake -DDEFINE_RENDER=ON ./..
-    else
-      echo "Parameters: build"
-      cmake ./..
-    fi
-
-elif [[ "$1" == "-debug" ]]; then
-    cd ./debug/ || exit
-
-    if [[ "$2" == "-render" ]]; then
-      echo "Parameters: debug and render"
-      cmake -DCMAKE_BUILD_TYPE=Debug -DDEFINE_RENDER=ON ./..
-    else
-      echo "Parameters: debug"
-      cmake ./..
-    fi
+if [[ $# -ne 2 ]]; then
+  echo "You must specify exactly two parameters:"
+  echo "1) build type (Debug, Release, RelWithDebInfo and MinSizeRel)"
+  echo "2) render (ON/OFF)"
 else
-    echo "First parameter must be '-build' or '-debug'"
+  set -x
+  cmake -DCMAKE_BUILD_TYPE=$1 -DDEFINE_RENDER=$2 -Bbuild -H.
 fi
+

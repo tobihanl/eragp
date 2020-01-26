@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <cassert>
+#include <set>
 #include <SDL_image.h>
 #include <SDL_ttf.h>
 #include <SDL.h>
@@ -13,13 +14,37 @@
 #include "FoodEntity.h"
 #include "LivingEntity.h"
 
+//================================== Structs ==================================
+struct LivingTexture {
+    int livingId;
+    SDL_Texture *texture;
+
+    // For std::set
+    bool operator()(const LivingTexture &lhs, const LivingTexture &rhs) const {
+        return lhs < rhs;
+    }
+
+    // For std::set
+    bool operator<(const LivingTexture &lhs) const {
+        return lhs.livingId < livingId;
+    }
+};
+
+//=================================== Class ===================================
 class Renderer {
 private:
     static SDL_Window *win;
     static SDL_Renderer *ren;
     static bool isSetup;
     static bool hidden;
+    static bool boarisch;
     static SDL_Texture *digits[];
+
+    static SDL_Texture *foodTexture;
+    static SDL_Texture *beerTexture;
+    static SDL_Texture *pretzelTexture;
+    static std::set<LivingTexture> livingTextures;
+    static std::set<LivingTexture> livingTexturesSwap;
 
     Renderer() = default;
 
@@ -38,13 +63,11 @@ public:
      * @param   y           Position of the window (y coordinate)
      * @param   width       Width of the new window
      * @param   height      Height of the new window
-     * @param   fullscreen  Decide, whether the application should be run in
-     *                      fullscreen mode or not
      *
      * @return  0 if successful, 1 if not successful, -1 if the
      *          renderer is already setup
      */
-    static int setup(int x, int y, int width, int height, bool fullscreen);
+    static int setup(int x, int y, int width, int height, bool boarisch);
 
     /**
      * Destroys the renderer by cleaning up all the SDL components and
@@ -145,11 +168,25 @@ public:
     }
 
     static void cleanup() {
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 10; i++) {
             cleanupTexture(digits[i]);
+            digits[i] = nullptr;
+        }
         cleanupTexture(background);
+        background = nullptr;
         cleanupTexture(entities);
+        entities = nullptr;
         cleanupTexture(rankTexture);
+        rankTexture = nullptr;
+        cleanupTexture(foodTexture);
+        foodTexture = nullptr;
+        cleanupTexture(pretzelTexture);
+        pretzelTexture = nullptr;
+        cleanupTexture(beerTexture);
+        beerTexture = nullptr;
+        for (const auto &item : livingTextures)
+            cleanupTexture(item.texture);
+        livingTextures.clear();
     }
 
     /**
@@ -239,9 +276,12 @@ public:
 
     static void renderDigits();
 
-    static void renderBackground(WorldDim dim, const std::vector<Tile *> &terrain);
+    static void renderRank(int rank) {
+        if (!isSetup) return;
+        rankTexture = renderFont(std::to_string(rank), 25, {255, 255, 255, 255}, "font.ttf");
+    }
 
-    static void renderEntity(RenderData renderData);
+    static void renderBackground(WorldDim dim, const std::vector<Tile *> &terrain, int rank);
 
     static void createEntitiesTexture(WorldDim dim) {
         if (!isSetup) return;
@@ -249,17 +289,44 @@ public:
         SDL_SetTextureBlendMode(entities, SDL_BLENDMODE_BLEND);
     }
 
-    static void renderEntities(const std::vector<FoodEntity *> &food, const std::vector<LivingEntity *> &living) {
+    static void drawEntities(const std::vector<FoodEntity *> &food, const std::vector<LivingEntity *> &living,
+                             const std::vector<LivingEntity *> &livingsInPadding) {
         if (!isSetup) return;
+
         setTarget(entities);
-        for (const auto &f : food) renderEntity(f->getRenderData());
-        for (const auto &e : living) renderEntity(e->getRenderData());
+        clear();
+
+        for (const auto &f : food) drawFoodEntity(f);
+        for (const auto &e : living) drawLivingEntity(e);
+        for (const auto &e : livingsInPadding) drawLivingEntity(e);
+
+        livingTextures.swap(livingTexturesSwap);
+        for (const auto &item : livingTexturesSwap) cleanupTexture(item.texture);
+        livingTexturesSwap.clear();
+
         setTarget(nullptr);
     }
 
-    static void renderRank(int rank) {
+    static void drawLivingEntity(LivingEntity *e);
+
+    static void drawFoodEntity(FoodEntity *e) {
         if (!isSetup) return;
-        rankTexture = renderFont(std::to_string(rank), 25, {255, 255, 255, 255}, "font.ttf");
+        SDL_Texture *tex = nullptr;
+        RenderData data = e->getRenderData();
+        int offset = boarisch ? 8 : data.radius;
+        if (boarisch) {
+            if (pretzelTexture == nullptr) pretzelTexture = Renderer::renderImage("pretzel-16.png");
+            if (beerTexture == nullptr) beerTexture = Renderer::renderImage("beer-16.png");
+
+            if (e->beer)
+                tex = beerTexture;
+            else
+                tex = pretzelTexture;
+        } else {
+            if (foodTexture == nullptr) foodTexture = Renderer::renderDot(data.radius, data.color);
+            tex = foodTexture;
+        }
+        Renderer::copy(tex, data.x - data.worldDim.p.x - offset, data.y - data.worldDim.p.y - offset);
     }
 
     static void drawBackground(WorldDim dim) {

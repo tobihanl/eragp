@@ -5,6 +5,7 @@
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
+#include "Lfsr.h"
 
 typedef float(*MatrixFunction)(float);
 
@@ -118,8 +119,9 @@ public:
      * @param width the width of the matrix
      * @param from the minimum value of the random elements
      * @param to the maximum value of the random elements
+     * @param random Random number generator to use
      */
-    Matrix(int height, int width, float from, float to);
+    Matrix(int height, int width, float from, float to, LFSR *random);
 
     virtual ~Matrix() = default;
 
@@ -236,13 +238,6 @@ public:
         return data[0];
     }
 
-    /**
-     * Transposes matrix
-     * @return itself
-     */
-    Matrix &transpose();
-
-    int serializedSize() { return (2 + width * height) * 4; }
 };
 
 #endif //ERAGP_MAIMUC_EVO_2019_MATRIX_H

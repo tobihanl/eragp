@@ -1,12 +1,10 @@
 #include <algorithm>
+#include <cassert>
 #include "Matrix.h"
-#include "Rng.h"
 
-Matrix::Matrix(int h, int w, float from, float to) : height(h), width(w) {
-    std::uniform_real_distribution<float> dist(from, to);
-
-    auto gen = [&dist]() { //lambda expression
-        return dist(rng);
+Matrix::Matrix(int h, int w, float from, float to, LFSR *random) : height(h), width(w) {
+    auto gen = [&random, from, to]() { //lambda expression
+        return random->getNextFloatBetween(from, to);
     };
     data.resize(w * h);
     generate(data.begin(), data.end(), gen);
@@ -27,10 +25,7 @@ std::ostream &operator<<(std::ostream &strm, const Matrix &m) {
 //########################### Matrix/Matrix operators ###########################
 
 Matrix &Matrix::operator+=(const Matrix &rhs) {
-    if (width != rhs.width || height != rhs.height)
-        throw std::invalid_argument(
-                "Matrix dimensions (" + std::to_string(height) + " x " + std::to_string(width) + ") and (" +
-                std::to_string(rhs.height) + " x " + std::to_string(rhs.width) + ") do not match.");
+    assert(width == rhs.width && height == rhs.height && "Matrix dimensions do not match!");
     int s = width * height;
     for (int i = 0; i < s; i++) {
         data[i] += rhs.data[i];
@@ -39,10 +34,7 @@ Matrix &Matrix::operator+=(const Matrix &rhs) {
 }
 
 Matrix &Matrix::operator-=(const Matrix &rhs) {
-    if (width != rhs.width || height != rhs.height)
-        throw std::invalid_argument(
-                "Matrix dimensions (" + std::to_string(height) + " x " + std::to_string(width) + ") and (" +
-                std::to_string(rhs.height) + " x " + std::to_string(rhs.width) + ") do not match.");
+    assert(width == rhs.width && height == rhs.height && "Matrix dimensions do not match!");
     int s = width * height;
     for (int i = 0; i < s; i++) {
         data[i] -= rhs.data[i];
@@ -51,10 +43,7 @@ Matrix &Matrix::operator-=(const Matrix &rhs) {
 }
 
 Matrix &Matrix::operator*=(const Matrix &rhs) {
-    if (width != rhs.width || height != rhs.height)
-        throw std::invalid_argument(
-                "Matrix dimensions (" + std::to_string(height) + " x " + std::to_string(width) + ") and (" +
-                std::to_string(rhs.height) + " x " + std::to_string(rhs.width) + ") do not match.");
+    assert(width == rhs.width && height == rhs.height && "Matrix dimensions do not match!");
     int s = width * height;
     for (int i = 0; i < s; i++) {
         data[i] *= rhs.data[i];
@@ -63,10 +52,7 @@ Matrix &Matrix::operator*=(const Matrix &rhs) {
 }
 
 Matrix &Matrix::operator/=(const Matrix &rhs) {
-    if (width != rhs.width || height != rhs.height)
-        throw std::invalid_argument(
-                "Matrix dimensions (" + std::to_string(height) + " x " + std::to_string(width) + ") and (" +
-                std::to_string(rhs.height) + " x " + std::to_string(rhs.width) + ") do not match.");
+    assert(width == rhs.width && height == rhs.height && "Matrix dimensions do not match!");
     int s = width * height;
     for (int i = 0; i < s; i++) {
         data[i] /= rhs.data[i];
@@ -75,11 +61,7 @@ Matrix &Matrix::operator/=(const Matrix &rhs) {
 }
 
 Matrix Matrix::dotProduct(const Matrix &other) {
-    if (width != other.height)
-        throw std::invalid_argument(
-                "Width of the first Matrix with dimensions (" + std::to_string(height) + " x " + std::to_string(width) +
-                ") must be equal to the height of the second Matrix with dimensions (" + std::to_string(other.height) +
-                " x " + std::to_string(other.width) + ").");
+    assert(width == other.height && "Width of the first Matrix must be equal to the height of the second Matrix1");
     Matrix m(height, other.width);
     for (int x2 = 0; x2 < other.width; x2++) {
         for (int y1 = 0; y1 < height; y1++) {
@@ -89,29 +71,4 @@ Matrix Matrix::dotProduct(const Matrix &other) {
         }
     }
     return m;
-}
-
-Matrix &Matrix::transpose() {
-    if (width == height) {
-        for (int x = 0; x < width - 1; x++) {
-            for (int y = x + 1; y < width; y++) { // y = x + 1 -> always takes all values below the "middle line"
-                //swap data[x, y] and data[y, x]
-                float temp = data[y * width + x];
-                data[y * width + x] = data[x * width + y];
-                data[x * width + y] = temp;
-            }
-        }
-    } else { //inefficient af, because I copy it instead of calculating permutation circles
-        std::vector<float> dataNew(width * height);
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                dataNew[x * height + y] = data[y * width + x];
-            }
-        }
-        data = dataNew;
-        int w = width;
-        width = height;
-        height = w;
-    }
-    return *this;
 }

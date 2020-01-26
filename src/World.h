@@ -2,7 +2,9 @@
 #define ERAGP_MAIMUC_EVO_2019_WORLD_H
 
 #include <algorithm>
+#include <list>
 #include <vector>
+#include <list>
 #include <mpi.h>
 #include "FoodEntity.h"
 #include "LivingEntity.h"
@@ -13,11 +15,18 @@
 //================================== Structs ==================================
 struct MPISendEntity {
     int rank;
+    bool minimal;
     Entity *entity;
 };
+
 struct NearestLiving {
     LivingEntity *mate;
     LivingEntity *enemy;
+};
+
+struct Food2Add {
+    int tick;
+    FoodEntity *entity;
 };
 
 //=================================== Class ===================================
@@ -31,6 +40,8 @@ private:
     static int width;
     static int height;
 
+    static int numThreads;
+
     static int ticksPerFoodInterval; //ticks per interval
     static int foodPerFoodInterval; //food to distribute over every interval (without the food spawned every tick)
     static int intervalTicksLeft; //remaining ticks in the current interval
@@ -42,11 +53,14 @@ private:
 
     static bool isSetup;
 
+    static std::list<Food2Add> addFoodBuffer;
 
     static std::vector<FoodEntity *> removeFood;
-    static std::vector<LivingEntity *> removeLiving;
     static std::vector<FoodEntity *> addFood;
     static std::vector<LivingEntity *> addLiving;
+
+    static std::list<LivingEntity *> **livingBuckets;
+    static std::list<FoodEntity *> **foodBuckets;
 
     // MPI Sending storage
     static std::vector<MPISendEntity> livingEntitiesToMoveToNeighbors;
@@ -57,6 +71,12 @@ private:
     static std::vector<PaddingRect> paddingRects;
     static std::vector<int> paddingRanks;
 
+    static int remainingTicksInFoodBuffer;
+    static LFSR random;
+
+    static int xChunks;
+    static int yChunks;
+
     World() = default;
 
     ~World() = default;
@@ -64,12 +84,13 @@ private:
 public:
     static int overallWidth;
     static int overallHeight;
+    static int dangerZone; //if distance to border is <= dangerZone, the danger neuron will have value (dist / dangerZone)
 
     static std::vector<Tile *> terrain;
 
     static std::vector<FoodEntity *> food; //Currently saved by copy, because they should only be here, so looping and accessing attributes (e.g. findNearest) is more cache efficient
     static std::vector<LivingEntity *> living;
-
+    static std::vector<LivingEntity *> livingsInPadding;
     /**
      * Initialize the world, which is part of the overall world and set
      * it up.
@@ -79,7 +100,8 @@ public:
      * @param   maimuc              Indicates, whether the program is executed
      *                              on MaiMUC or not
      */
-    static void setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate, float zoom);
+    static void setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate, float zoom, uint32_t seed,
+                      int numThreads);
 
     static void finalize();
 
@@ -100,11 +122,9 @@ public:
 
     static LivingEntity *findNearestLivingToPoint(int px, int py);
 
-    static bool addLivingEntity(LivingEntity *e, bool received);
+    static bool addLivingEntity(LivingEntity *e, bool send);
 
     static bool addFoodEntity(FoodEntity *e, bool received);
-
-    static bool removeLivingEntity(LivingEntity *e);
 
     static bool removeFoodEntity(FoodEntity *e, bool received);
 
@@ -112,9 +132,7 @@ public:
         return std::find(removeFood.begin(), removeFood.end(), e) != removeFood.end();
     }
 
-    static bool toRemoveLiving(LivingEntity *e) {
-        return std::find(removeLiving.begin(), removeLiving.end(), e) != removeLiving.end();
-    }
+    static size_t rankAt(int px, int py);
 
     static Tile *tileAt(int px, int py);
 
@@ -139,8 +157,6 @@ private:
         return std::find(addFood.begin(), addFood.end(), e) != addFood.end();
     }
 
-    static size_t rankAt(int px, int py);
-
     /**
      * @return      Ranks having a padding on the given coordinates
      *
@@ -151,6 +167,17 @@ private:
     static void *sendEntities(const std::vector<MPISendEntity> &entityVec, int rank, int tag, MPI_Request *request);
 
     static void receiveEntities(int rank, int tag);
+
+    static void fillFoodBuffer();
+
+    template<typename T>
+    static T getEntityBucket(const Point &p, const T *buckets) {
+        int ix = (p.x + WORLD_PADDING - x) / CHUNK_SIZE, iy = (p.y + WORLD_PADDING - y) / CHUNK_SIZE;
+        return (ix < 0 || iy < 0 || ix >= xChunks || iy >= yChunks) ? nullptr : &buckets[ix][iy];
+    }
+
+    template<typename T>
+    static void searchBucketsForNearestEntity(Point entityPos, T searchBucketFunc);
 
     static long gcd(long a, long b) {
         if (a == 0) return b;

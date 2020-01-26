@@ -2,19 +2,16 @@
 #include <cassert>
 #include "SimplexNoise/SimplexNoise.h"
 #include "World.h"
-#include "Rng.h"
 #include "Log.h"
 
-#ifdef RENDER
-
-#include "Renderer.h"
-
-#endif
-
 std::vector<FoodEntity *> World::food = std::vector<FoodEntity *>();
+std::list<FoodEntity *> **World::foodBuckets = nullptr;
 std::vector<LivingEntity *> World::living = std::vector<LivingEntity *>();
+std::list<LivingEntity *> **World::livingBuckets = nullptr;
+std::vector<LivingEntity *> World::livingsInPadding = std::vector<LivingEntity *>();
 
-std::vector<LivingEntity *> World::removeLiving = std::vector<LivingEntity *>();
+std::list<Food2Add> World::addFoodBuffer = std::list<Food2Add>();
+
 std::vector<FoodEntity *> World::removeFood = std::vector<FoodEntity *>();
 std::vector<LivingEntity *> World::addLiving = std::vector<LivingEntity *>();
 std::vector<FoodEntity *> World::addFood = std::vector<FoodEntity *>();
@@ -30,6 +27,7 @@ std::vector<int> World::paddingRanks = std::vector<int>();
 // Init static attributes
 int World::overallWidth = 0;
 int World::overallHeight = 0;
+int World::dangerZone = 0;
 
 int World::MPI_Rank = 0;
 int World::MPI_Nodes = 0;
@@ -38,6 +36,8 @@ int World::x = 0;
 int World::y = 0;
 int World::width = 0;
 int World::height = 0;
+
+int World::numThreads = 1;
 
 int World::ticksPerFoodInterval = 0;
 int World::foodPerFoodInterval = 0;
@@ -48,19 +48,27 @@ int World::ticksToSkip = 0;
 int World::minTicksToSkip = 0;
 int World::maxTicksToSkip = 0;
 
+int World::remainingTicksInFoodBuffer = 0;
+LFSR World::random = LFSR();
+
+int World::xChunks = 0;
+int World::yChunks = 0;
+
 bool World::isSetup = false;
 
 std::vector<Tile *> World::terrain = std::vector<Tile *>();
 
-void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate, float zoom) {
+void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float foodRate, float zoom, uint32_t seed,
+                  int threads) {
     if (isSetup)
         return;
 
-    // Get MPI Rank and number of nodes
+    numThreads = threads;
+    random.seed(seed);
+
     MPI_Comm_rank(MPI_COMM_WORLD, &MPI_Rank);
     MPI_Comm_size(MPI_COMM_WORLD, &MPI_Nodes);
 
-    // MaiMUC specific configuration?
     if (maimuc) {
         if (MPI_Nodes != NUMBER_OF_MAIMUC_NODES) {
             std::cerr << "Program started on MaiMUC without running on 10 nodes!" << std::endl;
@@ -97,16 +105,37 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
         if (std::find(paddingRanks.begin(), paddingRanks.end(), r.rank) == paddingRanks.end())
             paddingRanks.push_back(r.rank);
 
-    foodRate *= (float) (width * height) / (2000.f * TILE_SIZE * TILE_SIZE); //spawnRate of Node
-    //convert spawnRate of node to fraction
-    foodEveryTick = (int) foodRate;
-    foodRate -= (float) foodEveryTick; //only consider food that needs to be distributed
-    long greatestCommonDivisor = gcd((long) round(foodRate * MAX_FOOD_INTERVAL), MAX_FOOD_INTERVAL);
-    ticksPerFoodInterval = MAX_FOOD_INTERVAL / greatestCommonDivisor;
-    foodPerFoodInterval = (int) ((long) round(foodRate * MAX_FOOD_INTERVAL) / greatestCommonDivisor);
+    // Calculate Food Rate related stuff
+    if (MPI_Rank == 0) {
+        //spawnRate of World
+        foodRate *= (float) (overallWidth * overallHeight) / (2000.f * TILE_SIZE * TILE_SIZE);
 
-    minTicksToSkip = (int) floor((float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
-    maxTicksToSkip = (int) ceil((float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
+        //convert spawnRate of world to fraction
+        foodEveryTick = (int) foodRate;
+        foodRate -= (float) foodEveryTick; //only consider food that needs to be distributed
+
+        long greatestCommonDivisor = gcd((long) round(foodRate * MAX_FOOD_INTERVAL), MAX_FOOD_INTERVAL);
+        ticksPerFoodInterval = MAX_FOOD_INTERVAL / greatestCommonDivisor;
+        foodPerFoodInterval = (int) ((long) round(foodRate * MAX_FOOD_INTERVAL) / greatestCommonDivisor);
+
+        minTicksToSkip = (int) floor(
+                (float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
+        maxTicksToSkip = (int) ceil(
+                (float) (ticksPerFoodInterval - foodPerFoodInterval) / (float) foodPerFoodInterval);
+    }
+
+    dangerZone = (overallWidth + overallHeight) / 20;
+    if (dangerZone > 200) dangerZone = 200;
+
+    // Create buckets for Living Entities and Food Entities
+    xChunks = (width + 2 * WORLD_PADDING) / CHUNK_SIZE + 1;
+    yChunks = (height + 2 * WORLD_PADDING) / CHUNK_SIZE + 1;
+    livingBuckets = new std::list<LivingEntity *> *[xChunks];
+    foodBuckets = new std::list<FoodEntity *> *[xChunks];
+    for (int i = 0; i < xChunks; i++) {
+        livingBuckets[i] = new std::list<LivingEntity *>[yChunks];
+        foodBuckets[i] = new std::list<FoodEntity *>[yChunks];
+    }
 
     // Setup done
     isSetup = true;
@@ -115,10 +144,18 @@ void World::setup(int newOverallWidth, int newOverallHeight, bool maimuc, float 
 void World::finalize() {
     for (const auto &e : food) delete e;
     for (const auto &e : living) delete e;
+    for (const auto &e : livingsInPadding) delete e;
 
     food.clear();
     living.clear();
+    livingsInPadding.clear();
 
+    for (int i = 0; i < xChunks; i++) {
+        delete[] livingBuckets[i];
+        delete[] foodBuckets[i];
+    }
+    delete[] livingBuckets;
+    delete[] foodBuckets;
     delete[] worlds;
 }
 
@@ -147,30 +184,90 @@ void World::generateTerrain(float zoom) {
     }
 }
 
+void World::fillFoodBuffer() {
+    int counts[MPI_Nodes];
+    int displacements[MPI_Nodes];
+    void *sendBuffer = nullptr;
+
+    if (MPI_Rank == 0) {
+        std::list<Food2Add> sendFood[MPI_Nodes];
+        // Pre-calculate food entities for FOOD_BUFFER_TICKS_CAPACITY amount of ticks
+        for (int tick = FOOD_BUFFER_TICKS_CAPACITY; tick > 0; tick--) {
+            if (intervalTicksLeft == 0) {
+                assert(intervalFoodLeft == 0 && "Not enough food spawned!");
+                intervalFoodLeft = foodPerFoodInterval;
+                intervalTicksLeft = ticksPerFoodInterval;
+                ticksToSkip = 0;
+            }
+            for (int i = 0; i < foodEveryTick; i++) {
+                Point p = {static_cast<int>(random.getNextIntBetween(0, overallWidth)),
+                           static_cast<int>(random.getNextIntBetween(0, overallHeight))};
+                sendFood[rankAt(p.x, p.y)].push_back({tick, new FoodEntity(p.x, p.y, 8 * 60),});
+            }
+            intervalTicksLeft--;
+            if (ticksToSkip == 0 && intervalFoodLeft > 0) {
+                intervalFoodLeft--;
+                Point p = {static_cast<int>(random.getNextIntBetween(0, overallWidth)),
+                           static_cast<int>(random.getNextIntBetween(0, overallHeight))};
+                sendFood[rankAt(p.x, p.y)].push_back({tick, new FoodEntity(p.x, p.y, 8 * 60),});
+                if (intervalTicksLeft != 0)
+                    ticksToSkip = ((float) intervalFoodLeft / (float) intervalTicksLeft <
+                                   (float) foodPerFoodInterval / (float) ticksPerFoodInterval) ? maxTicksToSkip
+                                                                                               : minTicksToSkip;
+            } else {
+                ticksToSkip--;
+            }
+        }
+
+        // Calc sizes and displacements for nodes
+        int totalSize = 0;
+        for (int rank = 0; rank < MPI_Nodes; rank++) {
+            displacements[rank] = totalSize;
+            counts[rank] = 0;
+            for (const auto &e : sendFood[rank]) counts[rank] += e.entity->fullSerializedSize() + 4;
+            totalSize += counts[rank];
+        }
+
+        // Serialize everything
+        void *buffer = sendBuffer = malloc(totalSize);
+        for (int rank = 0; rank < MPI_Nodes; rank++) {
+            for (const auto &e : sendFood[rank]) {
+                ((int *) buffer)[0] = e.tick;
+                buffer = static_cast<int *>(buffer) + 1;
+                e.entity->fullSerialize(buffer);
+                delete e.entity;
+            }
+        }
+    }
+
+    int count = 0;
+    MPI_Scatter(counts, 1, MPI_INT, &count, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    void *buffer, *recvBuffer = buffer = malloc(count);
+    MPI_Scatterv(sendBuffer, counts, displacements, MPI_BYTE, recvBuffer, count, MPI_BYTE, 0, MPI_COMM_WORLD);
+
+    while (buffer < static_cast<char *>(recvBuffer) + count) {
+        int tick = ((int *) buffer)[0];
+        buffer = static_cast<int *>(buffer) + 1;
+        addFoodBuffer.push_back({tick, new FoodEntity(buffer)});
+    }
+
+    if (sendBuffer != nullptr) free(sendBuffer);
+    free(recvBuffer);
+}
+
 void World::tick() {
     //################################ ADD FOOD ###############################
-    if (intervalTicksLeft == 0) {
-        assert(intervalFoodLeft == 0 && "Not enough food spawned!");
-        intervalFoodLeft = foodPerFoodInterval;
-        intervalTicksLeft = ticksPerFoodInterval;
-        ticksToSkip = 0;
+    if (remainingTicksInFoodBuffer == 0) {
+        assert(addFoodBuffer.empty() && "Food buffer not empty!");
+        fillFoodBuffer();
+        remainingTicksInFoodBuffer = FOOD_BUFFER_TICKS_CAPACITY;
     }
-    for (int i = 0; i < foodEveryTick; i++) {
-        addFoodEntity(new FoodEntity(getRandomIntBetween(0, World::width) + World::x,
-                                     getRandomIntBetween(0, World::height) + World::y, 8 * 60), false);
+    while (!addFoodBuffer.empty() && addFoodBuffer.front().tick == remainingTicksInFoodBuffer) {
+        addFoodEntity(addFoodBuffer.front().entity, false);
+        addFoodBuffer.pop_front();
     }
-    intervalTicksLeft--;
-    if (ticksToSkip == 0 && intervalFoodLeft > 0) {
-        intervalFoodLeft--;
-        addFoodEntity(new FoodEntity(getRandomIntBetween(0, World::width) + World::x,
-                                     getRandomIntBetween(0, World::height) + World::y, 8 * 60), false);
-        if (intervalTicksLeft != 0)
-            ticksToSkip = ((float) intervalFoodLeft / (float) intervalTicksLeft <
-                           (float) foodPerFoodInterval / (float) ticksPerFoodInterval) ? maxTicksToSkip
-                                                                                       : minTicksToSkip;
-    } else {
-        ticksToSkip--;
-    }
+    remainingTicksInFoodBuffer--;
 
     //############################### TICK FOOD ###############################
     for (const auto &e : food) {
@@ -178,44 +275,56 @@ void World::tick() {
     }
 
     //############################## TICK LIVINGS #############################
+    std::vector<LivingEntity *> outgoingEntities = std::vector<LivingEntity *>();
     for (const auto &e : living) {
-        // Before moving: Is entity on THIS node?
-        bool beforeOnThisNode = pointInRect({e->x, e->y}, {{x, y}, width, height});
+        LivingEntity *child = e->breed();
+        if (child && !addLivingEntity(child, true)) // Not added?
+            delete child;
+    }
 
-        e->tick();
+# pragma omp parallel for num_threads(numThreads)
+    for (auto it = living.begin(); it < living.end(); it++) {
+        (*it)->think();
+    }
 
-        // Entity dead?
-        if (toRemoveLiving(e)) continue;
+    for (const auto &e : living) {
+        if (e->toBeRemoved) continue;
+        auto bucketBefore = getEntityBucket({e->x, e->y}, livingBuckets);
 
-        // Was entity in padding area? -> Get's overwritten by other node!
-        if (!beforeOnThisNode) {
-            removeLivingEntity(e);
-            continue;
+        e->updateMovement();
+
+        auto bucketAfter = getEntityBucket({e->x, e->y}, livingBuckets);
+
+        if (bucketBefore != bucketAfter) {
+
+            bucketBefore->remove(e);
+            bucketAfter->push_back(e);
         }
+    }
 
-        // After moving: Entity on THIS node?
-        if (pointInRect({e->x, e->y}, {{x, y}, width, height})) {
-            // Send entity if needed
+    for (const auto &e : living) {
+        if (e->toBeRemoved) continue;
+        e->tick();
+    }
+
+    for (const auto &e : living) {
+        if (e->toBeRemoved) continue;
+        if (pointInRect({e->x, e->y}, getWorldDim())) {
             auto *ranks = paddingRanksAt(e->x, e->y);
             for (int neighbor : *ranks)
-                livingEntitiesToMoveToNeighbors.push_back({neighbor, e});
+                livingEntitiesToMoveToNeighbors.push_back({neighbor, true, e});
             delete ranks;
         } else {
-            // Send entity to other node
-            livingEntitiesToMoveToNeighbors.push_back({static_cast<int>(rankAt(e->x, e->y)), e});
-            removeLivingEntity(e);
-
-#ifdef RENDER
-            // Render entity as it will be deleted before world will be rendered!
-            Renderer::renderEntity(e->getRenderData());
-#endif
+            livingEntitiesToMoveToNeighbors.push_back({static_cast<int>(rankAt(e->x, e->y)), false, e});
+            outgoingEntities.push_back(e);
+            e->toBeRemoved = true;
         }
     }
 
     //=============================================================================
     //                            BEGIN MPI SEND/RECEIVE
     //=============================================================================
-    int mpiTime = Log::currentTime();
+    int mpiTime = (Log::isEnabled()) ? Log::currentTime() : 0;
     MPI_Request reqs[paddingRanks.size() * MSGS_PER_NEIGHBOR];
     MPI_Status stats[paddingRanks.size() * MSGS_PER_NEIGHBOR];
     void *buffers[paddingRanks.size() * MSGS_PER_NEIGHBOR];
@@ -233,6 +342,21 @@ void World::tick() {
                                                           &reqs[MSGS_PER_NEIGHBOR * i + 2]);
     }
 
+    for (const auto &e : livingsInPadding) {
+        getEntityBucket({e->x, e->y}, livingBuckets)->remove(e);
+        delete e;
+    }
+    livingsInPadding.clear();
+    for (const auto &e : outgoingEntities) {
+        void *start, *buffer = start = malloc(e->minimalSerializedSize());
+        e->minimalSerialize(buffer);
+        buffer = start;
+        auto *entity = new LivingEntity(buffer, true);
+        livingsInPadding.push_back(entity);
+        getEntityBucket({entity->x, entity->y}, livingBuckets)->push_back(entity);
+        free(start);
+    }
+
     // Clear sending storage
     livingEntitiesToMoveToNeighbors.clear();
     foodToSendToNeighbors.clear();
@@ -247,41 +371,69 @@ void World::tick() {
 
     // Wait for all sends to complete and afterwards free buffers
     MPI_Waitall((int) paddingRanks.size() * MSGS_PER_NEIGHBOR, reqs, stats);
-    for (void *e : buffers)
-        free(e);
+    for (void *e : buffers) free(e);
 
-    Log::data.mpi = Log::endTime(mpiTime);
+    if (Log::isEnabled())
+        Log::data.mpi = Log::endTime(mpiTime);
     //=============================================================================
     //                             END MPI SEND/RECEIVE
     //=============================================================================
+    std::vector<LivingEntity *> livingsToBeRemoved = std::vector<LivingEntity *>();
+    for (const auto &e : living) {
+        if (e->toBeRemoved) livingsToBeRemoved.push_back(e);
+    }
 
-    living.erase(std::remove_if(living.begin(), living.end(), toRemoveLiving), living.end());
+    for (const auto &e : livingsToBeRemoved) {
+        getEntityBucket({e->x, e->y}, livingBuckets)->remove(e);
+    }
+    living.erase(std::remove_if(living.begin(), living.end(), [&](LivingEntity *e) -> bool { return e->toBeRemoved; }),
+                 living.end());
+
+    for (const auto &e : removeFood) getEntityBucket({e->x, e->y}, foodBuckets)->remove(e);
+    for (const auto &e : addLiving) getEntityBucket({e->x, e->y}, livingBuckets)->push_back(e);
+    for (const auto &e : addFood) getEntityBucket({e->x, e->y}, foodBuckets)->push_back(e);
+
     living.insert(living.end(), addLiving.begin(), addLiving.end());
     food.erase(std::remove_if(food.begin(), food.end(), toRemoveFood), food.end());
     food.insert(food.end(), addFood.begin(), addFood.end());
 
     // Destroy entities
-    for (const auto &e : removeLiving) delete e;
     for (const auto &e : removeFood) delete e;
+    for (const auto &e : livingsToBeRemoved) delete e;
 
     // Clear vectors without deallocating memory
     removeFood.clear();
-    removeLiving.clear();
     addFood.clear();
     addLiving.clear();
 }
 
 void *World::sendEntities(const std::vector<MPISendEntity> &entityVec, int rank, int tag, MPI_Request *request) {
     int totalSize = 0;
-    for (const auto &e : entityVec)
-        if (e.rank == rank) totalSize += e.entity->serializedSize();
+    for (const auto &e : entityVec) {
+        if (e.rank == rank) {
+            if (e.minimal) totalSize += e.entity->minimalSerializedSize();
+            else totalSize += e.entity->fullSerializedSize();
+
+            totalSize += 4; // + 4 for minimal flag
+        }
+    }
 
     void *buffer = malloc(totalSize);
     void *start = buffer;
 
-    for (const auto &e : entityVec)
-        if (e.rank == rank)
-            e.entity->serialize(buffer);
+    for (const auto &e : entityVec) {
+        if (e.rank == rank) {
+            if (e.minimal) {
+                ((int *) buffer)[0] = -1;
+                buffer = static_cast<int *>(buffer) + 1;
+                e.entity->minimalSerialize(buffer);
+            } else {
+                ((int *) buffer)[0] = 0;
+                buffer = static_cast<int *>(buffer) + 1;
+                e.entity->fullSerialize(buffer);
+            }
+        }
+    }
 
     MPI_Isend(start, totalSize, MPI_BYTE, rank, tag, MPI_COMM_WORLD, request);
     return start;
@@ -303,10 +455,20 @@ void World::receiveEntities(int rank, int tag) {
 
     while (buffer < (char *) start + receivedBytes) {
         Entity *e;
+        // Don't put this into the case statement as the first byte must always be read!
+        bool minimal = ((int *) buffer)[0] == -1;
+        buffer = static_cast<int *>(buffer) + 1;
         switch (tag) {
             case MPI_TAG_LIVING_ENTITY:
-                e = new LivingEntity(buffer);
-                addLivingEntity((LivingEntity *) e, true);
+                e = new LivingEntity(buffer, minimal);
+
+                if (minimal) {
+                    livingsInPadding.push_back((LivingEntity *) e);
+                    getEntityBucket({e->x, e->y}, livingBuckets)->push_back((LivingEntity *) e);
+                } else {
+                    addLivingEntity((LivingEntity *) e, false);
+                }
+
                 break;
 
             case MPI_TAG_FOOD_ENTITY:
@@ -331,17 +493,57 @@ void World::receiveEntities(int rank, int tag) {
     free(start);
 }
 
+template<typename T>
+void World::searchBucketsForNearestEntity(Point entityPos, T searchBucketFunc) {
+    int ix = (entityPos.x + WORLD_PADDING - x) / CHUNK_SIZE, iy = (entityPos.y + WORLD_PADDING - y) / CHUNK_SIZE;
+    int rowSize = 1;
+    int maxLevel = (int) ceil((float) VIEW_RANGE / CHUNK_SIZE);
+    // Go through buckets in concentric circles
+    for (int level = 0; level < maxLevel; level++) {
+        int yOffset, xOffset = yOffset = -level;
+
+        // Walk in a circle around the bucket the entity lays in
+        int i = 0;
+        do {
+            // Only search through valid buckets
+            if (ix + xOffset >= 0 && iy + yOffset >= 0 && ix + xOffset < xChunks && iy + yOffset < yChunks) {
+                searchBucketFunc(ix + xOffset, iy + yOffset);
+            }
+
+            if (i < rowSize) {
+                // top lane (->)
+                xOffset++;
+            } else if (i >= rowSize && i < 2 * rowSize - 1) {
+                // right lane (down)
+                yOffset++;
+            } else if (i >= 2 * rowSize - 1 && i < 3 * rowSize - 2) {
+                // bottom lane (<-)
+                xOffset--;
+            } else {
+                // left lane (up)
+                yOffset--;
+            }
+        } while (++i < 4 * rowSize - 4); // (-4), because the lanes have 4 intersecting points
+
+        rowSize += 2;
+    }
+}
+
 FoodEntity *World::findNearestFood(int px, int py, bool surviving) {
     FoodEntity *f = nullptr;
     int dist = VIEW_RANGE_SQUARED + 1;
-    for (const auto &e : food) {
-        if (surviving && toRemoveFood(e)) continue;
-        int tempDist = e->getSquaredDistance(px, py);
-        if (tempDist <= VIEW_RANGE_SQUARED && tempDist < dist) {
-            f = e;
-            dist = tempDist;
+
+    searchBucketsForNearestEntity({px, py}, [&f, &dist, surviving, px, py](int ix, int iy) {
+        for (const auto &e : foodBuckets[ix][iy]) {
+            if (surviving && toRemoveFood(e)) continue;
+            int tempDist = e->getSquaredDistance(px, py);
+            if (tempDist <= VIEW_RANGE_SQUARED && tempDist < dist) {
+                f = e;
+                dist = tempDist;
+            }
         }
-    }
+    });
+
     return f;
 }
 
@@ -350,56 +552,56 @@ NearestLiving World::findNearestLiving(LivingEntity *le, bool surviving) {
     int distEnemy = VIEW_RANGE_SQUARED + 1;
     int distMate = VIEW_RANGE_SQUARED + 1;
 
-    for (const auto &e : living) {
-        if (*e == *le || (surviving && toRemoveLiving(e))) continue;
+    searchBucketsForNearestEntity({le->x, le->y}, [&nearest, &distEnemy, &distMate, surviving, le](int ix, int iy) {
+        for (const auto &e : livingBuckets[ix][iy]) {
+            if (*e == *le || (surviving && e->toBeRemoved)) continue;
 
-        bool isEnemy = le->squaredDifference(*e) >= ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD;
-        if (isEnemy && !e->visibleOn(tileAt(le->x, le->y))) continue;
+            bool isEnemy =
+                    le->squaredDifference(*e) >= ENEMY_MATE_SQUARED_DIFFERENCE_THRESHOLD;
+            if (isEnemy && !e->visibleOn(tileAt(le->x, le->y))) continue;
 
-        int dist = e->getSquaredDistance(le->x, le->y);
-        if (dist <= VIEW_RANGE_SQUARED) {
-            if (isEnemy && dist < distEnemy) {
-                nearest.enemy = e;
-                distEnemy = dist;
-            } else if (dist < distMate) {
-                nearest.mate = e;
-                distMate = dist;
+            int dist = e->getSquaredDistance(le->x, le->y);
+            if (dist <= VIEW_RANGE_SQUARED) {
+                if (isEnemy && dist < distEnemy) {
+                    nearest.enemy = e;
+                    distEnemy = dist;
+                } else if (dist < distMate) {
+                    nearest.mate = e;
+                    distMate = dist;
+                }
             }
         }
-    }
+    });
+
     return nearest;
 }
 
 LivingEntity *World::findNearestLivingToPoint(int px, int py) {
-    LivingEntity *n = nullptr;
-    int dist = VIEW_RANGE_SQUARED + 1;
-    for (const auto &e : living) {
-        int tempDist = e->getSquaredDistance(px, py);
-        if (tempDist <= VIEW_RANGE_SQUARED && tempDist < dist) {
-            n = e;
-            dist = tempDist;
-        }
-    }
-    return n;
+    LivingEntity dummy = LivingEntity(px, py, {}, 0, 0, 0, nullptr, 0);
+    NearestLiving nearest = findNearestLiving(&dummy, false);
+
+    if (nearest.enemy == nullptr) return nearest.mate;
+    if (nearest.mate == nullptr) return nearest.enemy;
+
+    if (nearest.enemy->getSquaredDistance(px, py) > nearest.mate->getSquaredDistance(px, py))
+        return nearest.mate;
+    else
+        return nearest.enemy;
 }
 
-bool World::addLivingEntity(LivingEntity *e, bool received) {
+bool World::addLivingEntity(LivingEntity *e, bool send) {
     if (toAddLiving(e)) return false;
-
-    // Received via MPI? -> Always add!
-    if (received) {
-        addLiving.push_back(e);
-        return true;
-    }
 
     // Only add and broadcast to other nodes when laying on THIS node
     if (pointInRect({e->x, e->y}, {{x, y}, width, height})) {
         addLiving.push_back(e);
 
-        auto *ranks = paddingRanksAt(e->x, e->y);
-        for (int neighbor : *ranks)
-            livingEntitiesToMoveToNeighbors.push_back({neighbor, e});
-        delete ranks;
+        if (send) {
+            auto *ranks = paddingRanksAt(e->x, e->y);
+            for (int neighbor : *ranks)
+                livingEntitiesToMoveToNeighbors.push_back({neighbor, true, e});
+            delete ranks;
+        }
 
         return true;
     }
@@ -422,18 +624,9 @@ bool World::addFoodEntity(FoodEntity *e, bool received) {
 
         auto *ranks = paddingRanksAt(e->x, e->y);
         for (int neighbor : *ranks)
-            foodToSendToNeighbors.push_back({neighbor, e});
+            foodToSendToNeighbors.push_back({neighbor, false, e});
         delete ranks;
 
-        return true;
-    }
-
-    return false;
-}
-
-bool World::removeLivingEntity(LivingEntity *e) {
-    if (!toRemoveLiving(e)) {
-        removeLiving.push_back(e);
         return true;
     }
 
@@ -455,7 +648,7 @@ bool World::removeFoodEntity(FoodEntity *e, bool received) {
 
         auto *ranks = paddingRanksAt(e->x, e->y);
         for (int neighbor : *ranks)
-            removedFoodToSendToNeighbors.push_back({neighbor, e});
+            removedFoodToSendToNeighbors.push_back({neighbor, false, e});
         delete ranks;
 
         return true;

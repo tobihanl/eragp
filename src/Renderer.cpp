@@ -1,24 +1,34 @@
 #include "SDL/res_path.h"
 #include "Renderer.h"
 #include <vector>
+#include <fstream>
 
 SDL_Window *Renderer::win = nullptr;
 SDL_Renderer *Renderer::ren = nullptr;
 bool Renderer::isSetup = false;
 bool Renderer::hidden = true;
+bool Renderer::boarisch = false;
 SDL_Texture *Renderer::digits[10];
 
 SDL_Texture *Renderer::background = nullptr;
 SDL_Texture *Renderer::entities = nullptr;
 SDL_Texture *Renderer::rankTexture = nullptr;
 
-int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
+SDL_Texture *Renderer::foodTexture = nullptr;
+SDL_Texture *Renderer::beerTexture = nullptr;
+SDL_Texture *Renderer::pretzelTexture = nullptr;
+std::set<LivingTexture> Renderer::livingTextures = std::set<LivingTexture>();
+std::set<LivingTexture> Renderer::livingTexturesSwap = std::set<LivingTexture>();
+
+int Renderer::setup(int x, int y, int width, int height, bool boarisch) {
     // Renderer already set up?
     if (isSetup)
         return -1;
 
+    Renderer::boarisch = boarisch;
+
     // Init SDL
-    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         logSDLError(std::cerr, "SDL_Init");
         return 1;
     }
@@ -36,10 +46,7 @@ int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
     }
 
     // Create Window
-    if (fullscreen)
-        win = SDL_CreateWindow("Evolution", 0, 0, 1, 1, SDL_WINDOW_FULLSCREEN | SDL_WINDOW_HIDDEN);
-    else
-        win = SDL_CreateWindow("Evolution", x, y, width, height, SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIDDEN);
+    win = SDL_CreateWindow("Evolution", x, y, width, height, SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIDDEN);
 
     if (win == nullptr) {
         logSDLError(std::cerr, "SDL_CreateWindow");
@@ -64,7 +71,7 @@ int Renderer::setup(int x, int y, int width, int height, bool fullscreen) {
     return 0;
 }
 
-void Renderer::renderBackground(WorldDim dim, const std::vector<Tile *> &terrain) {
+void Renderer::renderBackground(WorldDim dim, const std::vector<Tile *> &terrain, int rank) {
     if (!isSetup) return;
 
     int heightWithPadding = dim.h + (2 * WORLD_PADDING) + (dim.p.y % TILE_SIZE) + (TILE_SIZE - (dim.p.y + dim.h) %
@@ -92,6 +99,16 @@ void Renderer::renderBackground(WorldDim dim, const std::vector<Tile *> &terrain
         }
     }
 
+    // Render a logo if one exists with name <Rank>.png
+    std::string fileName = "logos/" + std::to_string(rank) + ".png";
+    if (std::ifstream("./res/" + fileName)) {
+        SDL_Texture *logos = renderImage(fileName);
+
+        int imageWidth, imageHeight;
+        SDL_QueryTexture(logos, nullptr, nullptr, &imageWidth, &imageHeight);
+        copy(logos, (widthWithPadding - imageWidth) / 2, (heightWithPadding - imageHeight) / 2);
+    }
+
     // Change render target back to default
     setTarget(nullptr);
     background = tex;
@@ -111,23 +128,33 @@ void Renderer::renderDigits() {
     digits[9] = renderFont("9", ENERGY_FONT_SIZE, {255, 255, 255, 255}, "font.ttf");
 }
 
-void Renderer::renderEntity(RenderData r) {
+void Renderer::drawLivingEntity(LivingEntity *e) {
     if (!isSetup) return;
 
-    SDL_Texture *dot = Renderer::renderDot(r.radius, r.color);
-    Renderer::copy(dot, r.x - r.worldDim.p.x - r.radius, r.y - r.worldDim.p.y - r.radius);
-    cleanupTexture(dot);
+    SDL_Texture *dot;
+    RenderData data = e->getRenderData();
+    LivingTexture cmp = {e->getId(), nullptr};
 
-    if (!r.isLiving) return;
+    auto it = livingTextures.find(cmp);
+    if (it != livingTextures.end()) {
+        dot = it->texture;
+        livingTextures.erase(it);
+        livingTexturesSwap.insert(*it);
+    } else {
+        dot = Renderer::renderDot(data.radius, data.color);
+        livingTexturesSwap.insert({e->getId(), dot});
+    }
 
-    assert(r.energy > 0 && "Energy must be greater than 0");
+    Renderer::copy(dot, data.x - data.worldDim.p.x - data.radius, data.y - data.worldDim.p.y - data.radius);
+
+    assert(data.energy > 0 && "Energy must be greater than 0");
     //max width/height ratio for char is 0,7 | 12 * 0,7 = 8,4 -> width := 8
-    int numDigits = getNumDigits(r.energy);
-    int energyToDisplay = r.energy;
-    int baseX = r.x - r.worldDim.p.x + numDigits * 4 -
+    int numDigits = getNumDigits(data.energy);
+    int energyToDisplay = data.energy;
+    int baseX = data.x - data.worldDim.p.x + numDigits * 4 -
                 4; //9 / 2 = 4.5 AND: go half a char to the lft because rendering starts in the left corner
     for (int i = 0; energyToDisplay > 0; i++) {
-        Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, r.y - r.worldDim.p.y - 4 - ENERGY_FONT_SIZE);
+        Renderer::copy(digits[energyToDisplay % 10], baseX - 8 * i, data.y - data.worldDim.p.y - 4 - ENERGY_FONT_SIZE);
         energyToDisplay /= 10;
     }
 
