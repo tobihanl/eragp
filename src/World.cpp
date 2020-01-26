@@ -305,11 +305,11 @@ void World::tick() {
     for (const auto &e : living) {
         if (e->toBeRemoved) continue;
         e->tick();
+    }
 
+    for (const auto &e : living) {
         if (e->toBeRemoved) continue;
-
-        // After moving: Entity on THIS node?
-        if (pointInRect({e->x, e->y}, {{x, y}, width, height})) {
+        if (pointInRect({e->x, e->y}, getWorldDim())) {
             auto *ranks = paddingRanksAt(e->x, e->y);
             for (int neighbor : *ranks)
                 livingEntitiesToMoveToNeighbors.push_back({neighbor, true, e});
@@ -411,8 +411,6 @@ void *World::sendEntities(const std::vector<MPISendEntity> &entityVec, int rank,
     int totalSize = 0;
     for (const auto &e : entityVec) {
         if (e.rank == rank) {
-            if (e.entity->energy <= 0) continue;
-
             if (e.minimal) totalSize += e.entity->minimalSerializedSize();
             else totalSize += e.entity->fullSerializedSize();
 
@@ -425,8 +423,6 @@ void *World::sendEntities(const std::vector<MPISendEntity> &entityVec, int rank,
 
     for (const auto &e : entityVec) {
         if (e.rank == rank) {
-            if (e.entity->energy <= 0) continue;
-
             if (e.minimal) {
                 ((int *) buffer)[0] = -1;
                 buffer = static_cast<int *>(buffer) + 1;
