@@ -1,7 +1,7 @@
 #!/bin/bash
 MEASURE_FILE=himmuc-strong-measure-1.dat
 OUT_FILE=himmuc-strong-results-1.dat
-PARAMS="-a -s3 -w10000 -h10000 -e3000,1000 -f0.08 -t3000"
+PARAMS="-a -s1 -w10000 -h10000 -e20000,20000 -t3000"
 RUNS=3
 NODES=40
 

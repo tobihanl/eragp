@@ -1,6 +1,6 @@
 #!/bin/bash
-MEASURE_FILE=himmuc-weak-measure-1.dat
-OUT_FILE=himmuc-weak-results-1.dat
+MEASURE_FILE=himmuc-noscaling-measure-1.dat
+OUT_FILE=himmuc-noscaling-results-1.dat
 PARAMS="-a -s1 -t3000"
 AREA_PER_PROCESS=10000000
 LIVINGS_PER_PROCESS=2000
@@ -16,8 +16,9 @@ fi
 printf "# Params: %s\n" "$PARAMS" >> $MEASURE_FILE
 printf "# Area per process: %s\n" $AREA_PER_PROCESS >> $MEASURE_FILE
 printf "# Livings per process: %s\n" $LIVINGS_PER_PROCESS >> $MEASURE_FILE
-printf "# Food per process: %s\n\n" $FOOD_PER_PROCESS >> $MEASURE_FILE
-printf "# Nodes Run Runtime\n" >> $MEASURE_FILE
+printf "# Food per process: %s\n" $FOOD_PER_PROCESS >> $MEASURE_FILE
+printf "# !!Actual number of nodes used was always 1!!\n\n" >> $MEASURE_FILE
+printf "# SimulatedNodes Run Runtime\n" >> $MEASURE_FILE
 
 for i in $(seq 1 $RUNS); do
   for n in $(seq 1 $NODES); do
@@ -25,7 +26,7 @@ for i in $(seq 1 $RUNS); do
     side=$(bc <<< "sqrt($AREA_PER_PROCESS * $n)")
     livings=$(($LIVINGS_PER_PROCESS * $n))
     food=$(($FOOD_PER_PROCESS * $n))
-    srun -p odr -N $n ./build/Evolution $PARAMS -w$side -h$side -e$livings,$food >> $MEASURE_FILE
+    srun -p odr -N 1 ./build/Evolution $PARAMS -w$side -h$side -e$livings,$food >> $MEASURE_FILE
   done
 done
 
