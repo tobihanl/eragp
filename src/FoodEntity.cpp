@@ -16,7 +16,7 @@ FoodEntity::FoodEntity(void *&ptr) :
                4,
                ((int32_t *) ptr)[3]),
         expire(((int32_t *) ptr)[4]),
-        beer(false) {
+        beer(((int32_t *) ptr)[5] == -1) {
     ptr = static_cast<int32_t *>(ptr) + AMOUNT_32_BIT_FOOD_PARAMS;
 }
 

@@ -36,6 +36,7 @@ private:
             LogData logData = buffer[i];
             writeLine(std::to_string(logData.turn) + "," + std::to_string(logData.food) + "," +
                       std::to_string(logData.livings) + "," + std::to_string(logData.mpi) + "," +
+                      std::to_string(logData.think) + "," +
                       std::to_string(logData.tick) + "," + std::to_string(logData.render) + "," +
                       std::to_string(logData.delay) + "," + std::to_string(logData.overall));
         }
@@ -51,7 +52,7 @@ public:
         if (logFile) {
             logging = true;
             writeLine("sep=,"); // Specify separator
-            writeLine("Turn,Food,Livings,MPI,Tick,Render,Delay,Overall");
+            writeLine("Turn,Food,Livings,MPI,Think,Tick,Render,Delay,Overall");
         }
     }
 

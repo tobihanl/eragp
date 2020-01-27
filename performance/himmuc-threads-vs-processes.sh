@@ -1,7 +1,7 @@
 #!/bin/bash
-MEASURE_FILE=himmuc-threads-processes-measure-1.dat
-OUT_FILE=himmuc-threads-processes-results-1.dat
-PARAMS="-a -s3 -w10000 -h10000 -e3000,1000 -f0.08 -t3000"
+MEASURE_FILE=himmuc-threadsvsprocesses-measure-1.dat
+OUT_FILE=himmuc-threadsvsprocesses-results-1.dat
+PARAMS="-a -s1 -w10000 -h10000 -e20000,20000 -t3000"
 RUNS=3
 
 if [[ -f "$MEASURE_FILE" || -f "$OUT_FILE" ]]; then

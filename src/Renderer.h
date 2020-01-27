@@ -38,6 +38,7 @@ private:
     static bool isSetup;
     static bool hidden;
     static bool boarisch;
+    static float scaling; // Factor scaling dots & fonts
     static SDL_Texture *digits[];
 
     static SDL_Texture *foodTexture;
@@ -67,7 +68,7 @@ public:
      * @return  0 if successful, 1 if not successful, -1 if the
      *          renderer is already setup
      */
-    static int setup(int x, int y, int width, int height, bool boarisch);
+    static int setup(int x, int y, int width, int height, float scale, bool boarischFlag);
 
     /**
      * Destroys the renderer by cleaning up all the SDL components and
@@ -311,22 +312,25 @@ public:
 
     static void drawFoodEntity(FoodEntity *e) {
         if (!isSetup) return;
-        SDL_Texture *tex = nullptr;
         RenderData data = e->getRenderData();
-        int offset = boarisch ? 8 : data.radius;
         if (boarisch) {
-            if (pretzelTexture == nullptr) pretzelTexture = Renderer::renderImage("pretzel-16.png");
-            if (beerTexture == nullptr) beerTexture = Renderer::renderImage("beer-16.png");
+            if (pretzelTexture == nullptr) pretzelTexture = renderImage("pretzel-128.png");
+            if (beerTexture == nullptr) beerTexture = renderImage("beer-128.png");
 
-            if (e->beer)
-                tex = beerTexture;
-            else
-                tex = pretzelTexture;
+            int size = (int) (scaling * (128.f / 8));
+            SDL_Texture *tex = (e->beer) ? beerTexture : pretzelTexture;
+            SDL_Rect dst = {data.x - data.worldDim.p.x - (size / 2),
+                            data.y - data.worldDim.p.y - (size / 2), size, size};
+            copy(tex, &dst);
         } else {
-            if (foodTexture == nullptr) foodTexture = Renderer::renderDot(data.radius, data.color);
-            tex = foodTexture;
+            if (foodTexture == nullptr) foodTexture = renderDot(data.radius, data.color);
+
+            SDL_Rect dst = {data.x - data.worldDim.p.x, data.y - data.worldDim.p.y, 0, 0};
+            query(foodTexture, &dst);
+            dst.x -= dst.w / 2;
+            dst.y -= dst.h / 2;
+            copy(foodTexture, &dst);
         }
-        Renderer::copy(tex, data.x - data.worldDim.p.x - offset, data.y - data.worldDim.p.y - offset);
     }
 
     static void drawBackground(WorldDim dim) {

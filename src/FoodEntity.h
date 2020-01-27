@@ -3,7 +3,7 @@
 
 #include "Entity.h"
 
-#define AMOUNT_32_BIT_FOOD_PARAMS 5
+#define AMOUNT_32_BIT_FOOD_PARAMS 6
 #define FOOD_EXPIRATION_TIME (180 * 4)
 
 class FoodEntity : public Entity {
@@ -36,6 +36,7 @@ public:
         ((int32_t *) ptr)[2] = (int32_t) y;
         ((int32_t *) ptr)[3] = (int32_t) energy;
         ((int32_t *) ptr)[4] = (int32_t) expire;
+        ((int32_t *) ptr)[5] = (beer) ? -1 : 0;
         ptr = static_cast<int32_t *>(ptr) + AMOUNT_32_BIT_FOOD_PARAMS;
     }
 };

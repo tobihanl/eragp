@@ -282,10 +282,13 @@ void World::tick() {
             delete child;
     }
 
+    int thinkTime = (Log::isEnabled()) ? Log::currentTime() : 0;
 # pragma omp parallel for num_threads(numThreads)
     for (auto it = living.begin(); it < living.end(); it++) {
         (*it)->think();
     }
+    if (Log::isEnabled())
+        Log::data.think = Log::endTime(thinkTime);
 
     for (const auto &e : living) {
         if (e->toBeRemoved) continue;
