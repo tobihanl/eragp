@@ -8,18 +8,18 @@ Link to Trello task in commit message.
 
 ## Commandline arguments (optional)
 
-- **Width** `-w`: Integer value declaring the width (in pixels) of the whole world. Default is 960px.
+- **Width** `-w`: Integer value declaring the width (in pixels) of the whole world. Default is 1000px.
 
-- **Height** `-h`: Integer value declaring the height (in pixels) of the whole world. Default is 720px.
+- **Height** `-h`: Integer value declaring the height (in pixels) of the whole world. Default is 1000px.
 
 - **Food Spawn Rate** `-f`: Float value that defines the amount of food spawned per 2000 tiles per tick.
-Default is 1.
+Default is 0.2.
 
 - **Ticks** `-t`: Amount of ticks (`long`) to simulate. No limitation with value -1. Default is -1.
 
 - **Render** `-r`: Render the application while running. No value required. Default is **no rendering**.
 
-- **Zoom** `-z`: Zoom into the world. A (`float`) value greater/less than 1 zooms into/out of the world. Default is 1.
+- **Zoom** `-z`: Zoom into the world. A (`float`) value greater/less than 1 zooms into/out of the world. Default is 3.
 Only values greater than 0.1 are allowed.
 
 - **MaiMUC** `-m`: Run the application with the MaiMUC configuration. No value required. Application **must
@@ -29,7 +29,7 @@ be** executed on 10 nodes with this configuration!
 
 - **Amount of entities** `-e`: Specify the amount of entities to spawn at start-up on the **entire** world.
 Entities will be distributed equally to all ranks. Format for argument: `{AMOUNT_LIVINGS},{AMOUNT_FOOD}`. Default is
-`50,100`.
+`500,500`.
 
 - **Frame-Rate (FPS)** `-p`: Set the maximum amount of frames-per-second (fps) to render. Must be an integer value.
 Default is 10.

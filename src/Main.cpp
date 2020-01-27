@@ -662,13 +662,13 @@ int main(int argc, char **argv) {
     // START MPI
     MPI_Init(&argc, &argv);
 
-    int width = 960, height = 720;
+    int width = 1000, height = 1000;
     bool maimuc = false;
     bool boarisch = false;
-    float foodRate = 1.f;  //food spawned per 2000 tiles per tick
-    float zoom = 1.f;
+    float foodRate = 0.2;  //food spawned per 2000 tiles per tick
+    float zoom = 3.f;
     int numThreads = 1;
-    long livings = 50, food = 100;
+    long livings = 500, food = 500;
     std::string filename;
 
     std::random_device rd;
