@@ -42,6 +42,7 @@ typedef struct {
     int food = -1;
     int livings = -1;
     int mpi = -1;
+    int think = -1;
     int tick = -1;
     int render = -1;
     int delay = -1;
