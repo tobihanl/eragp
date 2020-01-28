@@ -1,6 +1,6 @@
 #!/bin/bash
 MEASURE_FILE=maimuc-threadsrender-measure-1.dat
-OUT_FILE=maimuc-threads-results-1.dat
+OUT_FILE=maimuc-threadsrender-results-1.dat
 PARAMS="-a -s1 -m -r -p0 -e1000,1000 -t3000"
 RUNS=3
 THREADS=4
