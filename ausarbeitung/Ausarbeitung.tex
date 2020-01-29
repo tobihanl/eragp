@@ -304,16 +304,19 @@ wobei $\tanh$ auf jedes Element des Zeilenvektors einzeln angewendet wird.
             xlabel=$x$,
             %ylabel={$\tanh (x)$}
             ylabel style = {align=center},
-            ylabel={$x$ \ref{pgfplots:x} \\$\tanh (x)$ \ref{pgfplots:tanh}},
+            ylabel={$y$},
             xmin=-3,
             xmax=3,
             ymin=-2,
-            ymax=2
+            ymax=2,
+            legend pos=north west
         ]
             \addplot[mark=none,color=red] {tanh(x)};
             \label{pgfplots:tanh}
             \addplot[mark=none,color=black!50] {x};
             \label{pgfplots:x}
+            \addlegendentry{tanh}
+            \addlegendentry{x}
         \end{axis}
     \end{tikzpicture}
     \caption{Die Aktivierungsfunktion $\tanh$}
