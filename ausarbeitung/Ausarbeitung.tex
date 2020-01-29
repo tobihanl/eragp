@@ -15,7 +15,7 @@
 \usepackage{subcaption}
 \usepackage{xcolor}
 
-% Diese Zeile bitte -nicht- aendern. -- Tja, trotzdem geschehen :D
+% Diese Zeile bitte -nicht- aendern.
 \title{Parallele Evolutionssimulation}
 
 
@@ -50,7 +50,7 @@ Das Terrain zerteilt hierbei die Welt in viele gleich groß dimensionierte, klei
 
 
 \subsection{Food-Entities}
-Zusätzlich zur Struktur befinden sich auch Objekte (\emph{Entities}) auf der Welt. Eine Art dieser Objekte sind die sogenannten \emph{Food-Entities}. Diese stellen Nahrung dar, welche sich auf der gesamten Welt verteilt befindet. Hierbei wird nicht zwischen verschiedenen Arten von Nahrung unterschieden. Eine Ausnahme stellt nur der "`Boarisch Mode"' dar (siehe Abschnitt \ref{sssec:exec-params}, unten). Über die Energieaufnahme hinaus hat es in der Simulation keine Vorteile ein Entity zu fressen.
+Zusätzlich zur Struktur befinden sich auch Objekte (\emph{Entities}) auf der Welt. Eine Art dieser Objekte sind die sogenannten \emph{Food-Entities}. Diese stellen Nahrung dar, welche sich auf der gesamten Welt verteilt befindet. Hierbei wird nicht zwischen verschiedenen Arten von Nahrung unterschieden. Eine Ausnahme stellt nur der "`Boarisch Mode"' dar (siehe Tabelle \ref{table:parameters}, Parameter -b). Über die Energieaufnahme hinaus hat es in der Simulation keine Vorteile ein Entity zu fressen.
 
 Vor allem müssen die Food-Entities aber auch eine "`nachwachsende"' Ressource sein. Das heißt, es werden über die Zeit weitere Food-Entities auf der Welt verteilt werden. Dies verhindert, dass irgendwann über die Zeit die Nahrung ausgeht und keine mehr nachkommt. Die Nahrung soll somit auf der Welt höchstens knapp werden. Trotzdem dürfen die Food-Entities aber auch nicht unendlich lange existieren. Die Food-Entities besitzen daher eine Haltbarkeitszeit, nach deren Ablauf sie keine Energie mehr liefern können und daraufhin verschwinden. Hierdurch soll einem Überangebot von Nahrung -- und damit auch Energie -- auf der Welt entgegengewirkt werden.
 
@@ -125,8 +125,6 @@ In Abbildung \ref{fig:neural-net} ist der finale Aufbau des Netzes zu sehen. Im 
 \subsubsection{Normalisierung der Werte}
 Ein wichtiger Teil bei der Verwendung neuronaler Netze ist die sinnvolle Wahl und Normalisierung von Ein- und Ausgabewerten. So werden beispielsweise keine kartesischen Koordinaten im neuronalen Netz verwendet, sondern Polarkoordinaten. Grund hierfür ist die höhere, semantische Aussagekraft. Während beispielsweise die Distanz direkte Relevanz für eine Entscheidung hat, ist das für x- und y-Differenz nicht der Fall. Hier müssten erst einige Neuronen verwendet werden, um einen ähnlich aussagekräftigen Wert zu erlangen. Entsprechend könnte beispielsweise keine separate Entscheidung zur Geschwindigkeit getroffen werden, diese wäre immer von der errechneten x- und y-Differenz abhängig. Es ergäbe sich ein neuronales Netz, welches weniger sinnvolle Entscheidungen träfe. In diesem Rahmen ist außerdem zu erwähnen, dass bei den angegebenen Werten stets das Lebewesen selbst als Mittelpunkt des Koordinatensystems gewählt wird. Erneut kann leicht nachvollzogen werden, dass beispielsweise der Abstand eines Gegners vom Lebewesen selbst eine höhere semantische Bedeutung hat, als der Abstand vom Mittelpunkt der Welt. Außerdem kann so beispielsweise einfach der Winkel zu einem Objekt mit eins gewichtet werden, um sich in dessen Richtung zu bewegen.
 
-%Neben dem geänderten Ein- und Ausgabeformat für Koordinaten, mögen zunächst einige Eingabewerte ins Auge stechen. So wäre die Wasseragilität nicht zwingend nötig, da diese bei einer Spezies selbst nur bei der Vererbung mutiert, wie auch das neuronale Netz selbst. Es würde also zunächst reichen, dass Wasserlebewesen auf dem Land einen evolutionären Nachteil haben und sich somit dahingehend entwickeln, dass sie sich eher nicht in Richtung Land bewegen. Der zusätzliche Eingabeparameter ermöglicht eine Abstraktion. Lebewesen können sich bevorzugt zu ihrem präferierten Untergrund bewegen, anstatt fest Wasser oder Land zu bevorzugen. So können sich leichter Wasserlebewesen auf Landlebewesen und umgekehrt entwickeln, wenn deren Wasseragilität mutiert. Außerdem erleichtert es das Vortrainieren der Netze, da dies allgemein stattfindet, bevor die konkreten Attribute bekannt sind (siehe \ref{sssec:nn-problem}).
-%Darüber hinaus werden vorberechnete Werte wie der Winkel zur Mitte oder die Distanz zum Rand als Parameter gewählt, um die Entscheidung zu erleichtern, sich nicht aus der Welt zu bewegen und somit zu sterben.
 
 \subsubsection{Lernen}
 Eine Herausforderung bei diesem Projekt war, dass die neuronalen Netze der Lebewesen nicht trainiert werden. Dies wäre nur sehr kompliziert zu verwirklichen, da nicht ohne weiteres bei jeder Handlung evaluiert werden kann, ob diese gut oder schlecht war. Das Verwenden einer simplen Heuristik - wie etwa die schnelle Aufnahme von Energie - wäre mittels eines sogenannten Rekurrenten Neuronalen Netzes, bei welchem die Ausgaben der letzten Berechnung als zusätzliche Eingaben dienen, zwar möglich, könnte allerdings komplexere Verhaltensmuster unterbinden, da gegebenenfalls nur das schnelle Sammeln von Nahrung "`belohnt"' würde, nicht aber der sparsame Umgang oder das Teilen mit anderen.
@@ -146,7 +144,6 @@ Um bereits zu Beginn überlebensfähige Lebewesen sicherzustellen, werden die Ge
 Viele Operationen in der Simulation sind sehr rechenintensiv. Dazu zählen beispielsweise die Denkprozesse der Living-Entities, welche durch Matrix- bzw. Vektoroperationen (wie dem Skalarprodukt) implementiert sind und auf größeren Datenmengen agieren. Auch das Rendering ist rechenintensiv, da hier alle Texturen zuerst berechnet und danach übereinander gelegt werden müssen. Folglich können diese Operationen dazu führen, dass die Simulation auf einem einzelnen Rechner mit nur einem Thread sehr langsam läuft, da ein Tick viel Rechenzeit benötigt. Somit würde die Simulation oft blockieren und nur träge einen Fortschritt zeigen. Um dieses Problem zu lösen, soll die Simulation parallelisiert werden. Die rechenintensiven Aufgaben können so besser verteilt und die Simulation in Folge performanter ausgeführt werden.
 
 
-% TODO: Ggf. Verlinkung auf Abschnitt zur Performance und Ergebnissen hinzufügen, um diesen Abschnitt besser zu belegen!!!
 \subsubsection{Rechenintensive Abschnitte}
 Hauptproblem für die Performance der Simulation ist die KI. Für diese müssen für jedes \emph{einzelne} Entity sehr viele aufwendige Rechenoperationen durchgeführt werden. Hierbei werden vor allem Matrixoperationen benötigt. Genaueres dazu im Abschnitt \ref{subsec:neuronale-netze}. Diese werden wiederum in jedem Tick ausgeführt und benötigen somit sehr viel Rechenleistung. Für kleine Zahlen von Entities ist dies noch erträglich. Allerdings summiert sich dies für alle weiteren Entities auf und es wäre somit von Vorteil diese Berechnungen auf mehrere Prozesse bzw. Threads aufteilen zu können, damit die Simulation trotzdem performant läuft.
 
@@ -162,11 +159,7 @@ Nach der Spezifikation muss sichergestellt werden, dass sich die Living-Entities
 
 Die Kommunikation zwischen den Nodes wird nun wie folgt stattfinden. Um selbst bei einer sehr hohen Anzahl von Nodes die Simulation gut skalieren zu können, kommunizieren die Nodes \emph{eigenständig} untereinander. Das heißt, es wird keinen Root Node geben, der alle Nachrichten von den Nodes bekommt und diese dann daraufhin an die richtigen Nodes verteilt. Dies würde zu einem \emph{Bootle-Neck} am Root Node führen, da die Nodes warten müssten, bis alle Nachrichten angekommen und danach vom Root wieder ausgesendet wurden. Stattdessen soll jeder Node wissen, welche Nodes angrenzende Teilwelten an die eigene verwalten, weil nur von diesen Nachrichten (Living-Entities) kommen können. Die Teilwelten müssen dementsprechend groß genug sein.
 
-% [ANMERKUNG]: Dies beschreibt ein wenig den MaiMUC. Soll dies noch rein?
-% Vor allem ist aber die Parallelisierung mit MPI für den MaiMUC wichtig. Dieser besteht aus mehreren Raspberry Pi's, die jeweils ein eigenes Display besitzen. Auf diesem soll es möglich sein, die gesamte Simulation auszuführen und zudem diese währenddessen auf den Displays anzuzeigen. Damit alle zusammen die gesamte Welt anzeigen können, ist es zwingend notwendig die Welt in mehrer Teilwelten aufzuteilen, welche dann jeweils ein Display vollständig anzeigen kann. Zudem sind die Pi's nicht sehr rechenstark, weshalb es um so wichtiger ist, die Simulation durch Parallelisierung leistungsfähiger zu machen.
 
-
-% Ggf. Grafik einfügen zur Veranschaulichung? --> Quadratische wie längliche Rechtecke
 \subsubsection{Aufteilung der Welt auf vorhandene Nodes}
 \label{sssec:aufteilung-der-welt}
 Um eine möglichst gute Gleichverteilung der Belastung zwischen den Nodes für die Berechnungen zu erhalten, muss die Welt in etwa gleichgroße Stücke aufgeteilt werden. Zudem ist es nützlich, wenn die Nodes eine möglichst quadratische Welt zugewiesen bekommen, damit Entities nur selten zwischen Nodes versendet werden müssen. Hierfür wird ein relativ simpler Algorithmus verwendet, der versucht, eine gute quadratische Aufteilung zu approximieren.
@@ -259,9 +252,6 @@ Sei \(n\) die Anzahl der Nodes im MPI Cluster. Solange \(n > 3\) wird die Welt i
 Trotzdem wird alleine durch MPI unter Umständen noch nicht die gesamte verfügbare Rechenkraft eines einzelnen Rechners ausgenutzt. Mittels MPI bekommt jeder Node nur einen einzelnen Prozess zugewiesen, unabhängig von der verfügbaren Anzahl Kernen. Somit wäre es von Vorteil diese noch zusätzlich mittels Threads für mehr Rechenleistung auszunutzen. Die Threads werden indessen jedoch nur zur Unterstützung in rechenintensiven Abschnitten der Simulation dienen. Es soll somit nicht die Teilwelt in weitere kleinere Welten aufgebrochen werden, welche dann jeweils von einem Thread verwaltet wird. Hierfür würde eine zusätzliche Kommunikation nötig, die abseits von MPI zusätzlich geschehen müsste, und nicht zwingend notwendig wäre, da viele Abschnitte nicht rechenlastig sind. Konkret wird für die Umsetzung der Threads OpenMP verwendet.
 
 
-% Klassen
-% Aufbau der Serialisierung
-% Rendering erklären ->
 \section{Dokumentation der Implementierung}
 \label{sec:documentation}
 Im folgenden Teil wird nun die konkrete Implementierung der Lösungswege aus Sektion \ref{sec:lösungsfindung} detailliert beschrieben und erläutert. Diesbezüglich soll vor allem klargestellt werden, wie genau die Lösungen umgesetzt wurden, sowie die konkreten Gründe für die jeweiligen Ansätze herausgearbeitet werden.
@@ -542,7 +532,6 @@ Muss die Simulation aktuell gerendert werden? \\
 Paused &
 \textsl{(Render Modus)} Ist die Simulation aktuell pausiert?\\
 \hline
-% TODO: Bessere Beschreibung finden!!!
 SimilarityMode &
 \textsl{(Render Modus)} Können Entities miteinander verglichen werden? \\
 \hline
@@ -600,7 +589,6 @@ Ein Problem ist die Generierung der Start-Entities (Startzustand). Unabhängig v
 
 Auch das Spawnen der Food-Entities soll verbessert werden. Der Root-Node generiert hier ebenfalls wieder die Entities mit seinem eigenen Generator und verteilt die Entities daraufhin ebenfalls auf die einzelnen Nodes (siehe Abs. \ref{subsubsec:mpi-situation-3}). Da auch hier wieder die Erstellung der Food-Entities nur von der Konfiguration (hier Food-Rate, Weltgröße, Seed) abhängt, ist die Anzahl Nodes für den Determinismus irrelevant.
 
-% TODO: Serialisierung ist hier etwas unpassend eingeflossen, vlt. an besserer Stelle erwähnen?
 Das dritte Problem ist die Erstellung der Kind-Entities. Dieses Problem wird gelöst, indem jedes Living-Entity einen eigenen Zufallszahlen-Generator bekommt. Dieser soll verwendet werden, um die Mutation im Kind-Entity zu berechnen. Der Seed für den Generator des Kind-Entities kommt vom Eltern-Entity. Durch diesen Prozess generiert ein Living-Entity immer dieselben Kind-Entities unter den gleichen Startbedingungen. Der Seed für die Start-Entities kommt hierbei vom Generator des Root-Nodes. Hieraus lässt sich nun auch erklären, warum ein eigenes LFSR-Register implementiert wurde. Dieses wird benötigt, um bei der Serialisierung der Entities den Register-Wert versenden und daraufhin den Generator daraus auf dem anderen Node rekonstruieren zu können.
 
 
@@ -622,7 +610,6 @@ Mit Hilfe der Noise und unter Beachtung der oben genannten Punkte, kann nun das 
 Die Perlin-Simplex-Noise ist in der Klasse \emph{SimplexNoise} implementiert. Generiert wird das Terrain in der Methode \emph{generateTerrain()} der Klasse \emph{World}.
 
 
-% TODO: Rendern & Zeichnen nicht vermischen!!!
 \subsection{Renderer}
 Der Spezifikation aus Abschnitt \ref{subsec:visualisierung-simulation} zufolge, muss es möglich sein, die Simulation in einem Fenster darzustellen. Hierfür soll ein \emph{Renderer} erstellt werden, welcher dieses Fenster anzeigen und mit dem Inhalt aus der Simulation befüllen kann. Im Folgenden wird daher die Umsetzung des Renderers -- implementiert in der gleichnamigen Klasse -- genauer beschrieben und erläutert.
 
@@ -964,7 +951,7 @@ Sämtliche oben genannten Tasten können auch über die Konsole eingegeben werde
 \textbf{R} ist hierbei ein spezielles Konsolenkommando, welches das Rendern wieder aktiviert, sofern es momentan deaktiviert ist und das Programm im Render-Modus kompiliert wurde.
 
 \subsection{Erklärung der Anzeige}
-Nach erfolgreicher Ausführung erscheint ein Bild wie in Abbildung [Link einfügen]. Anzumerken ist hier, dass zur besseren Übersichtlichkeit auf der Abbildung bereits in Rot die Grenzen zwischen MPI Knoten angezeigt werden (siehe \ref{sssec:interact-render}).
+Nach erfolgreicher Ausführung erscheint ein Bild wie in Abbildung \ref{fig:simulation-borders}. Anzumerken ist hier, dass zur besseren Übersichtlichkeit auf der Abbildung bereits in Rot die Grenzen zwischen MPI Knoten angezeigt werden (siehe \ref{sssec:interact-render}).
 
 Auf den ersten Blick stechen bereits unterschiedlich große, farbige Punkte ins Auge, welche sich über die Welt bewegen. Diese stellen die Lebewesen und somit den Kern der Simulation da. Über ihnen sind weiße Zahlen zu sehen. Hierbei handelt es sich um die Energie der Lebewesen. Erreicht sie den Wert Null, so verschwindet das Lebewesen.
 
@@ -996,6 +983,13 @@ Insgesamt lässt sich daher der Schluss ziehen, dass das Ziel der Simulation, ei
     \includegraphics[width=\textwidth]{res/ergebnisse-simulation-2.png}
     \caption{Beispielhafter Ausschnitt der Simulation (2)}
     \label{fig:ergebnisse-simulation-2}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{res/simulation-borders.png}
+    \caption{Ausschnitt der Simulation mit den Grenzen (rot) zwischen den Knoten}
+    \label{fig:simulation-borders}
 \end{figure}
 
 \begin{figure}
@@ -1046,9 +1040,9 @@ Es muss der Anfang des Dateinamens übergeben werden, wobei sich der Tatsächlic
 \hline
 -b & Durch Angabe dieses Parameters ohne Wert kann der "`\textbf{boarisch}"' Modus aktiviert werden. Anstelle von roten Punkten wird Nahrung nun als Brezen dargestellt. Darüber hinaus wird bei einem Mausklick (siehe \ref{sssec:interact-render}) statt normaler Nahrung Bier erzeugt. Wird dieses gefressen, so wird das Living-Entity "`betrunken"'. Seine Bewegung wird für die nächsten Ticks mit der Sinuskurve interpoliert, wobei die Gewichtung stetig abnimmt, bis es wieder "`nüchtern"' ist.\\
 \hline
-\end{longtable}
 \caption{Parameter, die beim Start der Ausführung übergeben werden können, um die Konfiguration der Simulation anzupassen}
 \label{table:parameters}
+\end{longtable}
 \end{figure}
 
 
@@ -1083,9 +1077,9 @@ Um die Simulation schnell in einem weiter fortgeschrittenen Stadium zu sehen, ka
 Q &
 Beendet die Simulation endgültig.\\
 \hline
-\end{longtable}
 \caption{Mögliche Interaktionen mit der Simulation über das Fenster}
 \label{table:interact-window}
+\end{longtable}
 \end{figure}
 
 \end{document}
