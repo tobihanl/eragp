@@ -1,0 +1,9 @@
+# Params: -a -s1 -m -r -p0 -e1000,1000 -t3000
+# Runs: 3
+# Threads: 4
+
+# Threads AverageRuntime
+1 98709.3
+2 95152.3
+3 94959.3
+4 100400

@@ -1,0 +1,76 @@
+@startuml
+
+
+class Main {
+    {static} main()
+    {static} createEntities()
+    {static} renderLoop()
+    {static} normalLoop()
+    {static} commandLineThread()
+    
+}
+
+class World {
+    - {static} vector<LivingEntity*> living
+    - {static} vector<FoodEntity*> food
+    + {static} Vector<Tile*> terrain
+    + {static} setup()
+    + {static} tick()
+    + {static} findNearestFood()
+    + {static} findNearestLiving()
+    + {static} addFoodEntity()
+    + {static} addLivingEntity()
+    + {static} removeFoodEntity()
+    + {static} removeLivingEntity()
+}
+
+class Brain {
+    + think()
+    + createMutatedCopy()
+    + serialize()
+}
+
+class Matrix {
+
+}
+
+abstract class Entity {
+    + {abstract} tick()
+    + {abstract} getRenderData()
+    + {abstract} minimalSerialize()
+    + {abstract} fullSerialize()
+}
+
+class FoodEntity extends Entity {
+
+}
+
+class LivingEntity extends Entity {
+}
+
+class LFSR {
+    + getNextIntBetween()
+    + getNextFloatBetween()
+}
+
+class Renderer {
+    + {static} setup()
+    + {static} destroy()
+    + {static} copy()
+    + {static} drawEntities()
+    + {static} drawBackground()
+}
+
+World *-- LFSR
+World *-- LivingEntity
+World *-- FoodEntity
+LivingEntity *-- LFSR
+LivingEntity *-- Brain
+Brain *-- Matrix
+Main --> World : setup(), add Entities, tick()
+Main --> "setup()\ndrawBackground()\ndrawEntities()\ndestroy()" Renderer
+
+hide Main circle
+
+
+@enduml
