@@ -658,9 +658,86 @@ Darüber hinaus könnten einige Situationen wie beim Vortrainieren (siehe Abschn
 
 Außerdem wäre es denkbar, mittels der bereits existierenden Serialisierung (siehe \ref{sssec:serialisierung-entities}) sämtliche Daten der Welt zu einem Zeitpunkt zu speichern und wieder zu laden. So könnte eine Simulation über längere Zeit auf mehreren Knoten ausgeführt und im Anschluss daran der aktuelle Zustand auf einem anderen Gerät mit potenziell weniger Rechenleistung aber einer Möglichkeit zur Anzeige angesehen werden.
 
+\section{Verwendung der Simulation}
+Die Simulation kann in verschiedenen Versionen kompiliert und mit unterschiedlichen Parametern ausgeführt werden. Die genaue Verwendung soll im Folgenden beschrieben werden.
+\subsection{Kompilieren}
+Prinzipiell ist zu beachten, dass hier MPI sowie gegebenenfalls SDL2, SDL2 TTF und SDL2 Image benötigt werden.
+Zum Kompilieren stehen bereits vorgefertigte Skripte zur Verfügung. Zunächst muss CMake initialisiert werden:
+\begin{lstlisting}[language=bash]
+  $ ./utils/init.sh <build type> <render>
+\end{lstlisting}
+Hierbei kann \emph{<render>} entweder \emph{ON} oder \emph{OFF} sein. Ist das Rendern ausgeschaltet, so wird ohne SDL kompiliert. Für den \emph{<build type>} sind gültige Werte \emph{Release}, \emph{Debug} oder \emph{RelWithDebInfo}. \emph{Release} erzeugt optimierten Code und sollte standardmäßig verwendet werden. \emph{Debug} schaltet alle Optimierungen aus und \emph{RelWithDebInfo} optimiert wie \emph{Release}, behält aber die Debugsymbole.
+Anschließend kann wie folgt kompiliert werden:
+\begin{lstlisting}[language=bash]
+  $ ./utils/build.sh
+\end{lstlisting}
+Alle Kommandos sollten im Projektverzeichnis ausgeführt werden.
+
+\subsection{Ausführen}
+Das kompilierte Programm kann auf einem Linuxsystem wie üblich ausgeführt werden. Sollen im Hintergrund Logos angezeigt werden, können diese einfach im Ordner \emph{res/logos} mit dem Namen \emph{<MPI\_Rank>.png} abgelegt werden. Die Bilder werden dann auf dem entsprechenden Knoten angezeigt.
+\subsubsection{Parameter}
+\label{sssec:exec-params}
+Darüber hinaus lässt sich die Simulation mit einer Reihe von Parametern ausführen, um beispielsweise die Größe der Welt, die Anzahl der generierten Entities oder den Seed für die Generierung der Zufallszahlen anzupassen. In Tabelle \ref{table:parameters} im Anhang sind alle möglichen Parameter mit einer kurzen Beschreibung aufgelistet.
+
+\subsubsection{Ausführung auf dem MaiMUC}
+\label{sssec:exec-maimuc}
+Ein Ziel dieses Praktikums war es, ein Programm zu schreiben, das unter anderem auf dem MaiMUC ausgeführt werden kann. Um die Ausführung in diesem Spezialfall zu vereinfachen, stehen Skripte zur Verfügung. Nach dem Kompilieren auf einem Knoten, findet die Verteilung auf die anderen mit dem Skript \emph{deploy.sh} statt.
+\begin{lstlisting}[language=bash]
+  $ ./utils/deploy.sh
+\end{lstlisting}
+Die Ausführung ist im Anschluss wie folgt möglich:
+\begin{lstlisting}[language=bash]
+  $ ./utils/run.sh ./build/Evolution -m -r <Parameter>
+\end{lstlisting}
+
+\subsubsection{Profiling mittels Perf}
+Auch zum Profiling mittels \emph{Perf} und der automatischen Erstellung von \emph{Flamegraphs} stehen bereits Skripte zur Verfügung. Auf einem einzelnen Rechner geschieht dies über
+\begin{lstlisting}[language=bash]
+  $ mpirun -n <Anzahl der Knoten> ./utils/profile-local.sh <Parameter>
+\end{lstlisting}
+Die generierten \emph{Flamegraphs} befinden sich anschließend im Verzeichnis \emph{perf}.
+
+Auf dem MaiMUC wird - nach entsprechender Vorbereitung (siehe \ref{sssec:exec-maimuc}) - zum Ausführen
+\begin{lstlisting}[language=bash]
+  $ ./utils/run.sh ./utils/profile-maimuc.sh <Parameter>
+\end{lstlisting}
+verwendet. Anschließend können mittels
+\begin{lstlisting}[language=bash]
+  $ ./utils/collect-svg.sh
+\end{lstlisting}
+die generierten \emph{Flamegraphs} auf dem Knoten \emph{mai02} gesammelt werden.
+
+Um Perf auf dem HimMUC zu verwenden, kann die Ausführung mittels
+\begin{lstlisting}[language=bash]
+  $ srun -N <Anzahl der Knoten> ./utils/profile-himmuc.sh <Parameter>
+\end{lstlisting}
+erfolgen.
+
+\subsection{Interaktion}
+Auch während der Ausführung kann mit der Simulation sowohl über die Konsole als auch gegebenenfalls durch das angezeigt Fenster interagiert werden. Die Möglichkeiten hierzu sollen im Folgenden aufgezeigt werden.
+\subsubsection{über das Fenster}
+\label{sssec:interact-render}
+Wird die Simulation angezeigt, so kann durch Mausklick sowie einige Tasten auf der Tastatur interagiert werden, um beispielsweise Nahrung zu erzeugen, die Simulation anzuhalten oder die Grenzen der einzelnen MPI-Nodes visuell einzublenden. Anzumerken ist hierbei, dass Mausklicks auf allen Knoten funktionieren, während Interaktion über die Tastatur nur auf dem Knoten mit \emph{MPI\_RANK} 0 möglich ist. Laufen mehrere Knoten auf einem Gerät, so muss der Fokus auf dem Fenster des entsprechenden Knotens liegen. Eine vollständige Beschreibung aller möglichen Aktionen ist in Tabelle \ref{table:interact-window} im Anhang aufgelistet.
+
+\subsubsection{über die Konsole}
+\label{sssec:interact-console}
+Sämtliche oben genannten Tasten können auch über die Konsole eingegeben werden. Dies kann nützlich sein, wenn - wie beispielsweise am MaiMUC - keine Tastatur direkt an die ausführenden Geräte angeschlossen ist oder die Simulation ohne Anzeige ausgeführt wird. Zu beachten ist hierbei, dass, solange die Anzeige deaktiviert ist, nur die Kommandos \textbf{Q} und gegebenenfalls \textbf{R} gültig sind.
+
+\textbf{R} ist hierbei ein spezielles Konsolenkommando, welches das Rendern wieder aktiviert, sofern es momentan deaktiviert ist und das Programm im Render-Modus kompiliert wurde.
+
+\subsection{Erklärung der Anzeige}
+Nach erfolgreicher Ausführung erscheint ein Bild wie in Abbildung \ref{fig:simulation-borders}. Anzumerken ist hier, dass zur besseren Übersichtlichkeit auf der Abbildung in Rot die Grenzen zwischen MPI Knoten angezeigt werden.
+
+Auf den ersten Blick stechen bereits unterschiedlich große, farbige Punkte ins Auge, welche sich über die Welt bewegen. Diese stellen die Lebewesen und somit den Kern der Simulation da. Über ihnen sind weiße Zahlen zu sehen. Hierbei handelt es sich um die Energie der Lebewesen. Erreicht sie den Wert Null, so verschwindet das Lebewesen.
+
+Neue Energie können Lebewesen unter anderem erlange, indem sie Nahrung zu sich nehmen. Die unbeweglichen, roten Punkte, welche über die Welt verteilt sind, stellen diese Nahrung da. Werden sie gefressen, so verschwinden sie von der Welt.
+
+Die farbigen Zonen im Hintergrund stellen die Welt da. Sie besteht aus Wasser, Sand, Grass und Stein. Lebewesen können von Gegnern nicht gesehen werden, wenn sie auf einem Untergrund ähnlicher Farbe sind. Außerdem besitzt jedes Lebewesen ein Attribut, welches darüber entscheidet, wie schnell es sich im Wasser bewegen kann. Entsprechend langsamer ist es auf dem Land, also Sand, Grass und Stein.
+
+Die weiße Zahl rechts oben auf den Knoten zeigt die \emph{FPS} an, also wie viele Bilder aktuell pro Sekunde erzeugt werden. Links oben steht der \emph{MPI\_RANK} des Knotens.
 
 \section{Ergebnisse}
-Nachdem im vorhergehenden Abschnitt auf die Implementierung unserer Anwendung eingegangen wurde, soll nun überprüft werden, inwieweit die Simulation den Prozess der Evolution tatsächlich abbildet und wie sich die Parallelisierung auf die Geschwindigkeit und Skalierbarkeit der Anwendung auswirkt.
+In diesem Abschnitt soll nun überprüft werden, inwieweit die Simulation den Prozess der Evolution tatsächlich abbildet und wie sich die Parallelisierung auf die Geschwindigkeit und Skalierbarkeit der Anwendung auswirkt.
 
 \subsection{Simulation der Evolution}
 Einige Grundtendenzen der Evolution lassen sich in unserer Simulation bereits erkennen. Das Offensichtlichste ist wohl, dass alle Lebewesen, die nicht zumindest ansatzweise sinnvollen Aktionen ausführen, sehr schnell aussterben. Für die dann noch übrigen Lebewesen gibt es zwei Hauptentwicklungsrichtungen. Entweder sie überleben zwar noch etwas länger, sterben dann aber ebenfalls nach einiger Zeit aus, oder sie setzen sich durch und es entwickelt sich eine Spezies dieser Art von Lebewesen. In Abbildung \ref{fig:ergebnisse-simulation-1} hat sich beispielsweise eine Spezies auf Land (dunkelgrün) und eine im Wasser (hellgrün) gebildet.
@@ -689,7 +766,7 @@ Der größte Teil der Anwendung wird im Rendering verbracht. Wenn man das außer
 
 Desweiteren ist zu erkennen, dass bei manchen Anzahlen an Nodes, wie zum Beispiel 5 und 7, die MPI-Kommunikation auffällig viel Zeit benötigt. Der Grund für diese Abweichungen ist die Aufteilung der Welt wie in Abschnitt \ref{sssec:aufteilung-der-welt} beschrieben. Bei manchen Anzahlen an Nodes wird die Welt durch den rekursiven Ansatz nicht optimal aufgeteilt, wodurch größere Paddingbereiche entstehen und somit mehr Kommunikation erfolgen muss.
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \begin{minipage}{.4\textwidth}
 \begin{tikzpicture}
@@ -747,7 +824,7 @@ Um den Performanzgewinn durch die Verwendung mehrerer Nodes zu testen werden zwe
 
 Bei beiden Experimenten wird für jede Anzahl an Nodes der gleiche Test je dreimal mit 3.000 Ticks durchgeführt und anschließend der Durchschnittswert genommen. Die dabei erzielten Ergebnisse sind in Abbildungen \ref{fig:himmuc-strong-scaling} und \ref{fig:himmuc-weak-scaling} dargestellt.
 
-\begin{figure}[h]
+\begin{figure}[t]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
@@ -761,7 +838,7 @@ ylabel={$Speedup$}
 \label{fig:himmuc-strong-scaling}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[t]
 \centering
 \begin{minipage}{.5\textwidth}
 \centering
@@ -882,85 +959,6 @@ Die Verwendung mehrerer MPI-Prozesse ist also eindeutig effektiver im Vergleich 
 Die Messergebnisse haben klar gezeigt, dass die Simulation gut skalierbar ist. Besonders die Skalierung der Welt mit steigender Anzahl an Nodes ist vielversprechend, da dadurch die Grundvoraussetzung geschaffen ist, um große Welten in annehmbarer Zeit berechnen zu können. Ein wichtiger Grund dafür ist sicher auch, dass die Kommunikation direkt zwischen den einzelnen Nodes stattfindet und nicht über einen Master-Node, der bei steigender Nodeanzahl irgendwann ein Engpass werden kann. Mit der aktuellen Implementierung könnte irgendwann höchstens die initiale Generierung der Entities bzw. die Verteilung der Food-Entities problematisch werden, da dies nur auf einem Knoten berechnet wird.
 
 Die Verwendung von Threads hat sich im Vergleich zu Prozessen als nicht sinnvoll herausgestellt. Zwar sparen Threads den Mehraufwand der MPI-Kommunikation ein, da dieser aber bei wenigen Prozessen im Vergleich zur benötigten Rechenzeit für den Denkprozess der Entities relativ gering ausfällt und zudem gut skaliert macht das keinen großen Unterschied. Zumal bei den Threads auch beachtet werden muss, dass hier ebenfalls ein Verwaltungsmehraufwand entsteht.
-
-\section{Verwendung der Simulation}
-Die Simulation kann in verschiedenen Versionen kompiliert und mit unterschiedlichen Parametern ausgeführt werden. Die genaue Verwendung soll im Folgenden beschrieben werden.
-\subsection{Kompilieren}
-Prinzipiell ist zu beachten, dass hier MPI sowie gegebenenfalls SDL2, SDL2 TTF und SDL2 Image benötigt werden.
-Zum Kompilieren stehen bereits vorgefertigte Skripte zur Verfügung. Zunächst muss CMake initialisiert werden:
-\begin{lstlisting}[language=bash]
-  $ ./utils/init.sh <build type> <render>
-\end{lstlisting}
-Hierbei kann \emph{<render>} entweder \emph{ON} oder \emph{OFF} sein. Ist das Rendern ausgeschaltet, so wird ohne SDL kompiliert. Für den \emph{<build type>} sind gültige Werte \emph{Release}, \emph{Debug} oder \emph{RelWithDebInfo}. \emph{Release} erzeugt optimierten Code und sollte standardmäßig verwendet werden. \emph{Debug} schaltet alle Optimierungen aus und \emph{RelWithDebInfo} optimiert wie \emph{Release}, behält aber die Debugsymbole.
-Anschließend kann wie folgt kompiliert werden:
-\begin{lstlisting}[language=bash]
-  $ ./utils/build.sh
-\end{lstlisting}
-Alle Kommandos sollten im Projektverzeichnis ausgeführt werden.
-
-\subsection{Ausführen}
-Das kompilierte Programm kann auf einem Linuxsystem wie üblich ausgeführt werden. Sollen im Hintergrund Logos angezeigt werden, können diese einfach im Ordner \emph{res/logos} mit dem Namen \emph{<MPI\_Rank>.png} abgelegt werden. Die Bilder werden dann auf dem entsprechenden Knoten angezeigt.
-\subsubsection{Parameter}
-\label{sssec:exec-params}
-Darüber hinaus lässt sich die Simulation mit einer Reihe von Parametern ausführen, um beispielsweise die Größe der Welt, die Anzahl der generierten Entities oder den Seed für die Generierung der Zufallszahlen anzupassen. In Tabelle \ref{table:parameters} im Anhang sind alle möglichen Parameter mit einer kurzen Beschreibung aufgelistet.
-
-\subsubsection{Ausführung auf dem MaiMUC}
-\label{sssec:exec-maimuc}
-Ein Ziel dieses Praktikums war es, ein Programm zu schreiben, das unter anderem auf dem MaiMUC ausgeführt werden kann. Um die Ausführung in diesem Spezialfall zu vereinfachen, stehen Skripte zur Verfügung. Nach dem Kompilieren auf einem Knoten, findet die Verteilung auf die anderen mit dem Skript \emph{deploy.sh} statt.
-\begin{lstlisting}[language=bash]
-  $ ./utils/deploy.sh
-\end{lstlisting}
-Die Ausführung ist im Anschluss wie folgt möglich:
-\begin{lstlisting}[language=bash]
-  $ ./utils/run.sh ./build/Evolution -m -r <Parameter>
-\end{lstlisting}
-
-\subsubsection{Profiling mittels Perf}
-Auch zum Profiling mittels \emph{Perf} und der automatischen Erstellung von \emph{Flamegraphs} stehen bereits Skripte zur Verfügung. Auf einem einzelnen Rechner geschieht dies über
-\begin{lstlisting}[language=bash]
-  $ mpirun -n <Anzahl der Knoten> ./utils/profile-local.sh <Parameter>
-\end{lstlisting}
-Die generierten \emph{Flamegraphs} befinden sich anschließend im Verzeichnis \emph{perf}.
-
-Auf dem MaiMUC wird - nach entsprechender Vorbereitung (siehe \ref{sssec:exec-maimuc}) - zum Ausführen
-\begin{lstlisting}[language=bash]
-  $ ./utils/run.sh ./utils/profile-maimuc.sh <Parameter>
-\end{lstlisting}
-verwendet. Anschließend können mittels
-\begin{lstlisting}[language=bash]
-  $ ./utils/collect-svg.sh
-\end{lstlisting}
-die generierten \emph{Flamegraphs} auf dem Knoten \emph{mai02} gesammelt werden.
-
-Um Perf auf dem HimMUC zu verwenden, kann die Ausführung mittels
-\begin{lstlisting}[language=bash]
-  $ srun -N <Anzahl der Knoten> ./utils/profile-himmuc.sh <Parameter>
-\end{lstlisting}
-erfolgen.
-
-\subsection{Interaktion}
-Auch während der Ausführung kann mit der Simulation sowohl über die Konsole als auch gegebenenfalls durch das angezeigt Fenster interagiert werden. Die Möglichkeiten hierzu sollen im Folgenden aufgezeigt werden.
-\subsubsection{über das Fenster}
-\label{sssec:interact-render}
-Wird die Simulation angezeigt, so kann durch Mausklick sowie einige Tasten auf der Tastatur interagiert werden, um beispielsweise Nahrung zu erzeugen, die Simulation anzuhalten oder die Grenzen der einzelnen MPI-Nodes visuell einzublenden. Anzumerken ist hierbei, dass Mausklicks auf allen Knoten funktionieren, während Interaktion über die Tastatur nur auf dem Knoten mit \emph{MPI\_RANK} 0 möglich ist. Laufen mehrere Knoten auf einem Gerät, so muss der Fokus auf dem Fenster des entsprechenden Knotens liegen. Eine vollständige Beschreibung aller möglichen Aktionen ist in Tabelle \ref{table:interact-window} im Anhang aufgelistet.
-
-\subsubsection{über die Konsole}
-\label{sssec:interact-console}
-Sämtliche oben genannten Tasten können auch über die Konsole eingegeben werden. Dies kann nützlich sein, wenn - wie beispielsweise am MaiMUC - keine Tastatur direkt an die ausführenden Geräte angeschlossen ist oder die Simulation ohne Anzeige ausgeführt wird. Zu beachten ist hierbei, dass, solange die Anzeige deaktiviert ist, nur die Kommandos \textbf{Q} und gegebenenfalls \textbf{R} gültig sind.
-
-\textbf{R} ist hierbei ein spezielles Konsolenkommando, welches das Rendern wieder aktiviert, sofern es momentan deaktiviert ist und das Programm im Render-Modus kompiliert wurde.
-
-\subsection{Erklärung der Anzeige}
-Nach erfolgreicher Ausführung erscheint ein Bild wie in Abbildung \ref{fig:simulation-borders}. Anzumerken ist hier, dass zur besseren Übersichtlichkeit auf der Abbildung bereits in Rot die Grenzen zwischen MPI Knoten angezeigt werden.
-
-Auf den ersten Blick stechen bereits unterschiedlich große, farbige Punkte ins Auge, welche sich über die Welt bewegen. Diese stellen die Lebewesen und somit den Kern der Simulation da. Über ihnen sind weiße Zahlen zu sehen. Hierbei handelt es sich um die Energie der Lebewesen. Erreicht sie den Wert Null, so verschwindet das Lebewesen.
-
-Neue Energie können Lebewesen unter anderem erlange, indem sie Nahrung zu sich nehmen. Die unbeweglichen, roten Punkte, welche über die Welt verteilt sind, stellen diese Nahrung da. Werden sie gefressen, so verschwinden sie von der Welt.
-
-Die farbigen Zonen im Hintergrund stellen die Welt da. Sie besteht aus Wasser, Sand, Grass und Stein. Lebewesen können von Gegnern nicht gesehen werden, wenn sie auf einem Untergrund ähnlicher Farbe sind. Außerdem besitzt jedes Lebewesen ein Attribut, welches darüber entscheidet, wie schnell es sich im Wasser bewegen kann. Entsprechend langsamer ist es auf dem Land, also Sand, Grass und Stein.
-
-Die weiße Zahl rechts oben auf den Knoten zeigt die \emph{FPS} an, also wie viele Bilder aktuell pro Sekunde erzeugt werden. Links oben steht der \emph{MPI\_RANK} des Knotens.
-
 
 \section{Zusammenfassung}
 Abschließend kann festgestellt werden, dass die Simulation trotz der hohen Abstraktion schon viele Ähnlichkeiten zur realen Welt sichtbar macht. Vor allem hat sich gezeigt, dass sich viele Spezies entwickeln, welche unterschiedliche Merkmale und Attribute besitzen und sich beispielsweise mehr auf Land als auf Wasser bewegen. Somit existiert auch aktuell schon eine durchaus realitätsnahe Evolution. Andererseits ist die Evolution trotzdem noch stark limitiert, da die neuronalen Netze nicht sehr komplex aufgebaut sind und nur aus wenigen Attributen bestehen, damit diese besser konvergieren.
