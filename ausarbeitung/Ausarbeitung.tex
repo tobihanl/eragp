@@ -842,7 +842,7 @@ Die zweite Art der Parallelisierung wird mittels OpenMP realisiert. Um dies zu t
 \label{fig:thread-scaling}
 \end{figure}
 
-Auf dem HimMUC ist ein deutlicher Speedup mit mehreren Treads zu erkennen, während er auf dem MaiMUC ohne Rendering für 2 und 3 Threads weitaus geringer ausfällt und bei 4 Threads sogar wieder absinkt. Mit Rendering ist der Speedup kaum existent und wird bei 4 Threads negativ.
+Auf dem HimMUC ist ein deutlicher Speedup mit mehreren Threads zu erkennen, während er auf dem MaiMUC ohne Rendering für 2 und 3 Threads weitaus geringer ausfällt und bei 4 Threads sogar wieder absinkt. Mit Rendering ist der Speedup kaum existent und wird bei 4 Threads negativ.
 
 Der Grund für den Performanzgewinn auf dem HimMUC ist, dass dort eine bedeutend größere Welt berechnet wird und diese nur auf einem Node ausgeführt wird. Auf dem MaiMUC ist sowohl die Welt bedingt durch die Größe der Displays kleiner und zudem wird sie bereits von 10 Nodes berechnet, wodurch eine einzelne Node nicht mehr viele Entities zu berechnen hat. Mit Rendering wird dieser Speedup dann nochmal inkonsequenter, da das Rendering weitaus mehr Zeit verbraucht als die tatsächlichen Berechnungen (vgl. Abschnitt \ref{sssec:computing-times}). Damit die Verwendung mehrerer Threads also einen Vorteil bringt müssen genug Entities pro Node vorhanden sein, um die einzelnen Rechenkerne auch tatsächlich sinnvoll ausnutzen zu können, da ansonsten der Verwaltungsmehraufwand der Threads überwiegt.
 
